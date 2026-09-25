@@ -1,0 +1,8 @@
+[SddmGreeterTheme]
+Name=osu
+Description=Osu! inspired login theme.
+Author=Darkkal44
+Type=sddm-theme
+MainScript=Main.qml
+ConfigFile=theme.conf
+QtVersion=6

@@ -1,0 +1,8 @@
+[SddmGreeterTheme]
+Name=pixel-skyscrapers
+Description=pixel-skyscrapers Qylock Theme
+Author=Darkkal44
+Type=sddm-theme
+MainScript=Main.qml
+ConfigFile=theme.conf
+QtVersion=6

@@ -1,0 +1,8 @@
+[SddmGreeterTheme]
+Name=girl-pillow
+Description=Girl Pillow
+Author=Darkkal44
+Type=sddm-theme
+MainScript=Main.qml
+ConfigFile=theme.conf
+QtVersion=6

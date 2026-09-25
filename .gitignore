@@ -1,0 +1,36 @@
+.claude/
+themes/Genshin/font/zhcn.ttf
+themes/nier-automata/font/FOT-Rodin Pro DB.otf
+themes/terraria/font/Andy Bold.ttf
+themes/sword/font/The Last Shuriken.ttf
+themes/osu/font/Torus Regular.otf
+themes/nothing/font/*.otf
+themes/pixel-rainyroom/bg-hd.mp4
+_README.md
+
+# IDE / editor
+.vscode/
+.idea/
+*.iml
+.fleet/
+.zed/
+*.swp
+*~
+.DS_Store
+
+# Rust
+/target/
+**/*.rs.bk
+
+# Qt / QML
+build/
+*.qmlc
+*.jsc
+.qmlls.ini
+qmlcache/
+.rcc/
+qrc_*.cpp
+moc_*.cpp
+ui_*.h
+CMakeLists.txt.user*
+*.pro.user*

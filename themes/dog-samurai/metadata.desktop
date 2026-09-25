@@ -1,0 +1,7 @@
+[SddmGreeterTheme]
+Name=dog-samurai
+Description=Dog Samurai Theme
+Type=sddm-theme
+MainScript=Main.qml
+ConfigFile=theme.conf
+QtVersion=6

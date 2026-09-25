@@ -1,0 +1,11 @@
+[SddmGreeterTheme]
+Name=nothing
+Description=Nothing OS inspired Lockscreen Theme
+Author=Darkkal44
+Copyright=(c) 2024
+License=MIT
+Type=sddm-theme
+Version=1.0
+MainScript=Main.qml
+ConfigFile=theme.conf
+QtVersion=6

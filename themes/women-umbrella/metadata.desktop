@@ -1,0 +1,8 @@
+[SddmGreeterTheme]
+Name=women-umbrella
+Description=Totoro theme ~
+Author=Darkkal44
+Type=sddm-theme
+MainScript=Main.qml
+ConfigFile=theme.conf
+QtVersion=6
