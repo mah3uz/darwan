@@ -1,6 +1,6 @@
 [SddmGreeterTheme]
-Name=windows_7
-Description=windows_7 Qylock Theme
+Name=reverse-1999-1
+Description=Reverse 1999 Qylock Theme
 Author=Darkkal44
 Type=sddm-theme
 MainScript=Main.qml

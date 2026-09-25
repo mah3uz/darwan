@@ -1,6 +1,6 @@
 [SddmGreeterTheme]
-Name=Genshin
-Description=Genshin Qylock Theme
+Name=ninja-gaiden
+Description=ninja-gaiden Qylock Theme
 Author=Darkkal44
 Type=sddm-theme
 MainScript=Main.qml

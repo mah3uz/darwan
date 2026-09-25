@@ -482,7 +482,7 @@ KWin doesn't support the `ext-session-lock-v1` protocol that the Quickshell lock
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Genshin Impact</b><br><br>
-<img src="./themes/Genshin/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/genshin/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
@@ -512,13 +512,13 @@ KWin doesn't support the `ext-session-lock-v1` protocol that the Quickshell lock
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Reverse: 1999 - I</b><br><br>
-<img src="./themes/R1999_1/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/reverse-1999-1/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Reverse: 1999 - II</b><br><br>
-<img src="./themes/R1999_2/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/reverse-1999-2/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Clockwork</b><br><br>
@@ -532,13 +532,13 @@ KWin doesn't support the `ext-session-lock-v1` protocol that the Quickshell lock
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Ninja Gaiden</b><br><br>
-<img src="./themes/ninja_gaiden/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/ninja-gaiden/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Windows 7</b><br><br>
-<img src="./themes/windows_7/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/windows-7/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Material You Dark</b><br><br>
