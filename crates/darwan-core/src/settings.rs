@@ -1,0 +1,191 @@
+use std::fmt;
+
+use crate::catalog::{Catalog, valid_id};
+use crate::config::{Target, UserConfig};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Key {
+    Theme(Target),
+    ClockFormat,
+    ClockShowAmPm,
+    DateFormat,
+    Option { theme: String, key: String },
+}
+
+impl Key {
+    pub fn parse(s: &str) -> Result<Self, String> {
+        Ok(match s {
+            "lock.theme" => Key::Theme(Target::Lock),
+            "sddm.theme" => Key::Theme(Target::Sddm),
+            "clock.format" => Key::ClockFormat,
+            "clock.show_ampm" => Key::ClockShowAmPm,
+            "date.format" => Key::DateFormat,
+            _ => {
+                let (theme, key) = s.rsplit_once('.').filter(|(t, k)| valid_id(t) && !k.is_empty()).ok_or_else(|| {
+                    format!(
+                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format or <theme-id>.<option>"
+                    )
+                })?;
+                Key::Option {
+                    theme: theme.to_string(),
+                    key: key.to_string(),
+                }
+            }
+        })
+    }
+}
+
+impl fmt::Display for Key {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Key::Theme(t) => write!(f, "{}.theme", t.table()),
+            Key::ClockFormat => f.write_str("clock.format"),
+            Key::ClockShowAmPm => f.write_str("clock.show_ampm"),
+            Key::DateFormat => f.write_str("date.format"),
+            Key::Option { theme, key } => write!(f, "{theme}.{key}"),
+        }
+    }
+}
+
+pub fn get(config: &UserConfig, key: &Key) -> Result<Option<String>, String> {
+    let owned = |v: Option<&str>| v.map(str::to_string);
+    match key {
+        Key::Theme(t) => config.theme(*t).map(owned),
+        Key::ClockFormat => config.clock_format().map(owned),
+        Key::ClockShowAmPm => config.clock_show_ampm().map(|v| v.map(|b| b.to_string())),
+        Key::DateFormat => config.date_format().map(owned),
+        Key::Option { theme, key } => config
+            .theme_values(theme)
+            .into_iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, v)| v)
+            .transpose(),
+    }
+}
+
+// Validated here so the config file never holds a value the resolver would later drop.
+pub fn set(
+    config: &mut UserConfig,
+    catalog: &Catalog,
+    key: &Key,
+    value: &str,
+) -> Result<(), String> {
+    match key {
+        Key::Theme(t) => {
+            catalog
+                .get(value)
+                .ok_or_else(|| format!("unknown theme {value:?}"))?;
+            config.set_theme(*t, value)
+        }
+        Key::ClockFormat => match value {
+            "12h" | "24h" => config.set_global("clock", "format", toml_edit::value(value)),
+            _ => Err(format!("clock.format is 12h or 24h, not {value:?}")),
+        },
+        Key::ClockShowAmPm => match value {
+            "true" | "false" => {
+                config.set_global("clock", "show_ampm", toml_edit::value(value == "true"))
+            }
+            _ => Err(format!("clock.show_ampm is true or false, not {value:?}")),
+        },
+        Key::DateFormat if value.contains(['\n', '\r']) => {
+            Err("date.format must be one line".into())
+        }
+        Key::DateFormat => config.set_global("date", "format", toml_edit::value(value)),
+        Key::Option { theme, key } => {
+            let t = catalog
+                .get(theme)
+                .ok_or_else(|| format!("unknown theme {theme:?}"))?;
+            let opt = t.manifest.option(key).ok_or_else(|| {
+                let keys: Vec<&str> = t.manifest.options.iter().map(|o| o.key.as_str()).collect();
+                if keys.is_empty() {
+                    format!("{theme} has no options")
+                } else {
+                    format!("{theme} has no option {key:?}; it has {}", keys.join(", "))
+                }
+            })?;
+            opt.check(value)
+                .map_err(|e| format!("{theme}.{key}: {e}"))?;
+            config.set_theme_value(theme, key, value, opt.kind)
+        }
+    }
+}
+
+pub fn unset(config: &mut UserConfig, key: &Key) -> bool {
+    match key {
+        Key::Theme(t) => config.remove_global(t.table(), "theme"),
+        Key::ClockFormat => config.remove_global("clock", "format"),
+        Key::ClockShowAmPm => config.remove_global("clock", "show_ampm"),
+        Key::DateFormat => config.remove_global("date", "format"),
+        Key::Option { theme, key } => config.remove_theme_value(theme, key),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    fn catalog() -> Catalog {
+        Catalog::load(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../themes"))
+            .unwrap()
+            .0
+    }
+
+    #[test]
+    fn keys_round_trip_and_theme_ids_keep_their_slashes() {
+        for s in [
+            "lock.theme",
+            "sddm.theme",
+            "clock.format",
+            "clock.show_ampm",
+            "date.format",
+            "clockwork/orbital.themeMode",
+        ] {
+            assert_eq!(Key::parse(s).unwrap().to_string(), s);
+        }
+        assert_eq!(
+            Key::parse("clockwork/orbital.themeMode").unwrap(),
+            Key::Option {
+                theme: "clockwork/orbital".into(),
+                key: "themeMode".into()
+            }
+        );
+        assert!(Key::parse("themeMode").is_err());
+        assert!(Key::parse("../x.y").is_err());
+    }
+
+    #[test]
+    fn set_rejects_what_the_resolver_would_drop() {
+        let cat = catalog();
+        let mut cfg = UserConfig::default();
+        for (k, v) in [
+            ("lock.theme", "no-such-theme"),
+            ("clock.format", "13h"),
+            ("clock.show_ampm", "yes"),
+            ("osu.gameMode", "arcade"),
+            ("osu.noSuchKey", "x"),
+            ("date.format", "a\nb"),
+        ] {
+            assert!(
+                set(&mut cfg, &cat, &Key::parse(k).unwrap(), v).is_err(),
+                "{k}={v}"
+            );
+        }
+        assert_eq!(cfg.to_string(), "", "nothing invalid may reach the file");
+    }
+
+    #[test]
+    fn set_get_unset_round_trip() {
+        let cat = catalog();
+        let mut cfg = UserConfig::default();
+        let key = Key::parse("terraria.background_index").unwrap();
+        set(&mut cfg, &cat, &key, "3").unwrap();
+        assert_eq!(get(&cfg, &key), Ok(Some("3".into())));
+        assert!(
+            cfg.to_string().contains("background_index = \"3\""),
+            "an enum choice is saved as the string the manifest declares"
+        );
+        assert!(unset(&mut cfg, &key));
+        assert_eq!(get(&cfg, &key), Ok(None));
+    }
+}

@@ -8,7 +8,10 @@ mod preview;
 mod qs;
 mod sddm;
 mod session;
+mod settings_cmd;
+mod tui;
 
+use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
@@ -23,11 +26,21 @@ use clap::{Parser, Subcommand};
 )]
 struct Cli {
     #[command(subcommand)]
-    command: Cmd,
+    command: Option<Cmd>,
 }
 
 #[derive(Subcommand)]
 enum Cmd {
+    /// List the themes (L marks the lock theme, S the SDDM theme)
+    List,
+    /// Show a theme's details, fonts and settings
+    Show { id: String },
+    /// Print a setting, or the whole config without KEY
+    Get { key: Option<String> },
+    /// Change a setting: lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format or <theme-id>.<option>
+    Set { key: String, value: String },
+    /// Put a setting back to its default
+    Unset { key: String },
     /// Lock the session with a theme (default: [lock] theme from the config)
     Lock {
         id: Option<String>,
@@ -110,8 +123,30 @@ enum FontCmd {
 }
 
 fn main() -> ExitCode {
+    // Let `darwan list | head` end quietly instead of panicking on a closed pipe.
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
     let paths = paths::Paths::detect();
-    let result = match Cli::parse().command {
+    let command = match Cli::parse().command {
+        Some(c) => c,
+        None if std::io::stdin().is_terminal() && std::io::stdout().is_terminal() => {
+            return tui::run(&paths).unwrap_or_else(|e| {
+                eprintln!("darwan: {e}");
+                ExitCode::FAILURE
+            });
+        }
+        None => {
+            <Cli as clap::CommandFactory>::command().print_help().ok();
+            return ExitCode::FAILURE;
+        }
+    };
+    let result = match command {
+        Cmd::List => settings_cmd::list(&paths),
+        Cmd::Show { id } => settings_cmd::show(&paths, &id),
+        Cmd::Get { key } => settings_cmd::get(&paths, key.as_deref()),
+        Cmd::Set { key, value } => settings_cmd::set(&paths, &key, &value),
+        Cmd::Unset { key } => settings_cmd::unset(&paths, &key),
         Cmd::Lock {
             id,
             replace,

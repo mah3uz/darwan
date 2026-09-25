@@ -20,7 +20,7 @@ pub enum Target {
 }
 
 impl Target {
-    fn table(self) -> &'static str {
+    pub fn table(self) -> &'static str {
         match self {
             Target::Lock => "lock",
             Target::Sddm => "sddm",
@@ -63,15 +63,25 @@ impl UserConfig {
     }
 
     pub fn set_theme(&mut self, target: Target, id: &str) -> Result<(), String> {
-        let name = target.table();
-        let table = self
+        self.set_global(target.table(), "theme", toml_edit::value(id))
+    }
+
+    pub fn set_global(&mut self, table: &str, key: &str, value: Item) -> Result<(), String> {
+        let section = self
             .doc
-            .entry(name)
+            .entry(table)
             .or_insert(Item::Table(Table::new()))
             .as_table_like_mut()
-            .ok_or_else(|| format!("{name} must be a table"))?;
-        table.insert("theme", toml_edit::value(id));
+            .ok_or_else(|| format!("{table} must be a table"))?;
+        section.insert(key, value);
         Ok(())
+    }
+
+    pub fn remove_global(&mut self, table: &str, key: &str) -> bool {
+        self.doc
+            .get_mut(table)
+            .and_then(Item::as_table_like_mut)
+            .is_some_and(|t| t.remove(key).is_some())
     }
 
     pub fn clock_format(&self) -> Result<Option<&str>, String> {
@@ -158,11 +168,17 @@ impl UserConfig {
     }
 
     pub fn remove_theme_value(&mut self, id: &str, key: &str) -> bool {
-        self.doc
-            .get_mut("themes")
-            .and_then(|t| t.get_mut(id))
-            .and_then(Item::as_table_like_mut)
-            .is_some_and(|t| t.remove(key).is_some())
+        let Some(themes) = self.doc.get_mut("themes").and_then(Item::as_table_like_mut) else {
+            return false;
+        };
+        let Some(theme) = themes.get_mut(id).and_then(Item::as_table_like_mut) else {
+            return false;
+        };
+        let removed = theme.remove(key).is_some();
+        if theme.is_empty() {
+            themes.remove(id);
+        }
+        removed
     }
 
     fn item(&self, table: &str, key: &str) -> Option<&Item> {
@@ -246,6 +262,13 @@ mod tests {
         assert!(values.contains(&("background_index".into(), Ok("3".into()))));
         assert!(values.contains(&("background_mode".into(), Ok("static".into()))));
         assert!(values.iter().any(|(k, v)| k == "bad" && v.is_err()));
+    }
+
+    #[test]
+    fn removing_the_last_value_removes_the_theme_section() {
+        let mut cfg = UserConfig::parse("[themes.osu]\ngameMode = \"menu\"\n").unwrap();
+        assert!(cfg.remove_theme_value("osu", "gameMode"));
+        assert!(!cfg.to_string().contains("osu"), "{cfg}");
     }
 
     #[test]

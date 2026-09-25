@@ -32,8 +32,15 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
         .env("DARWAN_USER", session::user_name())
         .env("DARWAN_HOSTNAME", session::host_name())
         .env("DARWAN_SESSIONS", session::sessions_json());
-    if !opts.pam {
-        eprintln!("Mock login: the password is \"test\". Close the window to exit.");
+    let log_path = crate::paths::state_dir().join("preview.log");
+    let log =
+        std::fs::File::create(&log_path).map_err(|e| format!("{}: {e}", log_path.display()))?;
+    cmd.stdout(log.try_clone().map_err(|e| e.to_string())?)
+        .stderr(log);
+    if opts.pam {
+        println!("Unlock with your password, or press Ctrl+Q to close.");
+    } else {
+        println!("Unlock with the password \"test\", or press Ctrl+Q to close.");
     }
     let status = cmd.status().map_err(|e| {
         format!(
@@ -45,11 +52,17 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
             }
         )
     })?;
-    Ok(if status.success() {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
-    })
+    if status.success() {
+        return Ok(ExitCode::SUCCESS);
+    }
+    let log = std::fs::read_to_string(&log_path).unwrap_or_default();
+    let tail: Vec<&str> = log.lines().rev().take(12).collect();
+    eprintln!(
+        "The preview failed ({status}); end of {}:\n{}",
+        log_path.display(),
+        tail.into_iter().rev().collect::<Vec<_>>().join("\n")
+    );
+    Ok(ExitCode::FAILURE)
 }
 
 fn check_time(at: &str) -> Result<&str, String> {

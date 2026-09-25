@@ -12,9 +12,17 @@ ShellRoot {
         id: win
         visible: true
         title: "darwan preview: " + (Quickshell.env("DARWAN_THEME_ID") || "")
-        width: Math.round(Screen.width * 0.6)
-        height: Math.round(Screen.height * 0.6)
+        visibility: Window.FullScreen
         color: "black"
+
+        // Escape belongs to some themes (menus, clearing the password), so closing uses Ctrl+Q.
+        Shortcut {
+            sequence: "Ctrl+Q"
+            onActivated: {
+                host.unload()
+                Qt.callLater(() => Qt.quit())
+            }
+        }
 
         // Themes size themselves from Screen, so render at screen size and scale down.
         ThemeHost {
@@ -41,7 +49,10 @@ ShellRoot {
             onSuspendRequested: console.log("darwan: suspend requested (ignored in preview)")
         }
 
-        onClosing: host.unload()
+        onClosing: {
+            host.unload()
+            Qt.callLater(() => Qt.quit())
+        }
     }
 
     MockAuth {
