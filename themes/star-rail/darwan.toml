@@ -1,0 +1,9 @@
+name = "Honkai: Star Rail"
+author = "Darkkal44"
+background = "video"
+
+[[font]]
+file = "font.ttf"
+family = "DIN Next"
+license = "Commercial (Monotype)"
+url = ""

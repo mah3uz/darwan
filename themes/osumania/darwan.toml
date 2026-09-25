@@ -1,0 +1,18 @@
+name = "osu! mania"
+author = "Darkkal44"
+background = "image"
+
+[[font]]
+file = "Torus Regular.otf"
+family = "Torus"
+license = "Commercial (Paulo Goode)"
+url = "https://paulogoode.com/torus/"
+
+[[option]]
+key = "gameMode"
+label = "Start screen"
+type = "enum"
+choices = [
+  { value = "menu", label = "Main menu only" },
+  { value = "game", label = "Rhythm game gate" },
+]

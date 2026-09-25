@@ -1,0 +1,9 @@
+name = "NieR: Automata"
+author = "Darkkal44"
+background = "image"
+
+[[font]]
+file = "FOT-Rodin Pro DB.otf"
+family = "FOT-Rodin Pro DB"
+license = "Commercial (Fontworks)"
+url = "https://fonts.adobe.com/fonts/fot-rodin-pron"

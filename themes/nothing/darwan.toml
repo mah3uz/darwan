@@ -1,0 +1,9 @@
+name = "Nothing"
+author = "Darkkal44"
+background = "color"
+
+[[font]]
+file = "NDot55.otf"
+family = "NDot 55"
+license = "Nothing brand use only"
+url = ""

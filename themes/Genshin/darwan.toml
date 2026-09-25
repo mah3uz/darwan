@@ -1,0 +1,31 @@
+name = "Genshin Impact"
+author = "Darkkal44"
+background = "video"
+
+[[font]]
+file = "zhcn.ttf"
+family = "HYWenHei-85W"
+license = "Commercial (Hanyi)"
+url = "https://www.hanyi.com.cn/"
+
+[[option]]
+key = "background_mode"
+label = "Background"
+type = "enum"
+choices = [
+  { value = "time", label = "Follow the time of day" },
+  { value = "random", label = "Random" },
+  { value = "static", label = "Fixed" },
+]
+
+[[option]]
+key = "background_index"
+label = "Fixed background"
+type = "enum"
+choices = [
+  { value = "1", label = "Day" },
+  { value = "2", label = "Night" },
+  { value = "3", label = "Dawn" },
+  { value = "4", label = "Dusk" },
+]
+enabled_when = { background_mode = "static" }

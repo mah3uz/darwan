@@ -5,7 +5,6 @@ themes/terraria/font/Andy Bold.ttf
 themes/sword/font/The Last Shuriken.ttf
 themes/osu/font/Torus Regular.otf
 themes/nothing/font/*.otf
-themes/pixel-rainyroom/bg-hd.mp4
 _README.md
 
 # IDE / editor
@@ -21,6 +20,7 @@ _README.md
 # Rust
 /target/
 **/*.rs.bk
+tmp/
 
 # Qt / QML
 build/

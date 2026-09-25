@@ -1,0 +1,18 @@
+name = "Orbital"
+family = "Clockwork"
+author = "Darkkal44"
+background = "color"
+
+[[option]]
+key = "themeMode"
+label = "Appearance"
+type = "enum"
+choices = [
+  { value = "dark", label = "Dark" },
+  { value = "light", label = "Light" },
+]
+
+[[option]]
+key = "enableWindup"
+label = "Windup animation on unlock"
+type = "bool"

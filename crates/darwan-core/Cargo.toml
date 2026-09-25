@@ -1,0 +1,13 @@
+[package]
+name = "darwan-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+tempfile = "3.27.0"
+thiserror = "2.0.21"
+toml = "1.1.6"
+toml_edit = "0.25.15"

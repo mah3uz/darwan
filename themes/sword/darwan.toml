@@ -1,0 +1,9 @@
+name = "Sword"
+author = "Darkkal44"
+background = "video"
+
+[[font]]
+file = "The Last Shuriken.ttf"
+family = "The Last Shuriken"
+license = "Free for personal use (Arterfak Project)"
+url = "https://www.dafont.com/the-last-shuriken.font"

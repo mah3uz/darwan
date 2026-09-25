@@ -1,0 +1,255 @@
+use std::io::{self, Write};
+use std::path::Path;
+
+use toml_edit::{DocumentMut, Item, Table, Value};
+
+use crate::manifest::OptionKind;
+
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigError {
+    #[error("reading {path}: {source}")]
+    Io { path: String, source: io::Error },
+    #[error("parsing config: {0}")]
+    Parse(#[from] toml_edit::TomlError),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Target {
+    Lock,
+    Sddm,
+}
+
+impl Target {
+    fn table(self) -> &'static str {
+        match self {
+            Target::Lock => "lock",
+            Target::Sddm => "sddm",
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct UserConfig {
+    doc: DocumentMut,
+}
+
+impl UserConfig {
+    pub fn parse(text: &str) -> Result<Self, ConfigError> {
+        Ok(Self { doc: text.parse()? })
+    }
+
+    pub fn load(path: &Path) -> Result<Self, ConfigError> {
+        match std::fs::read_to_string(path) {
+            Ok(text) => Self::parse(&text),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Self::default()),
+            Err(source) => Err(ConfigError::Io {
+                path: path.display().to_string(),
+                source,
+            }),
+        }
+    }
+
+    pub fn save(&self, path: &Path) -> io::Result<()> {
+        let dir = path.parent().unwrap_or(Path::new("."));
+        std::fs::create_dir_all(dir)?;
+        let mut tmp = tempfile::NamedTempFile::new_in(dir)?;
+        tmp.write_all(self.doc.to_string().as_bytes())?;
+        tmp.as_file().sync_all()?;
+        tmp.persist(path).map(drop).map_err(|e| e.error)
+    }
+
+    pub fn theme(&self, target: Target) -> Result<Option<&str>, String> {
+        self.string(target.table(), "theme")
+    }
+
+    pub fn set_theme(&mut self, target: Target, id: &str) {
+        self.doc[target.table()]["theme"] = toml_edit::value(id);
+    }
+
+    pub fn clock_format(&self) -> Result<Option<&str>, String> {
+        let v = self.string("clock", "format")?;
+        match v {
+            None | Some("12h" | "24h") => Ok(v),
+            Some(other) => Err(format!(
+                "clock.format must be \"12h\" or \"24h\", got {other:?}"
+            )),
+        }
+    }
+
+    pub fn clock_show_ampm(&self) -> Result<Option<bool>, String> {
+        match self.item("clock", "show_ampm") {
+            None => Ok(None),
+            Some(item) => item
+                .as_bool()
+                .map(Some)
+                .ok_or_else(|| "clock.show_ampm must be true or false".into()),
+        }
+    }
+
+    pub fn date_format(&self) -> Result<Option<&str>, String> {
+        self.string("date", "format")
+    }
+
+    pub fn theme_values(&self, id: &str) -> Vec<(String, Result<String, String>)> {
+        let Some(table) = self
+            .doc
+            .get("themes")
+            .and_then(|t| t.get(id))
+            .and_then(Item::as_table_like)
+        else {
+            return Vec::new();
+        };
+        table
+            .iter()
+            .map(|(k, item)| {
+                let v = match item.as_value() {
+                    Some(Value::String(s)) => Ok(s.value().clone()),
+                    Some(Value::Boolean(b)) => Ok(b.value().to_string()),
+                    Some(Value::Integer(i)) => Ok(i.value().to_string()),
+                    _ => Err("expected a string, boolean or integer".to_string()),
+                };
+                (k.to_string(), v)
+            })
+            .collect()
+    }
+
+    pub fn set_theme_value(
+        &mut self,
+        id: &str,
+        key: &str,
+        value: &str,
+        kind: OptionKind,
+    ) -> Result<(), String> {
+        let themes = self
+            .doc
+            .entry("themes")
+            .or_insert_with(|| {
+                let mut t = Table::new();
+                t.set_implicit(true);
+                Item::Table(t)
+            })
+            .as_table_like_mut()
+            .ok_or("themes must be a table")?;
+        let theme = themes
+            .entry(id)
+            .or_insert(Item::Table(Table::new()))
+            .as_table_like_mut()
+            .ok_or_else(|| format!("themes.\"{id}\" must be a table"))?;
+        let typed = match kind {
+            OptionKind::Bool if value == "true" || value == "false" => {
+                toml_edit::value(value == "true")
+            }
+            OptionKind::Int => match value.parse::<i64>() {
+                Ok(n) => toml_edit::value(n),
+                Err(_) => toml_edit::value(value),
+            },
+            _ => toml_edit::value(value),
+        };
+        theme.insert(key, typed);
+        Ok(())
+    }
+
+    pub fn remove_theme_value(&mut self, id: &str, key: &str) -> bool {
+        self.doc
+            .get_mut("themes")
+            .and_then(|t| t.get_mut(id))
+            .and_then(Item::as_table_like_mut)
+            .is_some_and(|t| t.remove(key).is_some())
+    }
+
+    fn item(&self, table: &str, key: &str) -> Option<&Item> {
+        self.doc.get(table).and_then(|t| t.get(key))
+    }
+
+    fn string(&self, table: &str, key: &str) -> Result<Option<&str>, String> {
+        match self.item(table, key) {
+            None => Ok(None),
+            Some(item) => item
+                .as_str()
+                .map(Some)
+                .ok_or_else(|| format!("{table}.{key} must be a string")),
+        }
+    }
+}
+
+impl std::fmt::Display for UserConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.doc.fmt(f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn missing_file_is_an_empty_config_not_an_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = UserConfig::load(&dir.path().join("config.toml")).unwrap();
+        assert_eq!(cfg.theme(Target::Lock), Ok(None));
+    }
+
+    #[test]
+    fn edits_keep_the_users_comments() {
+        let mut cfg =
+            UserConfig::parse("# my lock\n[lock]\ntheme = \"osu\" # favourite\n").unwrap();
+        cfg.set_theme(Target::Lock, "clockwork/orbital");
+        let text = cfg.to_string();
+        assert!(text.contains("# my lock"));
+        assert!(text.contains("theme = \"clockwork/orbital\""));
+    }
+
+    #[test]
+    fn theme_ids_with_slashes_become_quoted_table_names() {
+        let mut cfg = UserConfig::default();
+        cfg.set_theme_value(
+            "clockwork/orbital",
+            "enableWindup",
+            "false",
+            OptionKind::Bool,
+        )
+        .unwrap();
+        assert_eq!(
+            cfg.to_string(),
+            "[themes.\"clockwork/orbital\"]\nenableWindup = false\n"
+        );
+        assert_eq!(
+            cfg.theme_values("clockwork/orbital"),
+            vec![("enableWindup".into(), Ok("false".into()))]
+        );
+    }
+
+    #[test]
+    fn toml_types_come_back_as_the_strings_themes_compare() {
+        let cfg = UserConfig::parse(
+            "[themes.terraria]\nbackground_index = 3\nbackground_mode = \"static\"\nbad = [1]\n",
+        )
+        .unwrap();
+        let values = cfg.theme_values("terraria");
+        assert!(values.contains(&("background_index".into(), Ok("3".into()))));
+        assert!(values.contains(&("background_mode".into(), Ok("static".into()))));
+        assert!(values.iter().any(|(k, v)| k == "bad" && v.is_err()));
+    }
+
+    #[test]
+    fn wrong_global_types_are_reported_not_ignored() {
+        let cfg = UserConfig::parse("[clock]\nformat = \"13h\"\nshow_ampm = \"yes\"\n").unwrap();
+        assert!(cfg.clock_format().is_err());
+        assert!(cfg.clock_show_ampm().is_err());
+    }
+
+    #[test]
+    fn save_replaces_the_file_atomically_and_leaves_no_temp_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("darwan/config.toml");
+        let mut cfg = UserConfig::default();
+        cfg.set_theme(Target::Sddm, "pixel-rainyroom");
+        cfg.save(&path).unwrap();
+        assert_eq!(
+            UserConfig::load(&path).unwrap().theme(Target::Sddm),
+            Ok(Some("pixel-rainyroom"))
+        );
+        let entries: Vec<_> = std::fs::read_dir(path.parent().unwrap()).unwrap().collect();
+        assert_eq!(entries.len(), 1);
+    }
+}
