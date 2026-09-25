@@ -62,8 +62,16 @@ impl UserConfig {
         self.string(target.table(), "theme")
     }
 
-    pub fn set_theme(&mut self, target: Target, id: &str) {
-        self.doc[target.table()]["theme"] = toml_edit::value(id);
+    pub fn set_theme(&mut self, target: Target, id: &str) -> Result<(), String> {
+        let name = target.table();
+        let table = self
+            .doc
+            .entry(name)
+            .or_insert(Item::Table(Table::new()))
+            .as_table_like_mut()
+            .ok_or_else(|| format!("{name} must be a table"))?;
+        table.insert("theme", toml_edit::value(id));
+        Ok(())
     }
 
     pub fn clock_format(&self) -> Result<Option<&str>, String> {
@@ -193,10 +201,19 @@ mod tests {
     fn edits_keep_the_users_comments() {
         let mut cfg =
             UserConfig::parse("# my lock\n[lock]\ntheme = \"osu\" # favourite\n").unwrap();
-        cfg.set_theme(Target::Lock, "clockwork/orbital");
+        cfg.set_theme(Target::Lock, "clockwork/orbital").unwrap();
         let text = cfg.to_string();
         assert!(text.contains("# my lock"));
         assert!(text.contains("theme = \"clockwork/orbital\""));
+    }
+
+    #[test]
+    fn a_new_theme_choice_is_written_as_a_section_not_an_inline_table() {
+        let mut cfg = UserConfig::default();
+        cfg.set_theme(Target::Sddm, "osu").unwrap();
+        assert_eq!(cfg.to_string(), "[sddm]\ntheme = \"osu\"\n");
+        let mut bad = UserConfig::parse("sddm = 1\n").unwrap();
+        assert!(bad.set_theme(Target::Sddm, "osu").is_err());
     }
 
     #[test]
@@ -243,7 +260,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("darwan/config.toml");
         let mut cfg = UserConfig::default();
-        cfg.set_theme(Target::Sddm, "pixel-rainyroom");
+        cfg.set_theme(Target::Sddm, "pixel-rainyroom").unwrap();
         cfg.save(&path).unwrap();
         assert_eq!(
             UserConfig::load(&path).unwrap().theme(Target::Sddm),

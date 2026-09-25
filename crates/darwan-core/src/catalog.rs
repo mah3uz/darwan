@@ -62,6 +62,19 @@ impl Catalog {
     }
 }
 
+// Ids reach a root helper, so only lowercase path segments are accepted: no `..`, no absolute paths.
+pub fn valid_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 128
+        && id.split('/').all(|seg| {
+            !seg.is_empty()
+                && seg
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+                && !seg.starts_with('-')
+        })
+}
+
 fn find_theme_dirs(dir: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
     if dir.join("Main.qml").is_file() {
         out.push(dir.to_path_buf());
@@ -87,7 +100,7 @@ fn theme_id(root: &Path, dir: &Path) -> Option<String> {
     Some(parts?.join("/"))
 }
 
-fn load_theme(id: String, dir: PathBuf) -> Result<Theme, String> {
+pub fn load_theme(id: String, dir: PathBuf) -> Result<Theme, String> {
     let manifest_text = std::fs::read_to_string(dir.join("darwan.toml"))
         .map_err(|e| format!("darwan.toml: {e}"))?;
     let manifest = Manifest::parse(&manifest_text).map_err(|e| format!("darwan.toml: {e}"))?;
@@ -119,6 +132,36 @@ mod tests {
     }
 
     const OK: &str = "name = \"X\"\nauthor = \"a\"\nbackground = \"color\"\n";
+
+    #[test]
+    fn ids_reject_traversal_absolute_paths_and_odd_characters() {
+        assert!(valid_id("clockwork/orbital"));
+        assert!(valid_id("reverse-1999-1"));
+        for bad in [
+            "",
+            "../etc",
+            "a/../b",
+            "/abs",
+            "a//b",
+            "a/",
+            "Genshin",
+            "a b",
+            "a\nb",
+            "-x",
+            "a/.hidden",
+        ] {
+            assert!(!valid_id(bad), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn every_shipped_id_is_valid() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../themes");
+        let (cat, _) = Catalog::load(&root).unwrap();
+        for t in cat.themes() {
+            assert!(valid_id(&t.id), "{}", t.id);
+        }
+    }
 
     #[test]
     fn nested_theme_ids_use_forward_slashes() {

@@ -1,9 +1,12 @@
 mod check;
+mod doctor;
+mod font;
 mod lock;
 mod overlay;
 mod paths;
 mod preview;
 mod qs;
+mod sddm;
 mod session;
 
 use std::path::PathBuf;
@@ -48,6 +51,18 @@ enum Cmd {
         #[arg(long, value_name = "HH:MM")]
         at: Option<String>,
     },
+    /// Set up the SDDM login screen
+    Sddm {
+        #[command(subcommand)]
+        command: SddmCmd,
+    },
+    /// Install a licensed font a theme needs (for the installed themes)
+    Font {
+        #[command(subcommand)]
+        command: FontCmd,
+    },
+    /// Check the system for problems that stop themes from working
+    Doctor,
     /// Load themes offscreen and fail on any QML warning or error
     Check {
         ids: Vec<String>,
@@ -70,6 +85,30 @@ enum Cmd {
     },
 }
 
+#[derive(Subcommand)]
+enum SddmCmd {
+    /// Use a theme for the login screen (default: [sddm] theme from the config)
+    Apply { id: Option<String> },
+    /// Show a theme in SDDM's own test mode, with your settings
+    Preview { id: Option<String> },
+    /// Show which theme SDDM uses and with which settings
+    Status,
+    /// Remove everything darwan set up for SDDM
+    Reset,
+}
+
+#[derive(Subcommand)]
+enum FontCmd {
+    /// Copy FILE into the theme as the font it needs
+    Import {
+        id: String,
+        file: PathBuf,
+        /// Which of the theme's fonts FILE is, when it needs more than one
+        #[arg(long = "as", value_name = "NAME")]
+        target: Option<String>,
+    },
+}
+
 fn main() -> ExitCode {
     let paths = paths::Paths::detect();
     let result = match Cli::parse().command {
@@ -81,6 +120,16 @@ fn main() -> ExitCode {
         Cmd::Preview { id, sddm, pam, at } => {
             preview::run(&paths, preview::Options { id, sddm, pam, at })
         }
+        Cmd::Sddm { command } => match command {
+            SddmCmd::Apply { id } => sddm::apply(&paths, id.as_deref()),
+            SddmCmd::Preview { id } => sddm::preview(&paths, id.as_deref()),
+            SddmCmd::Status => sddm::status(),
+            SddmCmd::Reset => sddm::reset(),
+        },
+        Cmd::Font {
+            command: FontCmd::Import { id, file, target },
+        } => font::import(&paths, &id, &file, target.as_deref()),
+        Cmd::Doctor => doctor::run(&paths),
         Cmd::Check {
             ids,
             all,

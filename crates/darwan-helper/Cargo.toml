@@ -1,0 +1,12 @@
+[package]
+name = "darwan-helper"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+darwan-core = { path = "../darwan-core" }
+rustix = { version = "1.1.5", features = ["process"] }
+serde_json = "1.0.151"
+tempfile = "3.27.0"

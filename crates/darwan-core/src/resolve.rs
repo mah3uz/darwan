@@ -58,6 +58,35 @@ pub fn resolve(theme: &Theme, config: &UserConfig) -> Resolved {
     r
 }
 
+// The same rules resolve() applies, for an overlay that arrives already built (the root helper).
+pub fn check_overlay(theme: &Theme, overlay: &BTreeMap<String, String>) -> Vec<Issue> {
+    let supports = &theme.manifest.supports;
+    overlay
+        .iter()
+        .filter_map(|(key, value)| {
+            let result = match key.as_str() {
+                "clockFormat" if supports.clock_format => match value.as_str() {
+                    "12h" | "24h" => Ok(()),
+                    _ => Err(format!("expected 12h or 24h, got {value:?}")),
+                },
+                "clockShowAmPm" if supports.clock_format => match value.as_str() {
+                    "true" | "false" => Ok(()),
+                    _ => Err(format!("expected true or false, got {value:?}")),
+                },
+                "dateFormat" if supports.date_format => Ok(()),
+                _ => match theme.manifest.option(key) {
+                    Some(opt) => opt.check(value),
+                    None => Err(format!("{} has no option {key:?}", theme.manifest.name)),
+                },
+            };
+            result.err().map(|message| Issue {
+                key: key.clone(),
+                message,
+            })
+        })
+        .collect()
+}
+
 fn global(
     r: &mut Resolved,
     config_key: &str,
@@ -135,6 +164,31 @@ mod tests {
         assert_eq!(
             r.overlay.get("dateFormat").map(String::as_str),
             Some("ddd d")
+        );
+    }
+
+    #[test]
+    fn check_overlay_accepts_what_resolve_produces_and_rejects_anything_else() {
+        let t = theme("clock_format = true");
+        let r = resolve(
+            &t,
+            &cfg(
+                "[clock]\nformat = \"12h\"\n[themes.\"clockwork/orbital\"]\nenableWindup = true\n",
+            ),
+        );
+        assert!(check_overlay(&t, &r.overlay).is_empty());
+        let bad: BTreeMap<String, String> = [
+            ("background", "/etc/shadow"),
+            ("dateFormat", "x"),
+            ("enableWindup", "yes"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+        assert_eq!(
+            check_overlay(&t, &bad).len(),
+            3,
+            "unknown key, unsupported global, bad value"
         );
     }
 

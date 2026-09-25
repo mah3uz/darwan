@@ -133,6 +133,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "darwan-helper"
+version = "0.1.0"
+dependencies = [
+ "darwan-core",
+ "rustix",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
