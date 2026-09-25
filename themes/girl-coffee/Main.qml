@@ -42,7 +42,7 @@ Rectangle {
     color: "#6eb3ac"
     Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
 
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
 
         folder: Qt.resolvedUrl("font")
@@ -54,6 +54,7 @@ Rectangle {
 
         source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : ""
     }
+    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
 
     ListView {
         id: sessionHelper
@@ -192,7 +193,7 @@ Rectangle {
                         return "good evening";
                     }
                     color: root.cPink
-                    font.family: pf.name
+                    font.family: pfFamily
                     font.pixelSize: 14 * s
                     font.letterSpacing: 2 * s
                     anchors.verticalCenter: parent.verticalCenter
@@ -212,7 +213,7 @@ Rectangle {
                 anchors.left: parent.left
                 text: Qt.formatTime(new Date(), "HH:mm")
                 color: root.cInk
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 64 * s
 
                 Timer {
@@ -229,7 +230,7 @@ Rectangle {
                 anchors.left: parent.left
                 text: Qt.formatDate(new Date(), "dddd, MMMM d").toLowerCase()
                 color: root.cMuted
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 13 * s
                 font.letterSpacing: 1 * s
             }
@@ -270,7 +271,7 @@ Rectangle {
 
                     text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "user")).toUpperCase()
                     color: userArea.containsMouse ? root.cPink : root.cInk
-                    font.family: pf.name
+                    font.family: pfFamily
                     font.pixelSize: 20 * s
                     font.letterSpacing: 0.5 * s
                     anchors.verticalCenter: parent.verticalCenter
@@ -357,7 +358,7 @@ Rectangle {
                     text: "password"
                     color: root.cMuted
                     opacity: pwd.text.length === 0 ? 0.6 : 0
-                    font.family: pf.name
+                    font.family: pfFamily
                     font.pixelSize: 13 * s
                     font.letterSpacing: 2 * s
 
@@ -376,7 +377,7 @@ Rectangle {
                     property bool wasClicked: false
 
                     color: root.cMuted
-                    font.family: pf.name
+                    font.family: pfFamily
                     font.pixelSize: 14 * s
                     font.letterSpacing: 8 * s
                     echoMode: TextInput.Password
@@ -472,7 +473,7 @@ Rectangle {
                 anchors.left: parent.left
                 anchors.leftMargin: 4 * s
                 color: "#c15f6b"
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 11 * s
                 font.letterSpacing: 1 * s
             }
@@ -565,7 +566,7 @@ Rectangle {
                     text: "LOGIN"
                     color: loginBtn.hovered ? "#ffffff" : root.cInk
                     opacity: loginBtn.hovered ? 1 : 0.8
-                    font.family: pf.name
+                    font.family: pfFamily
                     font.pixelSize: 14 * s
                     font.letterSpacing: 3 * s
                     font.weight: Font.Medium
@@ -628,7 +629,7 @@ Rectangle {
                         text: (sessionHelper.currentItem && sessionHelper.currentItem.sName ? sessionHelper.currentItem.sName : "session").toLowerCase()
                         color: sessArea.containsMouse ? root.cPink : root.cInk
                         opacity: sessArea.containsMouse ? 1 : 0.5
-                        font.family: pf.name
+                        font.family: pfFamily
                         font.pixelSize: 12 * s
                         font.letterSpacing: 0.5 * s
 
@@ -714,7 +715,7 @@ Rectangle {
                             text: modelData.l
                             color: pmArea.containsMouse ? root.cPink : root.cInk
                             opacity: pmArea.containsMouse ? 1 : 0.5
-                            font.family: pf.name
+                            font.family: pfFamily
                             font.pixelSize: 12 * s
                             font.letterSpacing: 0.5 * s
 

@@ -26,13 +26,14 @@ Rectangle {
 
     TextConstants { id: textConstants }
 
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
     }
 
     FontLoader { id: shurikenFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string shurikenFontFamily: shurikenFont.status === FontLoader.Ready ? shurikenFont.name : "sans-serif"
 
     // Helpers
     ListView {
@@ -82,13 +83,13 @@ Rectangle {
     Column {
         anchors.left: parent.left; anchors.top: parent.top; anchors.leftMargin: 70 * s; anchors.topMargin: 60 * s; spacing: 8 * s; opacity: root.ui
         Text {
-            id: clockText; text: Qt.formatTime(new Date(), "HH:mm"); color: "white"; font.family: shurikenFont.name; font.pixelSize: 88 * s; font.weight: Font.Thin
+            id: clockText; text: Qt.formatTime(new Date(), "HH:mm"); color: "white"; font.family: shurikenFontFamily; font.pixelSize: 88 * s; font.weight: Font.Thin
             Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), "HH:mm") }
         }
         Row {
             spacing: 10 * s
             Rectangle { width: 22 * s; height: 1 * s; color: "#6090b8"; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: Qt.formatDate(new Date(), "dddd · MMMM d").toUpperCase(); color: "#6090b8"; font.family: shurikenFont.name; font.pixelSize: 13 * s; font.letterSpacing: 3 * s }
+            Text { text: Qt.formatDate(new Date(), "dddd · MMMM d").toUpperCase(); color: "#6090b8"; font.family: shurikenFontFamily; font.pixelSize: 13 * s; font.letterSpacing: 3 * s }
         }
     }
 
@@ -100,7 +101,7 @@ Rectangle {
         Text {
             id: userDisplay; anchors.right: parent.right
             text: (userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (typeof userModel !== "undefined" ? (userModel.lastUser || "User") : "User")
-            color: "white"; font.family: shurikenFont.name; font.pixelSize: 22 * s; font.letterSpacing: 2 * s
+            color: "white"; font.family: shurikenFontFamily; font.pixelSize: 22 * s; font.letterSpacing: 2 * s
             scale: uMa.containsMouse ? 1.05 : 1.0; Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
             transform: Translate { id: uTrans; x: 0 }
             MouseArea {
@@ -120,7 +121,7 @@ Rectangle {
             width: parent.width; height: 36 * s
             TextInput {
                 id: passwordField; anchors.left: parent.left; anchors.right: arrowHint.left; anchors.rightMargin: 12 * s; anchors.verticalCenter: parent.verticalCenter
-                color: "transparent"; font.family: shurikenFont.name; font.pixelSize: 14 * s; echoMode: TextInput.NoEcho; focus: true; clip: true; cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
+                color: "transparent"; font.family: shurikenFontFamily; font.pixelSize: 14 * s; echoMode: TextInput.NoEcho; focus: true; clip: true; cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                 selectionColor: "#6090b8"; property bool wasClicked: false; onTextEdited: errorMessage.text = ""
                 Keys.onReturnPressed: doLogin(); Keys.onEnterPressed: doLogin()
                 Row {
@@ -136,7 +137,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter; text: "Enter password"; color: "white"
                     opacity: (passwordField.text.length === 0 && !passwordField.wasClicked) ? 0.25 : 0
                     Behavior on opacity { NumberAnimation { duration: 450; easing.type: Easing.InOutSine } }
-                    font.family: shurikenFont.name; font.pixelSize: 14 * s; font.letterSpacing: 2 * s
+                    font.family: shurikenFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.IBeamCursor; onClicked: { passwordField.forceActiveFocus(); passwordField.wasClicked = true } }
             }
@@ -151,7 +152,7 @@ Rectangle {
 
         Item { width: 1 * s; height: 10 * s }
 
-        Text { id: errorMessage; anchors.right: parent.right; height: 15 * s; verticalAlignment: Text.AlignTop; font.family: shurikenFont.name; font.pixelSize: 11 * s; font.letterSpacing: 1 * s; color: "#d06060"; text: "" }
+        Text { id: errorMessage; anchors.right: parent.right; height: 15 * s; verticalAlignment: Text.AlignTop; font.family: shurikenFontFamily; font.pixelSize: 11 * s; font.letterSpacing: 1 * s; color: "#d06060"; text: "" }
     }
 
     Rectangle {
@@ -168,8 +169,8 @@ Rectangle {
                 transform: Translate { id: sTrans; x: 0 }
                 Text { text: "◈"; color: "#405070"; font.pixelSize: 10 * s; anchors.verticalCenter: parent.verticalCenter }
                 Text {
-                    id: sessionLabel; text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0) ? sessionHelper.currentItem.sName : "Session"
-                    color: "white"; opacity: 0.6; font.family: shurikenFont.name; font.pixelSize: 12 * s; font.letterSpacing: 1 * s; anchors.verticalCenter: parent.verticalCenter
+                    id: sessionLabel; text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0 && sessionHelper.currentItem) ? sessionHelper.currentItem.sName : "Session"
+                    color: "white"; opacity: 0.6; font.family: shurikenFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 1 * s; anchors.verticalCenter: parent.verticalCenter
                 }
             }
             MouseArea { id: sMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (typeof sessionModel !== "undefined" && sessionModel.rowCount() > 0) sToggleAnim.start() } }
@@ -183,12 +184,12 @@ Rectangle {
         Row {
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 28 * s
             Text {
-                text: "Restart"; color: "white"; opacity: 0.4; font.family: shurikenFont.name; font.pixelSize: 12 * s; font.letterSpacing: 1 * s
+                text: "Restart"; color: "white"; opacity: 0.4; font.family: shurikenFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 1 * s
                 scale: rMa.containsMouse ? 1.1 : 1.0; Behavior on opacity { NumberAnimation { duration: 150 } }
                 MouseArea { id: rMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onEntered: parent.opacity = 0.9; onExited: parent.opacity = 0.4; onClicked: { if (typeof sddm !== "undefined") sddm.reboot() } }
             }
             Text {
-                text: "Shut Down"; color: "white"; opacity: 0.4; font.family: shurikenFont.name; font.pixelSize: 12 * s; font.letterSpacing: 1 * s
+                text: "Shut Down"; color: "white"; opacity: 0.4; font.family: shurikenFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 1 * s
                 scale: pMa.containsMouse ? 1.1 : 1.0; Behavior on opacity { NumberAnimation { duration: 150 } }
                 MouseArea { id: pMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onEntered: parent.opacity = 0.9; onExited: parent.opacity = 0.4; onClicked: { if (typeof sddm !== "undefined") sddm.powerOff() } }
             }

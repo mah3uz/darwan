@@ -23,7 +23,7 @@ Rectangle {
     readonly property color darkTealLine: "#1c5b6e"
     readonly property color watermarkTeal: "#3892a8"
 
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
@@ -33,6 +33,7 @@ Rectangle {
         id: pf
         source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : ""
     }
+    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
 
     ListView {
         id: sessionHelper
@@ -137,7 +138,7 @@ Rectangle {
             Text {
                 text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase()
                 color: root.cleanWhite
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 13 * s
                 font.letterSpacing: 2 * s
                 font.bold: true
@@ -149,7 +150,7 @@ Rectangle {
             id: clockText
             text: Qt.formatTime(new Date(), "HH:mm")
             color: root.cleanWhite
-            font.family: pf.name
+            font.family: pfFamily
             font.pixelSize: 76 * s
             font.bold: true
 
@@ -180,7 +181,7 @@ Rectangle {
             Text {
                 text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "User")).toUpperCase()
                 color: userMouse.containsMouse ? root.lightCyan : root.cleanWhite
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 22 * s
                 font.letterSpacing: 4 * s
                 font.bold: true
@@ -210,7 +211,7 @@ Rectangle {
                     id: pwd
                     anchors.fill: parent
                     color: root.lightCyan
-                    font.family: pf.name
+                    font.family: pfFamily
                     font.pixelSize: 18 * s
                     font.letterSpacing: 4 * s
                     echoMode: TextInput.Password
@@ -236,7 +237,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "ENTER PASSWORD"
                     color: root.deepIceBlue
-                    font.family: pf.name
+                    font.family: pfFamily
                     font.pixelSize: 12 * s
                     font.letterSpacing: 2 * s
                     opacity: pwd.text.length === 0 ? 0.75 : 0
@@ -282,7 +283,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "➔ LOGIN"
                     color: loginMouse.containsMouse ? root.lightCyan : root.deepIceBlue
-                    font.family: pf.name
+                    font.family: pfFamily
                     font.pixelSize: 12 * s
                     font.letterSpacing: 2 * s
                     font.bold: true
@@ -305,7 +306,7 @@ Rectangle {
                 verticalAlignment: Text.AlignBottom
                 color: "#ff5555"
                 anchors.right: parent.right
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 11 * s
                 font.bold: true
                 font.letterSpacing: 1 * s
@@ -355,7 +356,7 @@ Rectangle {
                     anchors.centerIn: parent
                     text: modelData.l
                     color: root.cleanWhite
-                    font.family: pf.name
+                    font.family: pfFamily
                     font.pixelSize: 10 * s
                     font.letterSpacing: 2 * s
                     font.bold: true

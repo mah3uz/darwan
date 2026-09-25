@@ -25,8 +25,9 @@ Rectangle {
     property int userIndex:    (typeof userModel    !== "undefined" && userModel.lastIndex    >= 0) ? userModel.lastIndex    : 0
     property real ui: 0
 
-    FolderListModel { id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
+    FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader      { id: mainFont;   source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
 
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 1; height: 1; delegate: Item { property string sName: model.name || "" } }
     ListView { id: userHelper;    model: typeof userModel    !== "undefined" ? userModel    : null; currentIndex: root.userIndex;    opacity: 0; width: 1; height: 1; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
@@ -55,7 +56,7 @@ Rectangle {
             id: clockText
             text: Qt.formatTime(new Date(), "HH:mm")
             color: cWhite
-            font.family: mainFont.name; font.pixelSize: 96 * s
+            font.family: mainFontFamily; font.pixelSize: 96 * s
             font.weight: Font.Light; font.letterSpacing: -1 * s
             layer.enabled: true
             layer.effect: Gfx.DropShadow { color: "#30000000"; radius: 16; samples: 25 }
@@ -65,7 +66,7 @@ Rectangle {
         Text {
             text: Qt.formatDate(new Date(), "dddd · MMMM d").toUpperCase()
             color: cSteel
-            font.family: mainFont.name; font.pixelSize: 12 * s
+            font.family: mainFontFamily; font.pixelSize: 12 * s
             font.letterSpacing: 3 * s; font.weight: Font.Light
             layer.enabled: true
             layer.effect: Gfx.DropShadow { color: "#20000000"; radius: 6; samples: 11 }
@@ -87,7 +88,7 @@ Rectangle {
                    ? userHelper.currentItem.uName
                    : (typeof userModel !== "undefined" ? userModel.lastUser : "user")).toLowerCase()
             color: userMa.containsMouse ? cAmber : cWhite
-            font.family: mainFont.name; font.pixelSize: 22 * s
+            font.family: mainFontFamily; font.pixelSize: 22 * s
             font.weight: Font.Light; font.letterSpacing: 3 * s
             horizontalAlignment: Text.AlignRight
             layer.enabled: true
@@ -121,7 +122,7 @@ Rectangle {
                 verticalAlignment:   TextInput.AlignVCenter
                 echoMode: TextInput.Password; passwordCharacter: "·"
                 color: cWhite
-                font.family: mainFont.name; font.pixelSize: 20 * s; font.letterSpacing: 10 * s
+                font.family: mainFontFamily; font.pixelSize: 20 * s; font.letterSpacing: 10 * s
                 focus: true; clip: true; cursorVisible: false
                 cursorDelegate: Item { width: 0; height: 0 }
                 onAccepted: doLogin()
@@ -130,7 +131,7 @@ Rectangle {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     text: "password"; color: cWhite
                     opacity: pwd.text.length === 0 ? 0.55 : 0
-                    font.family: mainFont.name; font.pixelSize: 13 * s
+                    font.family: mainFontFamily; font.pixelSize: 13 * s
                     font.letterSpacing: 2 * s; font.weight: Font.Light
                     layer.enabled: true
                     layer.effect: Gfx.DropShadow { color: "#30000000"; radius: 6; samples: 11 }
@@ -167,7 +168,7 @@ Rectangle {
                     text: (modelData.a === 0 && sessionHelper.currentItem)
                           ? sessionHelper.currentItem.sName.toLowerCase() : modelData.l
                     color: pm.containsMouse ? cAmber : cWhite
-                    font.family: mainFont.name; font.pixelSize: 11 * s
+                    font.family: mainFontFamily; font.pixelSize: 11 * s
                     font.letterSpacing: 2 * s; font.weight: Font.Light
                     opacity: pm.containsMouse ? 1.0 : 0.7
                     layer.enabled: true
@@ -191,7 +192,7 @@ Rectangle {
             id: errorMsg
             anchors.right: parent.right
             text: ""; color: "#e06060"; visible: text !== ""
-            font.family: mainFont.name; font.pixelSize: 11 * s; font.letterSpacing: 1.5 * s
+            font.family: mainFontFamily; font.pixelSize: 11 * s; font.letterSpacing: 1.5 * s
         }
     }
 

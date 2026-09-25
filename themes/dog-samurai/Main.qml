@@ -35,7 +35,7 @@ Item {
     property string displayUserName: ""
 
     // Fonts
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"] 
@@ -44,6 +44,7 @@ Item {
         id: mainFont
         source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" 
     }
+    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
 
     // Models
     ListView {
@@ -170,7 +171,7 @@ Item {
                 id: clockText
                 text: Qt.formatTime(new Date(), "HH:mm")
                 font {
-                    family: mainFont.name
+                    family: mainFontFamily
                     pixelSize: 102 * s
                     weight: Font.ExtraLight
                     letterSpacing: 6 * s
@@ -194,7 +195,7 @@ Item {
                 anchors.topMargin: -5 * s
                 text: Qt.formatDate(new Date(), "dddd // MMMM d").toUpperCase()
                 font {
-                    family: mainFont.name
+                    family: mainFontFamily
                     pixelSize: 15 * s
                     letterSpacing: 10 * s
                     weight: Font.Light
@@ -269,7 +270,7 @@ Item {
                     Text {
                         text: "USER"
                         font {
-                            family: mainFont.name
+                            family: mainFontFamily
                             pixelSize: 11 * s
                             letterSpacing: 6 * s
                             weight: Font.DemiBold
@@ -284,7 +285,7 @@ Item {
                             id: userNameDisplay
                             text: root.displayUserName
                             font {
-                                family: mainFont.name
+                                family: mainFontFamily
                                 pixelSize: 34 * s
                                 letterSpacing: 2 * s
                                 weight: Font.ExtraLight
@@ -333,7 +334,7 @@ Item {
                                 color: root.accent
                                 anchors.centerIn: parent
                                 font {
-                                    family: mainFont.name
+                                    family: mainFontFamily
                                     pixelSize: 14 * s
                                 }
                             }
@@ -370,7 +371,7 @@ Item {
                             echoMode: TextInput.Password
                             passwordCharacter: "✦"
                             font {
-                                family: mainFont.name
+                                family: mainFontFamily
                                 pixelSize: 22 * s
                                 letterSpacing: 12 * s
                             }
@@ -383,7 +384,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "PASSCODE"
                                 font {
-                                    family: mainFont.name
+                                    family: mainFontFamily
                                     pixelSize: 13 * s
                                     letterSpacing: 6 * s
                                 }
@@ -420,7 +421,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "GO"
                             font {
-                                family: mainFont.name
+                                family: mainFontFamily
                                 pixelSize: 16 * s
                                 weight: Font.Medium
                                 letterSpacing: 3 * s
@@ -510,7 +511,7 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: "SWITCH USER"
                         font {
-                            family: mainFont.name
+                            family: mainFontFamily
                             pixelSize: 10 * s
                             letterSpacing: 6 * s
                             weight: Font.Bold
@@ -543,7 +544,7 @@ Item {
                                 Text {
                                     text: (model.realName || model.name).toUpperCase()
                                     font {
-                                        family: mainFont.name
+                                        family: mainFontFamily
                                         pixelSize: 14 * s
                                         letterSpacing: 2 * s
                                         weight: Font.Light
@@ -598,7 +599,7 @@ Item {
                     delegate: Text {
                         text: modelData.label
                         font {
-                            family: mainFont.name
+                            family: mainFontFamily
                             pixelSize: 13 * s
                             letterSpacing: 3 * s
                             weight: Font.Bold
@@ -657,7 +658,7 @@ Item {
                         id: sessText
                         text: (sessionHelper.currentItem && sessionHelper.currentItem.sName ? sessionHelper.currentItem.sName : "SYSTEM").toUpperCase()
                         font {
-                            family: mainFont.name
+                            family: mainFontFamily
                             pixelSize: 13 * s
                             letterSpacing: 2 * s
                             weight: Font.Bold

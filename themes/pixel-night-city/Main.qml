@@ -25,6 +25,7 @@ Rectangle {
     readonly property color textWhite: "#e8e4f0"
 
     FontLoader { id: pf; source: "font/PixelifySans-Bold.ttf" }
+    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
     
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string sName: model.name || "" } }
     ListView { id: userHelper; model: typeof userModel !== "undefined" ? userModel : null; currentIndex: root.userIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
@@ -79,7 +80,7 @@ Rectangle {
                 Text {
                     id: pmt; anchors.centerIn: parent; text: modelData.l
                     color: pm.containsMouse ? "white" : (modelData.a === 2 ? root.signPink : root.signTeal)
-                    font.family: pf.name; font.pixelSize: 10 * s; font.letterSpacing: 2 * s
+                    font.family: pfFamily; font.pixelSize: 10 * s; font.letterSpacing: 2 * s
                     layer.enabled: true; layer.effect: DropShadow { color: "#80000000"; radius: 4; samples: 8; horizontalOffset: 1; verticalOffset: 1 }
                     Behavior on color { ColorAnimation { duration: 150 } }
                 }
@@ -102,7 +103,7 @@ Rectangle {
             spacing: 20 * s
             Text {
                 id: hT; text: Qt.formatTime(new Date(), "HH")
-                color: "white"; font.family: pf.name; font.pixelSize: 100 * s; font.letterSpacing: -5 * s
+                color: "white"; font.family: pfFamily; font.pixelSize: 100 * s; font.letterSpacing: -5 * s
                 Timer { interval: 60000; running: true; repeat: true; onTriggered: hT.text = Qt.formatTime(new Date(), "HH") }
                 layer.enabled: true; layer.effect: DropShadow { color: "#80000000"; radius: 6; samples: 8; horizontalOffset: 2 * s; verticalOffset: 2 * s }
             }
@@ -112,7 +113,7 @@ Rectangle {
             
             Text {
                 id: mT; text: Qt.formatTime(new Date(), "mm")
-                color: root.signTeal; font.family: pf.name; font.pixelSize: 100 * s; font.letterSpacing: -5 * s
+                color: root.signTeal; font.family: pfFamily; font.pixelSize: 100 * s; font.letterSpacing: -5 * s
                 Timer { interval: 1000; running: true; repeat: true; onTriggered: mT.text = Qt.formatTime(new Date(), "mm") }
                 layer.enabled: true; layer.effect: DropShadow { color: "#80000000"; radius: 6; samples: 8; horizontalOffset: 2 * s; verticalOffset: 2 * s }
             }
@@ -120,7 +121,7 @@ Rectangle {
         
         Text {
             text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase()
-            color: "white"; font.family: pf.name; font.pixelSize: 12 * s; font.letterSpacing: 8 * s
+            color: "white"; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 8 * s
             opacity: 0.8
             layer.enabled: true; layer.effect: DropShadow { color: "#80000000"; radius: 4; samples: 8; horizontalOffset: 1; verticalOffset: 1 }
         }
@@ -138,7 +139,7 @@ Rectangle {
             Text {
                 id: unt
                 text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "User")).toUpperCase()
-                color: unm.containsMouse ? "white" : root.textWhite; font.family: pf.name; font.pixelSize: 22 * s; font.letterSpacing: 6 * s
+                color: unm.containsMouse ? "white" : root.textWhite; font.family: pfFamily; font.pixelSize: 22 * s; font.letterSpacing: 6 * s
                 layer.enabled: true; layer.effect: DropShadow { color: "#80000000"; radius: 4; samples: 8; horizontalOffset: 1; verticalOffset: 1 }
                 Behavior on color { ColorAnimation { duration: 150 } }
             }
@@ -156,7 +157,7 @@ Rectangle {
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1 * s; color: root.signPink; opacity: pwd.activeFocus ? 1.0 : 0.3 }
             Rectangle { id: activeBar; anchors.bottom: parent.bottom; width: pwd.activeFocus ? parent.width : 0; height: 2 * s; color: root.signPink; Behavior on width { NumberAnimation {duration: 400; easing.type: Easing.OutExpo} } }
             TextInput {
-                id: pwd; anchors.fill: parent; color: root.signPink; font.family: pf.name; font.pixelSize: 18 * s; font.letterSpacing: 6 * s
+                id: pwd; anchors.fill: parent; color: root.signPink; font.family: pfFamily; font.pixelSize: 18 * s; font.letterSpacing: 6 * s
                 echoMode: TextInput.Password; onTextEdited: err.text = ""; passwordCharacter: "─"; focus: true; clip: true; horizontalAlignment: TextInput.AlignHCenter; verticalAlignment: TextInput.AlignVCenter
                 cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                 selectionColor: root.signPink
@@ -165,7 +166,7 @@ Rectangle {
                 Keys.onReturnPressed: doLogin(); Keys.onEnterPressed: doLogin()
             }
             Text { 
-                anchors.centerIn: parent; text: "CONNECTING..."; color: root.signTeal; font.family: pf.name; font.pixelSize: 12 * s; font.letterSpacing: 4 * s
+                anchors.centerIn: parent; text: "CONNECTING..."; color: root.signTeal; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 4 * s
                 opacity: pwd.text.length === 0 ? 0.3 : 0
                 Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
             }
@@ -191,7 +192,7 @@ Rectangle {
             }
         }
 
-        Text { id: err; text: ""; height: 12 * s; verticalAlignment: Text.AlignBottom; color: "#ff4444"; anchors.horizontalCenter: parent.horizontalCenter; font.family: pf.name; font.pixelSize: 12 * s }
+        Text { id: err; text: ""; height: 12 * s; verticalAlignment: Text.AlignBottom; color: "#ff4444"; anchors.horizontalCenter: parent.horizontalCenter; font.family: pfFamily; font.pixelSize: 12 * s }
     }
 
     Connections {

@@ -43,8 +43,9 @@ Rectangle {
     readonly property color mcFldBorder:    "#a0a0a0"
 
     // Fonts
-    FolderListModel { id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
+    FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader { id: mcFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string mcFontFamily: mcFont.status === FontLoader.Ready ? mcFont.name : "sans-serif"
     TextConstants { id: textConstants }
 
     // Background
@@ -109,7 +110,7 @@ Rectangle {
                 anchors.horizontalCenter: mainLogo.horizontalCenter; anchors.horizontalCenterOffset: 255 * s
                 anchors.top: mainLogo.top; anchors.topMargin: 35 * s
                 
-                text: "GNU/Linux!"; font.family: mcFont.name; font.pixelSize: 24 * s
+                text: "GNU/Linux!"; font.family: mcFontFamily; font.pixelSize: 24 * s
                 color: root.mcTextYellow; rotation: -20; style: Text.Outline; styleColor: "black"
                 SequentialAnimation on scale {
                     loops: Animation.Infinite
@@ -154,7 +155,7 @@ Rectangle {
                 TextInput {
                     id: passInput; anchors.fill: parent; anchors.leftMargin: 12 * s; anchors.rightMargin: 12 * s
                     echoMode: TextInput.Password; passwordCharacter: "*"; color: "white"
-                    font.family: mcFont.name; font.pixelSize: 18 * s; font.letterSpacing: 4 * s
+                    font.family: mcFontFamily; font.pixelSize: 18 * s; font.letterSpacing: 4 * s
                     verticalAlignment: TextInput.AlignVCenter; clip: true; focus: true
                     cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                     selectionColor: root.mcBtnHover
@@ -165,7 +166,7 @@ Rectangle {
                     
                     Text {
                         anchors.fill: parent; verticalAlignment: Text.AlignVCenter; anchors.leftMargin: 2 * s
-                        text: "Enter password..."; color: "#555555"; font.family: mcFont.name; font.pixelSize: 14 * s
+                        text: "Enter password..."; color: "#555555"; font.family: mcFontFamily; font.pixelSize: 14 * s
                         opacity: passInput.text.length === 0 ? 1.0 : 0
                         Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
                     }
@@ -197,7 +198,7 @@ Rectangle {
         Text {
             id: errText; width: parent.width; horizontalAlignment: Text.AlignHCenter
             height: 15 * s; verticalAlignment: Text.AlignBottom
-            text: ""; color: root.mcTextRed; font.family: mcFont.name; font.pixelSize: 14 * s
+            text: ""; color: root.mcTextRed; font.family: mcFontFamily; font.pixelSize: 14 * s
         }
 
         Item { width: 1; height: 10 * s }
@@ -314,8 +315,8 @@ Rectangle {
         property int horizontalAlignment: Text.AlignLeft
         property int shadowOffset: 2 * s
         implicitWidth: fore.implicitWidth + 8 * s; implicitHeight: fore.implicitHeight + 2 * s
-        Text { x: shadowOffset; y: shadowOffset; width: parent.width; text: label; color: root.mcTextShadow; font.family: mcFont.name; font.pixelSize: pixelSize; horizontalAlignment: parent.horizontalAlignment }
-        Text { id: fore; width: parent.width; text: label; color: textColor; font.family: mcFont.name; font.pixelSize: pixelSize; horizontalAlignment: parent.horizontalAlignment }
+        Text { x: shadowOffset; y: shadowOffset; width: parent.width; text: label; color: root.mcTextShadow; font.family: mcFontFamily; font.pixelSize: pixelSize; horizontalAlignment: parent.horizontalAlignment }
+        Text { id: fore; width: parent.width; text: label; color: textColor; font.family: mcFontFamily; font.pixelSize: pixelSize; horizontalAlignment: parent.horizontalAlignment }
     }
     
     component McTextField: Item {

@@ -56,8 +56,9 @@ Rectangle {
     readonly property real smoothMinAngle: -((localTimeMS % 3600000) / 3600000.0) * 360.0
 
     // Fonts
-    FolderListModel { id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
+    FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader { id: outfitFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string outfitFontFamily: outfitFont.status === FontLoader.Ready ? outfitFont.name : "sans-serif"
     TextConstants { id: textConstants }
 
     // Helpers
@@ -126,7 +127,7 @@ Rectangle {
                     Text {
                         anchors.centerIn: parent
                         text: String(root.curH).padStart(2, '0')
-                        font.family: outfitFont.name; font.pixelSize: 76 * s; font.weight: Font.Black
+                        font.family: outfitFontFamily; font.pixelSize: 76 * s; font.weight: Font.Black
                         color: root.mainText
                     }
                 }
@@ -182,7 +183,7 @@ Rectangle {
                         visible: isMajor; property real nRad: clockContainer.minR - 32 * s
                         x: clockContainer.cx + nRad * Math.cos(disp) - width/2
                         y: clockContainer.cy + nRad * Math.sin(disp) - height/2
-                        text: String(index).padStart(2, '0'); font.family: outfitFont.name; font.pixelSize: 18 * s; font.weight: Font.Bold
+                        text: String(index).padStart(2, '0'); font.family: outfitFontFamily; font.pixelSize: 18 * s; font.weight: Font.Bold
                         color: root.mainText
                         rotation: disp * 180 / Math.PI; transformOrigin: Item.Center
                         antialiasing: true
@@ -214,7 +215,7 @@ Rectangle {
                         visible: isMajor; property real nRad: clockContainer.secR - 28 * s
                         x: clockContainer.cx + nRad * Math.cos(disp) - width/2
                         y: clockContainer.cy + nRad * Math.sin(disp) - height/2
-                        text: String(index).padStart(2, '0'); font.family: outfitFont.name; font.pixelSize: 14 * s; font.weight: Font.Bold
+                        text: String(index).padStart(2, '0'); font.family: outfitFontFamily; font.pixelSize: 14 * s; font.weight: Font.Bold
                         color: root.mainText
                         rotation: disp * 180 / Math.PI; transformOrigin: Item.Center
                         antialiasing: true
@@ -243,7 +244,7 @@ Rectangle {
                         Text {
                             anchors.centerIn: parent
                             text: Qt.formatDate(new Date(), "dd MMM yyyy").toUpperCase()
-                            font.family: outfitFont.name; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; font.weight: Font.Bold
+                            font.family: outfitFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; font.weight: Font.Bold
                             color: root.mainText
                         }
                     }
@@ -266,7 +267,7 @@ Rectangle {
                         Text {
                             anchors.centerIn: parent
                             text: Qt.formatDate(new Date(), "dddd").toUpperCase()
-                            font.family: outfitFont.name; font.pixelSize: 14 * s; font.letterSpacing: 4 * s; font.weight: Font.Bold
+                            font.family: outfitFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 4 * s; font.weight: Font.Bold
                             color: root.mainText
                         }
                     }
@@ -360,7 +361,7 @@ Rectangle {
                         Text {
                             width: parent.width - 70 * s
                             text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : ((typeof userModel !== "undefined" && userModel.lastUser) ? capitalizeFirst(userModel.lastUser) : "USER")).toUpperCase()
-                            font.family: outfitFont.name; font.pixelSize: 12 * s; font.weight: Font.Bold; font.letterSpacing: 2 * s
+                            font.family: outfitFontFamily; font.pixelSize: 12 * s; font.weight: Font.Bold; font.letterSpacing: 2 * s
                             color: root.mainText; anchors.verticalCenter: parent.verticalCenter
                             elide: Text.ElideRight
                         }
@@ -460,7 +461,7 @@ Rectangle {
                                 anchors.leftMargin: 2 * s
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "Enter Password..."
-                                font.family: outfitFont.name
+                                font.family: outfitFontFamily
                                 font.pixelSize: 11 * s
                                 font.letterSpacing: 1 * s
                                 color: root.dimText
@@ -550,14 +551,14 @@ Rectangle {
                     Row {
                         anchors.centerIn: parent; spacing: 8 * s
                         Text { text: "󰍁"; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 * s; font.weight: Font.Bold; color: root.mainText; anchors.verticalCenter: parent.verticalCenter }
-                        Text { text: "LOGIN"; font.family: outfitFont.name; font.pixelSize: 12 * s; font.weight: Font.Bold; font.letterSpacing: 2 * s; color: root.mainText; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: "LOGIN"; font.family: outfitFontFamily; font.pixelSize: 12 * s; font.weight: Font.Bold; font.letterSpacing: 2 * s; color: root.mainText; anchors.verticalCenter: parent.verticalCenter }
                     }
 
                     MouseArea { id: btnMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: doLogin() }
                 }
             }
 
-            Text { id: errText; width: parent.width; height: 16 * s; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter; text: ""; color: "#ff4444"; font.family: outfitFont.name; font.pixelSize: 11 * s; font.weight: Font.Bold; font.letterSpacing: 1 * s }
+            Text { id: errText; width: parent.width; height: 16 * s; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter; text: ""; color: "#ff4444"; font.family: outfitFontFamily; font.pixelSize: 11 * s; font.weight: Font.Bold; font.letterSpacing: 1 * s }
         }
     }
 
@@ -618,7 +619,7 @@ Rectangle {
             Text {
                 id: actTxt; anchors.centerIn: parent
                 text: label.toUpperCase(); color: root.mainText
-                font.family: outfitFont.name; font.pixelSize: 11 * s; font.weight: Font.Bold; font.letterSpacing: 2 * s
+                font.family: outfitFontFamily; font.pixelSize: 11 * s; font.weight: Font.Bold; font.letterSpacing: 2 * s
             }
 
             MouseArea { id: actM; anchors.fill: parent; hoverEnabled: true; onClicked: actItem.clicked(); cursorShape: Qt.PointingHandCursor }

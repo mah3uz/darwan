@@ -36,13 +36,14 @@ Rectangle {
     TextConstants { id: textConstants }
 
     // Fonts
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
     }
 
     FontLoader { id: orbitron; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string orbitronFamily: orbitron.status === FontLoader.Ready ? orbitron.name : "sans-serif"
 
     // Models
     ListView {
@@ -199,7 +200,7 @@ Rectangle {
             id: clockText
             text: Qt.formatTime(new Date(), "HH:mm")
             color: root.mistWhite
-            font.family: orbitron.name
+            font.family: orbitronFamily
             font.pixelSize: 80 * s
             font.weight: Font.Light
             style: Text.Normal
@@ -224,7 +225,7 @@ Rectangle {
             Text {
                 text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase()
                 color: root.sakuraPink
-                font.family: orbitron.name
+                font.family: orbitronFamily
                 font.pixelSize: 12 * s
                 font.letterSpacing: 3 * s
                 font.weight: Font.Light
@@ -249,7 +250,7 @@ Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.displayUserName
             color: root.mistWhite
-            font.family: orbitron.name
+            font.family: orbitronFamily
             font.pixelSize: 18 * s
             font.weight: Font.Light
             font.letterSpacing: 4 * s
@@ -344,7 +345,7 @@ Rectangle {
                 anchors.rightMargin: 10 * s
                 anchors.verticalCenter: parent.verticalCenter
                 color: "transparent"
-                font.family: orbitron.name; font.pixelSize: 13 * s
+                font.family: orbitronFamily; font.pixelSize: 13 * s
                 echoMode: TextInput.NoEcho
                 focus: true; clip: true
                 cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
@@ -394,7 +395,7 @@ Rectangle {
                     color: "white"
                     opacity: (passwordField.text.length === 0 && !passwordField.wasClicked) ? 0.2 : 0
                     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
-                    font.family: orbitron.name; font.pixelSize: 13 * s; font.letterSpacing: 2 * s
+                    font.family: orbitronFamily; font.pixelSize: 13 * s; font.letterSpacing: 2 * s
                 }
 
                 MouseArea {
@@ -429,7 +430,7 @@ Rectangle {
                     anchors.centerIn: parent
                     text: "›"
                     color: root.sakuraLight
-                    font.family: orbitron.name
+                    font.family: orbitronFamily
                     font.pixelSize: 20 * s
                     opacity: passwordField.text.length > 0 ? 1.0 : 0.4
                     Behavior on opacity { NumberAnimation { duration: 200 } }
@@ -459,7 +460,7 @@ Rectangle {
             verticalAlignment: Text.AlignBottom
             text: ""
             color: "#e08090"
-            font.family: orbitron.name
+            font.family: orbitronFamily
             font.pixelSize: 11 * s
             font.letterSpacing: 2 * s
             horizontalAlignment: Text.AlignHCenter
@@ -519,10 +520,10 @@ Rectangle {
                 }
                 Text {
                     id: sessionLabel
-                    text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0)
+                    text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0 && sessionHelper.currentItem)
                           ? sessionHelper.currentItem.sName : "Session"
                     color: "white"; opacity: 0.6
-                    font.family: orbitron.name; font.pixelSize: 11 * s; font.letterSpacing: 1 * s
+                    font.family: orbitronFamily; font.pixelSize: 11 * s; font.letterSpacing: 1 * s
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -567,7 +568,7 @@ Rectangle {
                     property var d: modelData
                     text: d.label
                     color: "white"; opacity: 0.4
-                    font.family: orbitron.name; font.pixelSize: 11 * s; font.letterSpacing: 1 * s
+                    font.family: orbitronFamily; font.pixelSize: 11 * s; font.letterSpacing: 1 * s
 
                     Behavior on opacity { NumberAnimation { duration: 150 } }
                     scale: pm.containsMouse ? 1.1 : 1.0

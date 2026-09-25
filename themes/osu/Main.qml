@@ -100,7 +100,7 @@ Rectangle {
             anchors.leftMargin: menuItem.centered ? 0 : 140*s
             text: menuItem.label
             color: menuMa.containsMouse ? menuItem.iconColor : "white"
-            font.family: mainFont.name; font.pixelSize: 42*s; font.weight: Font.Black; font.italic: true
+            font.family: mainFontFamily; font.pixelSize: 42*s; font.weight: Font.Black; font.italic: true
             layer.enabled: true; layer.effect: DropShadow { color: "#44000000"; radius: 4 }
         }
 
@@ -188,7 +188,13 @@ Rectangle {
     readonly property color textColor:      scheme.text
 
     // Assets
-    FolderListModel {
+    FolderListModel { id: avatarFiles; showDirs: false; folder: Qt.resolvedUrl("avatars"); nameFilters: ["*.png"] }
+    // Only point at avatars that exist: a missing file is a load warning, not a silent fallback.
+    function avatarFor(login) {
+        var own = Qt.resolvedUrl("avatars/" + login + ".png")
+        return avatarFiles.count > 0 && login !== "" && avatarFiles.indexOf(own) >= 0 ? own : Qt.resolvedUrl("avatars/pfp.png")
+    }
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
@@ -197,6 +203,7 @@ Rectangle {
         id: mainFont
         source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : ""
     }
+    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
     TextConstants { id: textConstants }
 
     // SDDM Bridges
@@ -293,22 +300,15 @@ Rectangle {
                         anchors.top: parent.top; anchors.topMargin: -8*s
                         text: (root.userIndex + 1) + "71"
                         color: "#1affffff"
-                        font.family: mainFont.name; font.pixelSize: 84*s; font.weight: Font.Black
+                        font.family: mainFontFamily; font.pixelSize: 84*s; font.weight: Font.Black
                     }
 
                     Image {
                         id: userAvatar
                         anchors.left: parent.left; anchors.top: parent.top
                         width: 76*s; height: 76*s
-                        source: (userHelper.currentItem && userHelper.currentItem.uLogin) 
-                                ? Qt.resolvedUrl("avatars/" + userHelper.currentItem.uLogin + ".png") 
-                                : Qt.resolvedUrl("pfp.png")
+                        source: root.avatarFor(userHelper.currentItem ? userHelper.currentItem.uLogin : "")
                         fillMode: Image.PreserveAspectCrop
-                        onStatusChanged: {
-                            if (status === Image.Error && source != Qt.resolvedUrl("pfp.png")) {
-                                source = Qt.resolvedUrl("pfp.png")
-                            }
-                        }
                     }
 
                     Column {
@@ -319,15 +319,15 @@ Rectangle {
                         Text {
                             text: (userHelper.currentItem ? userHelper.currentItem.uName : "Player").toUpperCase()
                             color: "white"
-                            font.family: mainFont.name; font.pixelSize: 20*s; font.weight: Font.Normal
+                            font.family: mainFontFamily; font.pixelSize: 20*s; font.weight: Font.Normal
                             layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 4 }
                         }
-                        Text { text: "Performance: 6," + (userHelper.currentIndex + 0.48).toFixed(2).replace(".","") + "pp"; color: "#bbbbbb"; font.family: mainFont.name; font.pixelSize: 11*s }
-                        Text { text: "Accuracy: 98.48%"; color: "#bbbbbb"; font.family: mainFont.name; font.pixelSize: 11*s }
+                        Text { text: "Performance: 6," + (userHelper.currentIndex + 0.48).toFixed(2).replace(".","") + "pp"; color: "#bbbbbb"; font.family: mainFontFamily; font.pixelSize: 11*s }
+                        Text { text: "Accuracy: 98.48%"; color: "#bbbbbb"; font.family: mainFontFamily; font.pixelSize: 11*s }
 
                         Row {
                             spacing: 8*s; anchors.topMargin: 4*s
-                            Text { text: "Lv100"; color: "white"; font.family: mainFont.name; font.pixelSize: 11*s; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                            Text { text: "Lv100"; color: "white"; font.family: mainFontFamily; font.pixelSize: 11*s; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
                             Rectangle {
                                 width: 140*s; height: 6*s; radius: 3*s; color: "#44ffffff"
                                 Rectangle { width: parent.width * 0.85; height: parent.height; radius: 3*s; color: root.accentColor }
@@ -372,12 +372,12 @@ Rectangle {
                 Column {
                     spacing: 2*s
                     Text {
-                        text: "ENVIRONMENT"; color: "#99bbbbbb"; font.family: mainFont.name; font.pixelSize: 9*s; font.weight: Font.Black; font.letterSpacing: 2*s
+                        text: "ENVIRONMENT"; color: "#99bbbbbb"; font.family: mainFontFamily; font.pixelSize: 9*s; font.weight: Font.Black; font.letterSpacing: 2*s
                     }
                     Text {
                         text: sessionHelper.currentItem ? sessionHelper.currentItem.sName : "Default"
                         color: "white"
-                        font.family: mainFont.name; font.pixelSize: 22*s; font.weight: Font.DemiBold
+                        font.family: mainFontFamily; font.pixelSize: 22*s; font.weight: Font.DemiBold
                         layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 4; samples: 9 }
                     }
                 }
@@ -397,14 +397,14 @@ Rectangle {
                         anchors.right: parent.right; spacing: 14*s
                         Column {
                             anchors.verticalCenter: parent.verticalCenter
-                            Text { text: "CURRENT"; color: "#99bbbbbb"; font.family: mainFont.name; font.pixelSize: 9*s; anchors.right: parent.right; font.weight: Font.Black; font.letterSpacing: 1.5*s }
-                            Text { text: "TIME"; color: "#99bbbbbb"; font.family: mainFont.name; font.pixelSize: 9*s; anchors.right: parent.right; font.weight: Font.Black; font.letterSpacing: 1.5*s }
+                            Text { text: "CURRENT"; color: "#99bbbbbb"; font.family: mainFontFamily; font.pixelSize: 9*s; anchors.right: parent.right; font.weight: Font.Black; font.letterSpacing: 1.5*s }
+                            Text { text: "TIME"; color: "#99bbbbbb"; font.family: mainFontFamily; font.pixelSize: 9*s; anchors.right: parent.right; font.weight: Font.Black; font.letterSpacing: 1.5*s }
                         }
                         Text {
                             property string timeStr: Qt.formatTime(new Date(), "HH:mm")
                             Timer { interval: 1000; running: true; repeat: true; onTriggered: parent.timeStr = Qt.formatTime(new Date(), "HH:mm") }
                             text: timeStr
-                            color: "white"; font.family: mainFont.name; font.pixelSize: 32*s; font.weight: Font.Bold
+                            color: "white"; font.family: mainFontFamily; font.pixelSize: 32*s; font.weight: Font.Bold
                             anchors.verticalCenter: parent.verticalCenter
                             layer.enabled: true; layer.effect: DropShadow { color: "#88000000"; radius: 4 }
                         }
@@ -503,7 +503,7 @@ Rectangle {
                         anchors.verticalCenterOffset: -7 * s
                         text: "osu!"
                         color: "white"
-                        font.family: mainFont.name
+                        font.family: mainFontFamily
                         font.pixelSize: 140 * s
                         font.weight: Font.Black
                     }
@@ -570,7 +570,7 @@ Rectangle {
 
             Column {
                 anchors.centerIn: parent; spacing: 25*s
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "SELECT DIFFICULTY"; color: "white"; font.family: mainFont.name; font.pixelSize: 42*s; font.weight: Font.Black; font.italic: true; opacity: 0.9 }
+                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "SELECT DIFFICULTY"; color: "white"; font.family: mainFontFamily; font.pixelSize: 42*s; font.weight: Font.Black; font.italic: true; opacity: 0.9 }
                 
                 OsuMenuItem { label: "Easy"; centered: true; iconColor: "#2ECC71"; onActivated: root.launchGame(0) }
                 OsuMenuItem { label: "Moderate"; centered: true; iconColor: "#F1C40F"; onActivated: root.launchGame(1) }
@@ -586,8 +586,8 @@ Rectangle {
                 
                 Column {
                     anchors.centerIn: parent; width: parent.width - 30*s; spacing: 8*s
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "WARNING"; color: "#E74C3C"; font.family: mainFont.name; font.pixelSize: 18*s; font.weight: Font.Black; font.letterSpacing: 3*s }
-                    Text { width: parent.width; text: "Choose wisely, I won't be responsible if you get locked out of your system forever!! (jk)"; color: "white"; font.family: mainFont.name; font.pixelSize: 12*s; font.weight: Font.Bold; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignHCenter; opacity: 0.8 }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "WARNING"; color: "#E74C3C"; font.family: mainFontFamily; font.pixelSize: 18*s; font.weight: Font.Black; font.letterSpacing: 3*s }
+                    Text { width: parent.width; text: "Choose wisely, I won't be responsible if you get locked out of your system forever!! (jk)"; color: "white"; font.family: mainFontFamily; font.pixelSize: 12*s; font.weight: Font.Bold; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignHCenter; opacity: 0.8 }
                 }
             }
 
@@ -625,7 +625,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -1 * s
                     text: "PASSWORD"
                     color: passField.activeFocus ? "#FF73B3" : "white"
-                    font.family: mainFont.name; font.pixelSize: 15 * s; font.weight: Font.Black; font.italic: true
+                    font.family: mainFontFamily; font.pixelSize: 15 * s; font.weight: Font.Black; font.italic: true
                     opacity: passField.activeFocus ? 1.0 : 0.6
                 }
 
@@ -639,7 +639,7 @@ Rectangle {
                     color: "transparent"
                     cursorVisible: false
                     cursorDelegate: Item {}
-                    font.family: mainFont.name; font.pixelSize: 18 * s; font.weight: Font.Bold
+                    font.family: mainFontFamily; font.pixelSize: 18 * s; font.weight: Font.Bold
                     echoMode: TextInput.Password
                     focus: true; Keys.onReturnPressed: if (text.length > 0) doAction()
 
@@ -647,7 +647,7 @@ Rectangle {
                     Text {
                         anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                         text: "Enter password..."
-                        color: "#33ffffff"; font.family: mainFont.name; font.pixelSize: 14 * s
+                        color: "#33ffffff"; font.family: mainFontFamily; font.pixelSize: 14 * s
                         visible: passField.text.length === 0
                     }
 
@@ -691,7 +691,7 @@ Rectangle {
             anchors.right: parent.right; anchors.rightMargin: 10*s
             text: ""
             color: "#ff4455"
-            font.family: mainFont.name; font.pixelSize: 14*s; font.weight: Font.Black; font.italic: true
+            font.family: mainFontFamily; font.pixelSize: 14*s; font.weight: Font.Black; font.italic: true
             layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 4; samples: 9 }
         }
     }
@@ -754,7 +754,7 @@ Rectangle {
             Text {
                 anchors.right: parent.right
                 text: String(root.osuScore).padStart(8, "0")
-                color: "white"; font.family: mainFont.name
+                color: "white"; font.family: mainFontFamily
                 font.pixelSize: 32*s; font.weight: Font.Black; font.letterSpacing: -1*s
                 layer.enabled: true
                 layer.effect: DropShadow { color: "#88000000"; radius: 4; samples: 9; horizontalOffset: 1*s; verticalOffset: 1*s }
@@ -762,7 +762,7 @@ Rectangle {
             Text {
                 anchors.right: parent.right
                 text: root.osuAccuracy.toFixed(2) + "%"
-                color: "#ccffffff"; font.family: mainFont.name; font.pixelSize: 14*s
+                color: "#ccffffff"; font.family: mainFontFamily; font.pixelSize: 14*s
             }
         }
 
@@ -775,7 +775,7 @@ Rectangle {
             Text {
                 id: comboText
                 text: root.osuCombo + "x"
-                color: comboBreakAnim.running ? "#ff4444" : "white"; font.family: mainFont.name
+                color: comboBreakAnim.running ? "#ff4444" : "white"; font.family: mainFontFamily
                 font.pixelSize: 52*s + Math.min(20*s, root.osuCombo * 0.5); font.weight: Font.Black
 
                 NumberAnimation on scale { id: comboPopAnim; from: 1.35; to: 1.0; duration: 150; easing.type: Easing.OutBack }
@@ -801,13 +801,13 @@ Rectangle {
             anchors.right: parent.right; anchors.rightMargin: 40*s
             spacing: 2*s
 
-            Text { text: root.osuHits + " / " + settings.requiredHits + " HITS"; color: "#aaffffff"; font.family: mainFont.name; font.pixelSize: 13*s; font.letterSpacing: 2*s; anchors.right: parent.right }
+            Text { text: root.osuHits + " / " + settings.requiredHits + " HITS"; color: "#aaffffff"; font.family: mainFontFamily; font.pixelSize: 13*s; font.letterSpacing: 2*s; anchors.right: parent.right }
             Row {
                 anchors.right: parent.right; spacing: 8*s
-                Text { text: root.osu300s + "×"; color: root.accentColor;  font.family: mainFont.name; font.pixelSize: 11*s; font.weight: Font.Bold }
-                Text { text: root.osu100s + "×"; color: root.glowColor;    font.family: mainFont.name; font.pixelSize: 11*s; font.weight: Font.Bold }
-                Text { text: root.osu50s  + "×"; color: "#aaaaaa";          font.family: mainFont.name; font.pixelSize: 11*s; font.weight: Font.Bold }
-                Text { text: root.osuMisses + "×"; color: "#ff4455";        font.family: mainFont.name; font.pixelSize: 11*s; font.weight: Font.Bold }
+                Text { text: root.osu300s + "×"; color: root.accentColor;  font.family: mainFontFamily; font.pixelSize: 11*s; font.weight: Font.Bold }
+                Text { text: root.osu100s + "×"; color: root.glowColor;    font.family: mainFontFamily; font.pixelSize: 11*s; font.weight: Font.Bold }
+                Text { text: root.osu50s  + "×"; color: "#aaaaaa";          font.family: mainFontFamily; font.pixelSize: 11*s; font.weight: Font.Bold }
+                Text { text: root.osuMisses + "×"; color: "#ff4455";        font.family: mainFontFamily; font.pixelSize: 11*s; font.weight: Font.Bold }
             }
         }
 
@@ -948,7 +948,7 @@ Rectangle {
             id: readyText
             anchors.centerIn: parent
             text: "CLICK THE CIRCLES!"
-            color: "white"; font.family: mainFont.name
+            color: "white"; font.family: mainFontFamily
             font.pixelSize: 28*s; font.weight: Font.Black; font.letterSpacing: 6*s
             opacity: root.osuCircleCount === 0 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 400 } }
@@ -1046,7 +1046,7 @@ Rectangle {
                 // Number
                 Text {
                     anchors.centerIn: parent; text: hc.circleNum; color: "white"
-                    font.family: mainFont.name; font.pixelSize: 34*s; font.weight: Font.Black
+                    font.family: mainFontFamily; font.pixelSize: 34*s; font.weight: Font.Black
                     layer.enabled: true; layer.effect: DropShadow { color: "#66000000"; radius: 5; samples: 9; verticalOffset: 1.5*s }
                 }
             }
@@ -1221,7 +1221,7 @@ Rectangle {
                 // Tiny Outline
                 Rectangle { anchors.centerIn: parent; width: parent.width - 7*s; height: width; radius: width / 2; color: "transparent"; border.color: Qt.rgba(0,0,0,0.3); border.width: 1*s }
 
-                Text { anchors.centerIn: parent; text: circleNum; color: "white"; font.family: mainFont.name; font.pixelSize: 34*s; font.weight: Font.Black; layer.enabled: true; layer.effect: DropShadow { color: "#66000000"; radius: 5; samples: 9; verticalOffset: 1.5*s } }
+                Text { anchors.centerIn: parent; text: circleNum; color: "white"; font.family: mainFontFamily; font.pixelSize: 34*s; font.weight: Font.Black; layer.enabled: true; layer.effect: DropShadow { color: "#66000000"; radius: 5; samples: 9; verticalOffset: 1.5*s } }
             }
 
             // Slider Ball
@@ -1373,7 +1373,7 @@ Rectangle {
             property string msg: "300"
             property color col: "white"
             text: msg; color: col
-            font.family: mainFont.name; font.pixelSize: 36*s; font.weight: Font.Black
+            font.family: mainFontFamily; font.pixelSize: 36*s; font.weight: Font.Black
             layer.enabled: true
             layer.effect: DropShadow { color: Qt.rgba(col.r, col.g, col.b, 0.6); radius: 10; samples: 15 }
 
@@ -1406,8 +1406,8 @@ Rectangle {
     SequentialAnimation {
         id: gameShake
         property real intensity: 5*s
-        NumberAnimation { target: gameArea; property: "anchors.horizontalCenterOffset"; from: -intensity; to: intensity; duration: 30 }
-        NumberAnimation { target: gameArea; property: "anchors.horizontalCenterOffset"; from: intensity; to: -intensity; duration: 30 }
+        NumberAnimation { target: gameArea; property: "anchors.horizontalCenterOffset"; from: -gameShake.intensity; to: gameShake.intensity; duration: 30 }
+        NumberAnimation { target: gameArea; property: "anchors.horizontalCenterOffset"; from: gameShake.intensity; to: -gameShake.intensity; duration: 30 }
         NumberAnimation { target: gameArea; property: "anchors.horizontalCenterOffset"; to: 0; duration: 30 }
     }
 
@@ -1681,10 +1681,10 @@ Rectangle {
         
         Column {
             anchors.centerIn: parent; spacing: 20*s; width: parent.width * 0.8
-            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "GAME OVER"; color: "#ff4444"; font.family: mainFont.name; font.pixelSize: 48*s; font.weight: Font.Black; font.italic: true }
+            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "GAME OVER"; color: "#ff4444"; font.family: mainFontFamily; font.pixelSize: 48*s; font.weight: Font.Black; font.italic: true }
             Text { 
                 anchors.horizontalCenter: parent.horizontalCenter; width: parent.width * 0.6; text: "poor fella.. can't even finish this simple game.. wanna reduce difficulty?"
-                color: "white"; font.family: mainFont.name; font.pixelSize: 20*s; font.weight: Font.Bold; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignHCenter; opacity: 0.8 
+                color: "white"; font.family: mainFontFamily; font.pixelSize: 20*s; font.weight: Font.Bold; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignHCenter; opacity: 0.8 
             }
             Item { width: 1; height: 30*s }
             OsuMenuItem { anchors.horizontalCenter: parent.horizontalCenter; label: "Reduce Difficulty"; centered: true; iconColor: "#F1C40F"; onActivated: { root.randomizeTheme(); failOverlay.opacity = 0; resetGame(); root.showingDiff = true } }

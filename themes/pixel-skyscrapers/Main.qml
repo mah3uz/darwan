@@ -25,6 +25,7 @@ Rectangle {
     readonly property color silhouettes: "#303c44"
 
     FontLoader { id: pf; source: "font/PixelifySans-Bold.ttf" }
+    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
     
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string sName: model.name || "" } }
     ListView { id: userHelper; model: typeof userModel !== "undefined" ? userModel : null; currentIndex: root.userIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
@@ -50,13 +51,13 @@ Rectangle {
         
         Text {
             id: clk; text: Qt.formatTime(new Date(), "HH:mm")
-            color: root.sunCream; font.family: pf.name; font.pixelSize: 84 * s; font.letterSpacing: -2 * s
+            color: root.sunCream; font.family: pfFamily; font.pixelSize: 84 * s; font.letterSpacing: -2 * s
             Timer { interval: 1000; running: true; repeat: true; onTriggered: clk.text = Qt.formatTime(new Date(), "HH:mm") }
             layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 6; samples: 8; horizontalOffset: 2 * s; verticalOffset: 2 * s }
         }
         Text {
             text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase()
-            color: root.roseUI; font.family: pf.name; font.pixelSize: 12 * s; font.letterSpacing: 4 * s
+            color: root.roseUI; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 4 * s
         }
     }
 
@@ -72,7 +73,7 @@ Rectangle {
             Text {
                 id: unt
                 text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "User")).toUpperCase()
-                color: unm.containsMouse ? "white" : root.sunCream; font.family: pf.name; font.pixelSize: 22 * s; font.letterSpacing: 4 * s
+                color: unm.containsMouse ? "white" : root.sunCream; font.family: pfFamily; font.pixelSize: 22 * s; font.letterSpacing: 4 * s
                 layer.enabled: true; layer.effect: DropShadow { color: "#80000000"; radius: 4; samples: 8; horizontalOffset: 1; verticalOffset: 1 }
                 Behavior on color { ColorAnimation { duration: 150 } }
             }
@@ -90,7 +91,7 @@ Rectangle {
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1 * s; color: root.roseUI; opacity: pwd.activeFocus ? 1.0 : 0.4 }
             Rectangle { anchors.bottom: parent.bottom; width: pwd.activeFocus ? parent.width : 0; height: 2 * s; color: root.peachSky; anchors.horizontalCenter: parent.horizontalCenter; Behavior on width { NumberAnimation {duration: 300; easing.type: Easing.OutExpo} } }
             TextInput {
-                id: pwd; anchors.fill: parent; color: root.peachSky; font.family: pf.name; font.pixelSize: 18 * s; font.letterSpacing: 4 * s
+                id: pwd; anchors.fill: parent; color: root.peachSky; font.family: pfFamily; font.pixelSize: 18 * s; font.letterSpacing: 4 * s
                 echoMode: TextInput.Password; onTextEdited: err.text = ""; passwordCharacter: "─"; focus: true; clip: true; horizontalAlignment: TextInput.AlignHCenter; verticalAlignment: TextInput.AlignVCenter
                 cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                 selectionColor: root.roseUI
@@ -99,7 +100,7 @@ Rectangle {
                 Keys.onReturnPressed: doLogin(); Keys.onEnterPressed: doLogin()
             }
             Text { 
-                anchors.centerIn: parent; text: "password..."; color: root.roseUI; font.family: pf.name; font.pixelSize: 14 * s; font.letterSpacing: 4 * s
+                anchors.centerIn: parent; text: "password..."; color: root.roseUI; font.family: pfFamily; font.pixelSize: 14 * s; font.letterSpacing: 4 * s
                 opacity: pwd.text.length === 0 ? 0.5 : 0
                 Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
             }
@@ -130,10 +131,10 @@ Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 140 * s; height: 36 * s
             Rectangle { anchors.fill: parent; color: sbm.containsMouse ? root.roseUI : "transparent"; border.color: root.roseUI; border.width: 1; radius: 4 * s; Behavior on color { ColorAnimation { duration: 150 } } }
-            Text { anchors.centerIn: parent; text: "LOG IN"; color: sbm.containsMouse ? "#000" : root.sunCream; font.family: pf.name; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; Behavior on color { ColorAnimation { duration: 150 } } }
+            Text { anchors.centerIn: parent; text: "LOG IN"; color: sbm.containsMouse ? "#000" : root.sunCream; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; Behavior on color { ColorAnimation { duration: 150 } } }
             MouseArea { id: sbm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: doLogin() }
         }
-        Text { id: err; text: ""; height: 12 * s; verticalAlignment: Text.AlignBottom; color: "#ff5555"; anchors.horizontalCenter: parent.horizontalCenter; font.family: pf.name; font.pixelSize: 12 * s }
+        Text { id: err; text: ""; height: 12 * s; verticalAlignment: Text.AlignBottom; color: "#ff5555"; anchors.horizontalCenter: parent.horizontalCenter; font.family: pfFamily; font.pixelSize: 12 * s }
     }
 
     // Power Section
@@ -146,7 +147,7 @@ Rectangle {
                 width: pmt.implicitWidth; height: 30 * s
                 Text {
                     id: pmt; anchors.centerIn: parent; text: modelData.l
-                    color: pm.containsMouse ? "white" : root.sunCream; font.family: pf.name; font.pixelSize: 11 * s; font.letterSpacing: 2 * s
+                    color: pm.containsMouse ? "white" : root.sunCream; font.family: pfFamily; font.pixelSize: 11 * s; font.letterSpacing: 2 * s
                     layer.enabled: true; layer.effect: DropShadow { color: "#80000000"; radius: 4; samples: 8; horizontalOffset: 1; verticalOffset: 1 }
                     Behavior on color { ColorAnimation { duration: 150 } }
                 }

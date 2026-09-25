@@ -36,13 +36,14 @@ Rectangle {
     TextConstants { id: textConstants }
 
     // Fonts
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
     }
     FontLoader { id: customFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string fn: customFont.name
+    readonly property string customFontFamily: customFont.status === FontLoader.Ready ? customFont.name : "sans-serif"
+    readonly property string fn: customFontFamily
 
     // Focus
     Timer { interval: 300; running: true; onTriggered: pwInput.forceActiveFocus() }
@@ -498,7 +499,7 @@ Rectangle {
                 visible: !root.isQuickshell
                 Text {
                     visible: menuList.currentIndex !== 2
-                    text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0) ? sessionHelper.currentItem.sName : "Default"
+                    text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0 && sessionHelper.currentItem) ? sessionHelper.currentItem.sName : "Default"
                     font.family: root.fn; font.pixelSize: 12 * s
                     color: root.cFgDim
                     anchors.left: parent.left; anchors.leftMargin: 14 * s
@@ -508,7 +509,7 @@ Rectangle {
                     visible: menuList.currentIndex === 2
                     anchors.fill: parent
                     Text {
-                        text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0) ? sessionHelper.currentItem.sName : "Default"
+                        text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0 && sessionHelper.currentItem) ? sessionHelper.currentItem.sName : "Default"
                         font.family: root.fn; font.pixelSize: 12 * s; color: root.cFg
                         anchors.left: parent.left; anchors.leftMargin: 14 * s
                         anchors.verticalCenter: parent.verticalCenter

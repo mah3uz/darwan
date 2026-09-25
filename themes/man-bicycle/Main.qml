@@ -24,8 +24,9 @@ Rectangle {
     property int userIndex:    (typeof userModel    !== "undefined" && userModel.lastIndex    >= 0) ? userModel.lastIndex    : 0
     property real ui: 0
 
-    FolderListModel { id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
+    FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader      { id: mainFont;   source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
 
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 1; height: 1; delegate: Item { property string sName: model.name || "" } }
     ListView { id: userHelper;    model: typeof userModel    !== "undefined" ? userModel    : null; currentIndex: root.userIndex;    opacity: 0; width: 1; height: 1; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
@@ -54,7 +55,7 @@ Rectangle {
             id: clockText
             text: Qt.formatTime(new Date(), "HH:mm")
             color: cWhite
-            font.family: mainFont.name
+            font.family: mainFontFamily
             font.pixelSize: 108 * s
             font.weight: Font.Light
             font.letterSpacing: 2 * s
@@ -66,7 +67,7 @@ Rectangle {
         Text {
             text: Qt.formatDate(new Date(), "dddd, MMMM d")
             color: cWhite; opacity: 0.7
-            font.family: mainFont.name; font.pixelSize: 20 * s
+            font.family: mainFontFamily; font.pixelSize: 20 * s
             font.weight: Font.Light; font.letterSpacing: 2 * s
             layer.enabled: true
             layer.effect: Gfx.DropShadow { color: "#18000000"; radius: 6; samples: 11 }
@@ -88,7 +89,7 @@ Rectangle {
                    ? userHelper.currentItem.uName
                    : (typeof userModel !== "undefined" ? userModel.lastUser : "user")).toLowerCase()
             color: userMa.containsMouse ? cGold : cWhite
-            font.family: mainFont.name; font.pixelSize: 34 * s
+            font.family: mainFontFamily; font.pixelSize: 34 * s
             font.weight: Font.Light; font.letterSpacing: 3 * s
             horizontalAlignment: Text.AlignRight
             layer.enabled: true
@@ -124,7 +125,7 @@ Rectangle {
                 verticalAlignment:   TextInput.AlignVCenter
                 echoMode: TextInput.Password; passwordCharacter: "•"
                 color: cWhite
-                font.family: mainFont.name; font.pixelSize: 26 * s; font.letterSpacing: 8 * s
+                font.family: mainFontFamily; font.pixelSize: 26 * s; font.letterSpacing: 8 * s
                 focus: true; clip: true; cursorVisible: false
                 cursorDelegate: Item { width: 0; height: 0 }
                 onAccepted: doLogin()
@@ -133,7 +134,7 @@ Rectangle {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     text: "password"; color: cWhite
                     opacity: pwd.text.length === 0 ? 0.38 : 0
-                    font.family: mainFont.name; font.pixelSize: 14 * s
+                    font.family: mainFontFamily; font.pixelSize: 14 * s
                     font.letterSpacing: 2 * s; font.weight: Font.Light
                     Behavior on opacity { NumberAnimation { duration: 200 } }
                 }
@@ -169,7 +170,7 @@ Rectangle {
                     text: (modelData.a === 0 && sessionHelper.currentItem)
                           ? sessionHelper.currentItem.sName.toLowerCase() : modelData.l
                     color: pm.containsMouse ? cGold : cWhite
-                    font.family: mainFont.name; font.pixelSize: 14 * s
+                    font.family: mainFontFamily; font.pixelSize: 14 * s
                     font.letterSpacing: 1.5 * s; font.weight: Font.Light
                     opacity: pm.containsMouse ? 1.0 : 0.45
                     layer.enabled: true
@@ -193,7 +194,7 @@ Rectangle {
             id: errorMsg
             anchors.right: parent.right
             text: ""; color: "#ff7070"; visible: text !== ""
-            font.family: mainFont.name; font.pixelSize: 12 * s; font.letterSpacing: 1 * s
+            font.family: mainFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 1 * s
         }
     }
 

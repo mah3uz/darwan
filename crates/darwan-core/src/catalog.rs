@@ -56,6 +56,10 @@ impl Catalog {
     pub fn get(&self, id: &str) -> Option<&Theme> {
         self.themes.iter().find(|t| t.id == id)
     }
+
+    pub fn into_themes(self) -> Vec<Theme> {
+        self.themes
+    }
 }
 
 fn find_theme_dirs(dir: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {

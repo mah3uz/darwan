@@ -31,8 +31,9 @@ Item {
     // Menus
     property bool sessionMenuOpen: false
 
-    FolderListModel { id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
+    FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader      { id: mainFont;  source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
 
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 1; height: 1; z: -100; delegate: Item { property string sName: model.name || "" } }
     ListView { id: userHelper;    model: typeof userModel !== "undefined" ? userModel : null;    currentIndex: root.userIndex;    opacity: 0; width: 1; height: 1; z: -100; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
@@ -88,7 +89,7 @@ Item {
                 id: clockText
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Qt.formatTime(new Date(), "HH:mm")
-                font.family: mainFont.name
+                font.family: mainFontFamily
                 font.pixelSize: 180 * s
                 font.weight: Font.Thin
                 color: root.textPrimary
@@ -101,7 +102,7 @@ Item {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase()
-                font.family: mainFont.name; font.pixelSize: 18 * s
+                font.family: mainFontFamily; font.pixelSize: 18 * s
                 font.letterSpacing: 12 * s
                 font.weight: Font.DemiBold
                 color: "#1a252c"
@@ -131,10 +132,10 @@ Item {
                         anchors.centerIn: parent; width: parent.width; height: parent.height
                         Column {
                             anchors.centerIn: parent; spacing: 2 * s
-                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "USER"; font.family: mainFont.name; font.pixelSize: 10 * s; font.letterSpacing: 4 * s; color: root.textSecondary; opacity: 0.8 }
+                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "USER"; font.family: mainFontFamily; font.pixelSize: 10 * s; font.letterSpacing: 4 * s; color: root.textSecondary; opacity: 0.8 }
                             Text {
                                 text: (userHelper.currentItem && userHelper.currentItem.uName ? userHelper.currentItem.uName : "UNKNOWN").toUpperCase()
-                                font.family: mainFont.name; font.pixelSize: 18 * s; font.letterSpacing: 3 * s; font.weight: Font.Bold; color: uClickMa.containsMouse ? root.accent : root.textPrimary; anchors.horizontalCenter: parent.horizontalCenter
+                                font.family: mainFontFamily; font.pixelSize: 18 * s; font.letterSpacing: 3 * s; font.weight: Font.Bold; color: uClickMa.containsMouse ? root.accent : root.textPrimary; anchors.horizontalCenter: parent.horizontalCenter
                                 scale: uClickMa.containsMouse ? 1.08 : 1.0
                                 Behavior on color { ColorAnimation { duration: 200 } }
                                 Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
@@ -159,7 +160,7 @@ Item {
                         horizontalAlignment: TextInput.AlignHCenter
                         verticalAlignment: TextInput.AlignVCenter
                         echoMode: TextInput.Password; passwordCharacter: "·"
-                        font.family: mainFont.name; font.pixelSize: 32 * s; font.letterSpacing: 10 * s
+                        font.family: mainFontFamily; font.pixelSize: 32 * s; font.letterSpacing: 10 * s
                         color: root.textPrimary; clip: true; focus: true
                         cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                         selectionColor: root.accent
@@ -173,7 +174,7 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "PASSWORD"; font.family: mainFont.name
+                            text: "PASSWORD"; font.family: mainFontFamily
                             font.pixelSize: 14 * s; font.letterSpacing: 6 * s
                             color: root.textSecondary; opacity: passInput.text.length === 0 ? 0.6 : 0.0
                             Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
@@ -229,7 +230,7 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     text: ""
                     color: "#ff4444"
-                    font.family: mainFont.name
+                    font.family: mainFontFamily
                     font.pixelSize: 10 * s
                     font.letterSpacing: 2 * s
                 }
@@ -247,11 +248,11 @@ Item {
                 id: sessionRow
                 visible: !root.isQuickshell
                 anchors.left: parent.left; anchors.bottom: parent.bottom; spacing: 12 * s
-                Text { text: "SESSION"; font.family: mainFont.name; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: root.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "SESSION"; font.family: mainFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: root.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                 Rectangle { width: 1; height: 14 * s; color: root.textSecondary; opacity: 0.5; anchors.verticalCenter: parent.verticalCenter }
                 Text {
                     text: (sessionHelper.currentItem && sessionHelper.currentItem.sName ? sessionHelper.currentItem.sName : "DEFAULT").toUpperCase()
-                    font.family: mainFont.name; font.pixelSize: 14 * s; font.weight: Font.Bold; font.letterSpacing: 1 * s; color: sessionMa.containsMouse ? root.textPrimary : root.accent
+                    font.family: mainFontFamily; font.pixelSize: 14 * s; font.weight: Font.Bold; font.letterSpacing: 1 * s; color: sessionMa.containsMouse ? root.textPrimary : root.accent
                     scale: sessionMa.containsMouse ? 1.08 : 1.0
                     anchors.verticalCenter: parent.verticalCenter
                     Behavior on color { ColorAnimation { duration: 200 } }
@@ -265,14 +266,14 @@ Item {
                 anchors.right: parent.right; anchors.bottom: parent.bottom; spacing: 25 * s
 
                 Text {
-                    text: "REBOOT"; font.family: mainFont.name; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: reboot2Ma.containsMouse ? root.textPrimary : root.textSecondary
+                    text: "REBOOT"; font.family: mainFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: reboot2Ma.containsMouse ? root.textPrimary : root.textSecondary
                     scale: reboot2Ma.containsMouse ? 1.12 : 1.0
                     Behavior on color { ColorAnimation { duration: 200 } }
                     Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
                     MouseArea { id: reboot2Ma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (typeof sddm !== "undefined") sddm.reboot() } }
                 }
                 Text {
-                    text: "SHUTDOWN"; font.family: mainFont.name; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: power2Ma.containsMouse ? "#ff6b6b" : root.textSecondary
+                    text: "SHUTDOWN"; font.family: mainFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: power2Ma.containsMouse ? "#ff6b6b" : root.textSecondary
                     scale: power2Ma.containsMouse ? 1.12 : 1.0
                     Behavior on color { ColorAnimation { duration: 200 } }
                     Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
@@ -302,7 +303,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: (model.name || "UNNAMED").toUpperCase()
-                        font.family: mainFont.name; font.pixelSize: 13 * s; font.letterSpacing: 2 * s
+                        font.family: mainFontFamily; font.pixelSize: 13 * s; font.letterSpacing: 2 * s
                         color: index === root.sessionIndex ? root.accent : (sDelMa.containsMouse ? root.textPrimary : root.textSecondary)
                         font.weight: index === root.sessionIndex ? Font.Bold : Font.Normal
                     }

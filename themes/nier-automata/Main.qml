@@ -48,16 +48,17 @@ Rectangle {
 
     TextConstants { id: textConstants }
     
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
     }
 
     FontLoader { id: nierFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string nierFontFamily: nierFont.status === FontLoader.Ready ? nierFont.name : "sans-serif"
 
     // Shared font name string — accessible from everywhere in this file
-    readonly property string fontName: nierFont.name
+    readonly property string fontName: nierFontFamily
 
     // Auto-focus fix for Quickshell (Loader does not propagate focus: true)
     Timer { interval: 300; running: true; onTriggered: pwInput.forceActiveFocus() }
@@ -376,7 +377,7 @@ Rectangle {
         anchors.right:  parent.right
         opacity: root.uiOpacity
 
-        Component.onCompleted: SequentialAnimation {
+        SequentialAnimation { running: true;
             PauseAnimation  { duration: 400 }
             ParallelAnimation {
                 NumberAnimation { target: root; property: "uiOpacity"; from: 0; to: 1; duration: 1200; easing.type: Easing.OutExpo }
@@ -802,7 +803,7 @@ Rectangle {
                                     anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12 * s; 
                                     font.family: root.fontName; font.pixelSize: 11 * s; font.letterSpacing: 1.0; 
                                     color: (sBtnMa.containsMouse || parent.parent.parent.sessionMenuOpen) ? root.nierAccent : "#b0ac94"; 
-                                    text: "◆ Session: " + ((sessionModel && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0) ? sessionHelper.currentItem.sName : "—") 
+                                    text: "◆ Session: " + ((sessionModel && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0 && sessionHelper.currentItem) ? sessionHelper.currentItem.sName : "—") 
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 12 * s

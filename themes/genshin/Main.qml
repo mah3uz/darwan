@@ -80,13 +80,14 @@ Rectangle {
     readonly property color gGold: "#d3bc8e"
 
     // Fonts
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
     }
 
     FontLoader { id: mainFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "Noto Sans CJK SC"
 
     // Auto-focus
     Timer { interval: 300; running: true; onTriggered: passIn.forceActiveFocus() }
@@ -161,7 +162,7 @@ Rectangle {
         id: mainUI
         anchors.fill: parent
         opacity: root.uiOpacity
-        Component.onCompleted: NumberAnimation { target: root; property: "uiOpacity"; from: 0; to: 1; duration: 1200; easing.type: Easing.OutCubic }
+        NumberAnimation { running: true; target: root; property: "uiOpacity"; from: 0; to: 1; duration: 1200; easing.type: Easing.OutCubic }
 
         // Username
         Row {
@@ -176,7 +177,7 @@ Rectangle {
             }
             Text {
                 text: (activeUser || "USER").toUpperCase()
-                font.family: mainFont.name; font.pixelSize: 17 * s; font.letterSpacing: 1.5 * s
+                font.family: mainFontFamily; font.pixelSize: 17 * s; font.letterSpacing: 1.5 * s
                 color: root.gTextMain
                 anchors.verticalCenter: parent.verticalCenter
                 layer.enabled: true
@@ -202,7 +203,7 @@ Rectangle {
             Text {
                 id: genshinTime
                 anchors.right: parent.right
-                font.family: mainFont.name
+                font.family: mainFontFamily
                 font.pixelSize: 52 * s
                 font.letterSpacing: 2 * s
                 color: root.gTextMain
@@ -214,7 +215,7 @@ Rectangle {
                 spacing: 12 * s
                 Text {
                     id: genshinDate
-                    font.family: mainFont.name
+                    font.family: mainFontFamily
                     font.pixelSize: 14 * s
                     font.letterSpacing: 2 * s
                     color: root.gTextDim
@@ -330,7 +331,7 @@ Rectangle {
                         TextInput {
                             id: passIn
                             anchors.fill: parent; anchors.leftMargin: 20 * s; anchors.rightMargin: 20 * s
-                            font.family: mainFont.name; font.pixelSize: 20 * s; color: root.gTextMain
+                            font.family: mainFontFamily; font.pixelSize: 20 * s; color: root.gTextMain
                             echoMode: TextInput.Password; passwordCharacter: "✦"
                             horizontalAlignment: TextInput.AlignHCenter; verticalAlignment: TextInput.AlignVCenter
                             cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
@@ -402,7 +403,7 @@ Rectangle {
                             text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0)
                                   ? sessionHelper.currentItem.sName : "Select Realm"
                             anchors.centerIn: parent
-                            font.family: mainFont.name
+                            font.family: mainFontFamily
                             font.pixelSize: 18 * s
                             color: "white"
                         }
@@ -423,7 +424,7 @@ Rectangle {
                         verticalAlignment: Text.AlignBottom
                         text: ""
                         color: "#e64b4b"
-                        font.family: mainFont.name
+                        font.family: mainFontFamily
                         font.pixelSize: 12 * s
                         font.letterSpacing: 2 * s
                         horizontalAlignment: Text.AlignHCenter
@@ -438,7 +439,7 @@ Rectangle {
             text: "OSRELWin3.2.0_R11611027_S11212885_D11643430"
             anchors.left: parent.left; anchors.leftMargin: 40 * s
             anchors.bottom: parent.bottom; anchors.bottomMargin: 15 * s
-            font.family: mainFont.name; font.pixelSize: 11 * s; color: "white"; opacity: 0.8
+            font.family: mainFontFamily; font.pixelSize: 11 * s; color: "white"; opacity: 0.8
         }
 
         // Tap Prompt
@@ -457,7 +458,7 @@ Rectangle {
             
             Text {
                 text: "CLICK TO BEGIN"
-                font.family: mainFont.name; font.pixelSize: 16 * s; font.letterSpacing: 4 * s
+                font.family: mainFontFamily; font.pixelSize: 16 * s; font.letterSpacing: 4 * s
                 color: "white"; anchors.centerIn: parent
                 opacity: 0.9
                 SequentialAnimation on opacity {
@@ -567,7 +568,7 @@ Rectangle {
                 anchors.fill: parent; anchors.margins: 25 * s; spacing: 20 * s
                 Text {
                     text: "SELECT REALM"; anchors.horizontalCenter: parent.horizontalCenter
-                    font.family: mainFont.name; font.pixelSize: 22 * s; color: "#d3bc8e"; font.bold: true
+                    font.family: mainFontFamily; font.pixelSize: 22 * s; color: "#d3bc8e"; font.bold: true
                     font.letterSpacing: 2 * s
                 }
                 ListView {
@@ -583,7 +584,7 @@ Rectangle {
 
                             Text {
                                 text: model.name.toUpperCase(); anchors.centerIn: parent
-                                font.family: mainFont.name; font.pixelSize: 18 * s; color: "#ece5d8"
+                                font.family: mainFontFamily; font.pixelSize: 18 * s; color: "#ece5d8"
                                 font.letterSpacing: 1 * s
                             }
                             MouseArea { 

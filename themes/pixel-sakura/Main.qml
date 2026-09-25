@@ -45,6 +45,7 @@ Rectangle {
         id: pf
         source: "font/PixelifySans-Bold.ttf"
     }
+    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
 
     ListView {
         id: sessionHelper
@@ -115,7 +116,7 @@ Rectangle {
             id: clockText
             text: Qt.formatTime(new Date(), "HH:mm")
             color: root.slateDark
-            font.family: pf.name
+            font.family: pfFamily
             font.pixelSize: 64 * s
             font.bold: true
             anchors.left: parent.left
@@ -133,7 +134,7 @@ Rectangle {
             id: dateText
             text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase()
             color: root.sakuraPink
-            font.family: pf.name
+            font.family: pfFamily
             font.pixelSize: 11 * s
             font.letterSpacing: 2 * s
             font.bold: true
@@ -197,7 +198,7 @@ Rectangle {
             Text {
                 text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "Trainer")).toUpperCase()
                 color: userMouse.containsMouse ? root.sakuraPink : root.slateDark
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 18 * s
                 font.bold: true
                 font.letterSpacing: 4 * s
@@ -252,7 +253,7 @@ Rectangle {
                 horizontalAlignment: TextInput.AlignHCenter
                 verticalAlignment: TextInput.AlignVCenter
                 color: root.slateDark
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 15 * s
                 font.letterSpacing: 4 * s
                 echoMode: TextInput.Password
@@ -283,7 +284,7 @@ Rectangle {
                 anchors.centerIn: parent
                 text: "PASSWORD"
                 color: root.slateMid
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 10 * s
                 font.letterSpacing: 2 * s
                 opacity: pwdInput.text.length === 0 ? 0.6 : 0
@@ -319,7 +320,7 @@ Rectangle {
             id: errText
             text: ""
             color: root.sunRed
-            font.family: pf.name
+            font.family: pfFamily
             font.pixelSize: 9 * s
             font.bold: true
             font.letterSpacing: 2 * s
@@ -356,7 +357,7 @@ Rectangle {
                         id: sessText
                         text: (sessionHelper.currentItem && sessionHelper.currentItem.sName ? sessionHelper.currentItem.sName : "SESSION").toUpperCase()
                         color: sessMouse.containsMouse ? root.sakuraPink : root.slateMid
-                        font.family: pf.name
+                        font.family: pfFamily
                         font.pixelSize: 11 * s
                         font.bold: true
                         font.letterSpacing: 1.5 * s
@@ -411,7 +412,7 @@ Rectangle {
                         Text {
                             text: modelData.label
                             color: powerMouse.containsMouse ? root.sakuraPink : root.slateMid
-                            font.family: pf.name
+                            font.family: pfFamily
                             font.pixelSize: 11 * s
                             font.bold: true
                             font.letterSpacing: 1.5 * s

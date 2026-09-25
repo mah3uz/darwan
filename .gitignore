@@ -34,3 +34,4 @@ moc_*.cpp
 ui_*.h
 CMakeLists.txt.user*
 *.pro.user*
+crates/darwan/tests/qml/generated/

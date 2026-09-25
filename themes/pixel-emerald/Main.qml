@@ -29,8 +29,9 @@ Rectangle {
     readonly property color accentRed:   "#d44040"
     readonly property color accentBlue:  "#4080d0"
 
-    FolderListModel { id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
+    FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader { id: pf; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
 
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string sName: model.name || "" } }
     ListView { id: userHelper; model: typeof userModel !== "undefined" ? userModel : null; currentIndex: root.userIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
@@ -79,7 +80,7 @@ Rectangle {
                     }
                 }
 
-                Text { anchors.centerIn: parent; text: "CHRONO INTERFACE"; color: "#ccffee"; font.family: pf.name; font.pixelSize: 7 * s; font.letterSpacing: 2 * s }
+                Text { anchors.centerIn: parent; text: "CHRONO INTERFACE"; color: "#ccffee"; font.family: pfFamily; font.pixelSize: 7 * s; font.letterSpacing: 2 * s }
 
                 Row {
                     anchors.right: parent.right; anchors.rightMargin: 8 * s
@@ -94,13 +95,13 @@ Rectangle {
                 anchors.left: parent.left; anchors.leftMargin: 12 * s
                 anchors.top: clockHeader.bottom; anchors.topMargin: 6 * s
                 text: Qt.formatTime(new Date(), "HH:mm")
-                color: root.inkDark; font.family: pf.name; font.pixelSize: 40 * s
+                color: root.inkDark; font.family: pfFamily; font.pixelSize: 40 * s
                 Timer { interval: 1000; running: true; repeat: true; onTriggered: ct.text = Qt.formatTime(new Date(), "HH:mm") }
             }
 
             Rectangle { anchors.left: parent.left; anchors.leftMargin: 12 * s; anchors.right: parent.right; anchors.rightMargin: 12 * s; anchors.bottom: parent.bottom; anchors.bottomMargin: 17 * s; height: 1 * s; color: root.emerald; opacity: 0.5 }
 
-            Text { anchors.left: parent.left; anchors.leftMargin: 13 * s; anchors.bottom: parent.bottom; anchors.bottomMargin: 7 * s; text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase(); color: root.inkMid; font.family: pf.name; font.pixelSize: 8 * s; font.letterSpacing: 1.5 * s }
+            Text { anchors.left: parent.left; anchors.leftMargin: 13 * s; anchors.bottom: parent.bottom; anchors.bottomMargin: 7 * s; text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase(); color: root.inkMid; font.family: pfFamily; font.pixelSize: 8 * s; font.letterSpacing: 1.5 * s }
 
             Row {
                 anchors.right: parent.right; anchors.rightMargin: 10 * s
@@ -132,7 +133,7 @@ Rectangle {
                 Text {
                     id: pwrTxt; anchors.centerIn: parent; text: modelData.l
                     color: pwrMouse.containsMouse ? "#ccffee" : root.inkDark
-                    font.family: pf.name; font.pixelSize: 8 * s; font.letterSpacing: 1.5 * s
+                    font.family: pfFamily; font.pixelSize: 8 * s; font.letterSpacing: 1.5 * s
                     Behavior on color { ColorAnimation { duration: 180 } }
                 }
 
@@ -182,7 +183,7 @@ Rectangle {
                     }
                 }
 
-                Text { anchors.centerIn: parent; text: "SYSTEM AUTHENTICATION"; color: "#ccffee"; font.family: pf.name; font.pixelSize: 7 * s; font.letterSpacing: 2 * s }
+                Text { anchors.centerIn: parent; text: "SYSTEM AUTHENTICATION"; color: "#ccffee"; font.family: pfFamily; font.pixelSize: 7 * s; font.letterSpacing: 2 * s }
 
                 Row {
                     anchors.right: parent.right; anchors.rightMargin: 8 * s
@@ -200,8 +201,8 @@ Rectangle {
                 height: 32 * s
 
                 Rectangle { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; width: trainerLabel.implicitWidth + 14 * s; height: 18 * s; radius: 3 * s; color: root.emerald; opacity: 0.3 }
-                Text { id: trainerLabel; text: "TRAINER"; anchors.left: parent.left; anchors.leftMargin: 7 * s; anchors.verticalCenter: parent.verticalCenter; color: root.inkMid; font.family: pf.name; font.pixelSize: 8 * s; font.letterSpacing: 1 * s }
-                Text { id: un; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "Trainer")).toUpperCase(); color: root.inkDark; font.family: pf.name; font.pixelSize: 14 * s; font.letterSpacing: 1 * s }
+                Text { id: trainerLabel; text: "TRAINER"; anchors.left: parent.left; anchors.leftMargin: 7 * s; anchors.verticalCenter: parent.verticalCenter; color: root.inkMid; font.family: pfFamily; font.pixelSize: 8 * s; font.letterSpacing: 1 * s }
+                Text { id: un; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "Trainer")).toUpperCase(); color: root.inkDark; font.family: pfFamily; font.pixelSize: 14 * s; font.letterSpacing: 1 * s }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { if (typeof userModel !== "undefined" && userModel.rowCount() > 0) root.userIndex = (root.userIndex + 1) % userModel.rowCount() } }
                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1 * s; color: root.emerald; opacity: 0.4 }
             }
@@ -214,12 +215,12 @@ Rectangle {
                 height: 40 * s
 
                 Rectangle { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; width: passkeyLabel.implicitWidth + 14 * s; height: 18 * s; radius: 3 * s; color: root.emerald; opacity: 0.3 }
-                Text { id: passkeyLabel; text: "PASSKEY"; anchors.left: parent.left; anchors.leftMargin: 7 * s; anchors.verticalCenter: parent.verticalCenter; color: root.inkMid; font.family: pf.name; font.pixelSize: 8 * s; font.letterSpacing: 1 * s }
+                Text { id: passkeyLabel; text: "PASSKEY"; anchors.left: parent.left; anchors.leftMargin: 7 * s; anchors.verticalCenter: parent.verticalCenter; color: root.inkMid; font.family: pfFamily; font.pixelSize: 8 * s; font.letterSpacing: 1 * s }
 
                 TextInput {
                     id: pwd
                     anchors.right: parent.right; width: parent.width * 0.58; height: parent.height
-                    color: root.inkDark; font.family: pf.name; font.pixelSize: 15 * s; font.letterSpacing: 4 * s
+                    color: root.inkDark; font.family: pfFamily; font.pixelSize: 15 * s; font.letterSpacing: 4 * s
                     echoMode: TextInput.Password; passwordCharacter: "●"
                     onTextEdited: err.text = ""
                     focus: true; clip: true
@@ -247,7 +248,7 @@ Rectangle {
                     MouseArea { anchors.fill: parent; onClicked: { pwd.forceActiveFocus(); pwd.wasClicked = true } }
                 }
 
-                Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: "ENTER PIN"; color: root.inkDark; opacity: pwd.text.length === 0 ? 0.28 : 0; font.family: pf.name; font.pixelSize: 9 * s; font.letterSpacing: 1 * s; Behavior on opacity { NumberAnimation { duration: 150 } } }
+                Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: "ENTER PIN"; color: root.inkDark; opacity: pwd.text.length === 0 ? 0.28 : 0; font.family: pfFamily; font.pixelSize: 9 * s; font.letterSpacing: 1 * s; Behavior on opacity { NumberAnimation { duration: 150 } } }
                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1.5 * s; color: root.gold; opacity: pwd.activeFocus ? 1 : 0.2; Behavior on opacity { NumberAnimation { duration: 200 } } }
             }
 
@@ -255,7 +256,7 @@ Rectangle {
                 width: parent.width; height: 44 * s; color: "transparent"
                 anchors.bottom: parent.bottom
 
-                Text { id: err; text: ""; anchors.left: parent.left; anchors.leftMargin: 14 * s; anchors.verticalCenter: parent.verticalCenter; color: "#d44040"; font.family: pf.name; font.pixelSize: 8 * s }
+                Text { id: err; text: ""; anchors.left: parent.left; anchors.leftMargin: 14 * s; anchors.verticalCenter: parent.verticalCenter; color: "#d44040"; font.family: pfFamily; font.pixelSize: 8 * s }
 
                 Rectangle {
                     id: loginBtn
@@ -269,7 +270,7 @@ Rectangle {
 
                     Rectangle { width: parent.width; height: parent.height; x: 2 * s; y: 2 * s; radius: parent.radius; color: "#40000000"; z: -1; visible: lbm.containsMouse }
 
-                    Text { anchors.centerIn: parent; text: "ACCESS"; color: lbm.containsMouse ? "#ccffee" : root.inkDark; font.family: pf.name; font.pixelSize: 9 * s; font.letterSpacing: 2 * s; Behavior on color { ColorAnimation { duration: 180 } } }
+                    Text { anchors.centerIn: parent; text: "ACCESS"; color: lbm.containsMouse ? "#ccffee" : root.inkDark; font.family: pfFamily; font.pixelSize: 9 * s; font.letterSpacing: 2 * s; Behavior on color { ColorAnimation { duration: 180 } } }
                     MouseArea { id: lbm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: doLogin() }
                 }
             }
@@ -324,7 +325,7 @@ Rectangle {
 
                         Text {
                             text: model.name.toUpperCase()
-                            font.family: pf.name; font.pixelSize: 9 * s
+                            font.family: pfFamily; font.pixelSize: 9 * s
                             font.letterSpacing: (isActive || hovered) ? 2 * s : 1 * s
                             color: isActive ? root.inkDark : root.inkMid
                             opacity: (isActive || hovered) ? 1.0 : 0.55
@@ -355,7 +356,7 @@ Rectangle {
             Rectangle { width: parent.width; height: parent.height; x: 3 * s; y: 4 * s; radius: parent.radius; color: "#60000000"; z: -1 }
 
             Rectangle { anchors.left: parent.left; anchors.leftMargin: 10 * s; anchors.verticalCenter: parent.verticalCenter; width: sessLabel.implicitWidth + 14 * s; height: 18 * s; radius: 3 * s; color: root.emerald; opacity: 0.3 }
-            Text { id: sessLabel; text: "SESSION"; anchors.left: parent.left; anchors.leftMargin: 17 * s; anchors.verticalCenter: parent.verticalCenter; color: root.inkMid; font.family: pf.name; font.pixelSize: 8 * s; font.letterSpacing: 1 * s }
+            Text { id: sessLabel; text: "SESSION"; anchors.left: parent.left; anchors.leftMargin: 17 * s; anchors.verticalCenter: parent.verticalCenter; color: root.inkMid; font.family: pfFamily; font.pixelSize: 8 * s; font.letterSpacing: 1 * s }
 
             Row {
                 anchors.right: parent.right; anchors.rightMargin: 10 * s
@@ -366,7 +367,7 @@ Rectangle {
                     id: sessionText
                     text: (sessionHelper.currentItem && sessionHelper.currentItem.sName ? sessionHelper.currentItem.sName : "Default").toUpperCase()
                     color: (root.sessionMenuOpen || sessMa.containsMouse) ? root.emeraldDark : root.inkDark
-                    font.family: pf.name; font.pixelSize: 11 * s
+                    font.family: pfFamily; font.pixelSize: 11 * s
                     font.letterSpacing: (root.sessionMenuOpen || sessMa.containsMouse) ? 2 * s : 1 * s
                     anchors.verticalCenter: parent.verticalCenter
                     Behavior on color { ColorAnimation { duration: 180 } }

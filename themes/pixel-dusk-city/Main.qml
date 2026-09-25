@@ -30,9 +30,13 @@ Rectangle {
 
     TextConstants { id: textConstants }
     FontLoader { id: pfReg; source: "font/PixelifySans-Bold.ttf" }
+    readonly property string pfRegFamily: pfReg.status === FontLoader.Ready ? pfReg.name : "sans-serif"
     FontLoader { id: pfMed; source: "font/PixelifySans-Bold.ttf" }
+    readonly property string pfMedFamily: pfMed.status === FontLoader.Ready ? pfMed.name : "sans-serif"
     FontLoader { id: pfSemi; source: "font/PixelifySans-Bold.ttf" }
+    readonly property string pfSemiFamily: pfSemi.status === FontLoader.Ready ? pfSemi.name : "sans-serif"
     FontLoader { id: pfBold; source: "font/PixelifySans-Bold.ttf" }
+    readonly property string pfBoldFamily: pfBold.status === FontLoader.Ready ? pfBold.name : "sans-serif"
 
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex
         visible: false; width: 100; height: 100
@@ -117,7 +121,7 @@ Rectangle {
             id: clockText
             text: Qt.formatTime(new Date(), "HH:mm")
             color: root.textWhite
-            font.family: pfBold.name; font.pixelSize: 78 * s
+            font.family: pfBoldFamily; font.pixelSize: 78 * s
             Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), "HH:mm") }
         }
         Row {
@@ -132,7 +136,7 @@ Rectangle {
             }
             Text {
                 text: Qt.formatDate(new Date(), "ddd, MMM d").toUpperCase()
-                color: root.amberSoft; font.family: pfMed.name
+                color: root.amberSoft; font.family: pfMedFamily
                 font.pixelSize: 11 * s; font.letterSpacing: 3 * s
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -157,7 +161,7 @@ Rectangle {
                 Text {
                     text: ((userHelper.currentItem && userHelper.currentItem.uName)
                           ? userHelper.currentItem.uName : (userModel.lastUser || "User")).toUpperCase()
-                    color: root.textWhite; font.family: pfBold.name; font.pixelSize: 17 * s; font.letterSpacing: 4 * s
+                    color: root.textWhite; font.family: pfBoldFamily; font.pixelSize: 17 * s; font.letterSpacing: 4 * s
                     anchors.horizontalCenter: parent.horizontalCenter
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: { var c = userModel.rowCount(); if (c > 1) root.userIndex = (root.userIndex + 1) % c } }
@@ -201,7 +205,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -1 * s
                     text: "password"
                     color: root.amberSoft
-                    font.family: pfMed.name; font.pixelSize: 14 * s; font.letterSpacing: 3 * s
+                    font.family: pfMedFamily; font.pixelSize: 14 * s; font.letterSpacing: 3 * s
                     opacity: passwordField.text.length === 0 ? 0.38 : 0
                     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
                 }
@@ -212,7 +216,7 @@ Rectangle {
                     anchors.right: submitBtn.left; anchors.rightMargin: 12 * s
                     anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -1 * s
                     color: root.textWhite
-                    font.family: pfReg.name; font.pixelSize: 14 * s; font.letterSpacing: 3 * s
+                    font.family: pfRegFamily; font.pixelSize: 14 * s; font.letterSpacing: 3 * s
                     echoMode: TextInput.Password; onTextEdited: err.text = ""; passwordCharacter: "─"
                     focus: true; clip: true
                     cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
@@ -265,7 +269,7 @@ Rectangle {
                         anchors.centerIn: parent
                         text: "LOGIN"
                         color: root.amberHot
-                        font.family: pfBold.name; font.pixelSize: 9 * s; font.letterSpacing: 2 * s
+                        font.family: pfBoldFamily; font.pixelSize: 9 * s; font.letterSpacing: 2 * s
                         opacity: passwordField.text.length > 0 ? 1.0 : 0.30
                         Behavior on opacity { NumberAnimation { duration: 200 } }
                     }
@@ -281,7 +285,7 @@ Rectangle {
             Text {
                 id: errorMessage; anchors.horizontalCenter: parent.horizontalCenter
                 text: ""; color: "#f07050"
-                font.family: pfSemi.name; font.pixelSize: 10 * s; font.letterSpacing: 2 * s
+                font.family: pfSemiFamily; font.pixelSize: 10 * s; font.letterSpacing: 2 * s
                 horizontalAlignment: Text.AlignHCenter
             }
         }
@@ -331,7 +335,7 @@ Rectangle {
                     Text {
                         id: sessionText
                         text: (sessionHelper.currentItem && sessionHelper.currentItem.sName ? sessionHelper.currentItem.sName : "Session").toUpperCase()
-                        color: root.textWhite; font.family: pfMed.name; font.pixelSize: 9 * s; font.letterSpacing: 1 * s
+                        color: root.textWhite; font.family: pfMedFamily; font.pixelSize: 9 * s; font.letterSpacing: 1 * s
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
@@ -361,7 +365,7 @@ Rectangle {
                     Text {
                         id: powerText; anchors.centerIn: parent
                         text: modelData.label; color: root.amberSoft
-                        font.family: pfMed.name; font.pixelSize: 9 * s; font.letterSpacing: 1 * s
+                        font.family: pfMedFamily; font.pixelSize: 9 * s; font.letterSpacing: 1 * s
                     }
                     MouseArea {
                         id: pm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor

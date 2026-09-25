@@ -24,8 +24,9 @@ Rectangle {
     readonly property color mCream: "#fcf8eb"
     readonly property color mOrange: "#f4a261"
 
-    FolderListModel { id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
+    FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader { id: pf; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
 
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string sName: model.name || "" } }
     ListView { id: userHelper; model: typeof userModel !== "undefined" ? userModel : null; currentIndex: root.userIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
@@ -57,7 +58,7 @@ Rectangle {
             Text {
                 id: cd
                 text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase()
-                color: root.mTeal; font.family: pf.name; font.pixelSize: 18 * s; font.letterSpacing: 6 * s
+                color: root.mTeal; font.family: pfFamily; font.pixelSize: 18 * s; font.letterSpacing: 6 * s
             }
         }
 
@@ -68,7 +69,7 @@ Rectangle {
             Text {
                 id: ct
                 text: Qt.formatTime(new Date(), "HH:mm")
-                color: root.mCream; font.family: pf.name; font.pixelSize: 96 * s
+                color: root.mCream; font.family: pfFamily; font.pixelSize: 96 * s
                 Timer { interval: 1000; running: true; repeat: true; onTriggered: ct.text = Qt.formatTime(new Date(), "HH:mm") }
             }
         }
@@ -89,7 +90,7 @@ Rectangle {
                 Text {
                     id: un
                     text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "User")).toUpperCase()
-                    color: root.mCream; font.family: pf.name; font.pixelSize: 22 * s; font.letterSpacing: 4 * s
+                    color: root.mCream; font.family: pfFamily; font.pixelSize: 22 * s; font.letterSpacing: 4 * s
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { if (typeof userModel !== "undefined" && userModel.rowCount() > 0) root.userIndex = (root.userIndex + 1) % userModel.rowCount() } }
             }
@@ -101,7 +102,7 @@ Rectangle {
                     layer.enabled: true; layer.effect: Glow { color: root.mOrange; radius: 6; spread: 0.4 }
                 }
                 TextInput {
-                    id: pwd; anchors.fill: parent; color: root.mCream; font.family: pf.name; font.pixelSize: 18 * s; font.letterSpacing: 4 * s
+                    id: pwd; anchors.fill: parent; color: root.mCream; font.family: pfFamily; font.pixelSize: 18 * s; font.letterSpacing: 4 * s
                     echoMode: TextInput.Password; onTextEdited: err.text = ""; passwordCharacter: "─"; focus: true; clip: true; horizontalAlignment: TextInput.AlignLeft; verticalAlignment: TextInput.AlignVCenter
                     cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                     selectionColor: root.mOrange
@@ -110,7 +111,7 @@ Rectangle {
                     Keys.onReturnPressed: doLogin(); Keys.onEnterPressed: doLogin()
                 }
                 Text {
-                    anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; text: "password"; color: root.mTeal; font.family: pf.name; font.pixelSize: 14 * s; font.letterSpacing: 4 * s
+                    anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; text: "password"; color: root.mTeal; font.family: pfFamily; font.pixelSize: 14 * s; font.letterSpacing: 4 * s
                     opacity: pwd.text.length === 0 ? 0.4 : 0
                     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
                 }
@@ -139,11 +140,11 @@ Rectangle {
             Item {
                 anchors.left: parent.left; width: 140 * s; height: 36 * s
                 Rectangle { anchors.fill: parent; color: sbm.containsMouse ? root.mTeal : "transparent"; border.color: root.mTeal; border.width: 1; radius: 4 * s; Behavior on color { ColorAnimation { duration: 150 } } }
-                Text { anchors.centerIn: parent; text: "LOGIN"; color: sbm.containsMouse ? "#000" : root.mCream; font.family: pf.name; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; Behavior on color { ColorAnimation { duration: 150 } } }
+                Text { anchors.centerIn: parent; text: "LOGIN"; color: sbm.containsMouse ? "#000" : root.mCream; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; Behavior on color { ColorAnimation { duration: 150 } } }
                 MouseArea { id: sbm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: doLogin() }
             }
 
-            Text { id: err; text: ""; height: 12 * s; verticalAlignment: Text.AlignBottom; color: "#ff4444"; anchors.left: parent.left; font.family: pf.name; font.pixelSize: 12 * s }
+            Text { id: err; text: ""; height: 12 * s; verticalAlignment: Text.AlignBottom; color: "#ff4444"; anchors.left: parent.left; font.family: pfFamily; font.pixelSize: 12 * s }
         }
     }
 
@@ -156,7 +157,7 @@ Rectangle {
                 visible: modelData.a === 2 ? !root.isQuickshell : true
                 width: pmt.implicitWidth + 24 * s; height: 28 * s
                 Rectangle { anchors.fill: parent; color: "transparent"; border.color: root.mTeal; border.width: 1 * s; opacity: pm.containsMouse ? 1.0 : 0.4; radius: 4 * s; Behavior on opacity { NumberAnimation { duration: 150 } } Rectangle { anchors.fill: parent; anchors.margins: 1 * s; color: modelData.a === 2 ? root.mOrange : root.mTeal; radius: 3 * s; opacity: pm.containsMouse ? 0.3 : 0; Behavior on opacity { NumberAnimation { duration: 150 } } } }
-                Text { id: pmt; anchors.centerIn: parent; text: modelData.l; color: root.mCream; font.family: pf.name; font.pixelSize: 10 * s; font.letterSpacing: 2 * s }
+                Text { id: pmt; anchors.centerIn: parent; text: modelData.l; color: root.mCream; font.family: pfFamily; font.pixelSize: 10 * s; font.letterSpacing: 2 * s }
                 MouseArea { id: pm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (modelData.a === 0) { if (typeof sddm !== "undefined") sddm.reboot() } else if (modelData.a === 1) { if (typeof sddm !== "undefined") sddm.powerOff() } else if (typeof sessionModel !== "undefined" && sessionModel.rowCount() > 0) root.sessionIndex = (root.sessionIndex + 1) % sessionModel.rowCount() } }
             }
         }

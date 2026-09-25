@@ -36,8 +36,9 @@ Item {
     onSessionPopupOpenChanged: if (sessionPopupOpen) userPopupOpen = false
 
     // Fonts
-    FolderListModel { id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
+    FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader { id: mainFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
 
     function capitalize(str) { if (!str) return ""; return str.charAt(0).toUpperCase() + str.slice(1); }
     
@@ -161,11 +162,11 @@ Item {
             anchors.centerIn: parent; anchors.verticalCenterOffset: -8 * s; spacing: 5 * s
             Text {
                 id: clockText; text: Qt.formatTime(new Date(), "HH:mm")
-                font.family: mainFont.name; font.pixelSize: 90 * s; font.weight: Font.Medium; color: "white"; font.letterSpacing: -2 * s; opacity: 0.95; anchors.horizontalCenter: parent.horizontalCenter
+                font.family: mainFontFamily; font.pixelSize: 90 * s; font.weight: Font.Medium; color: "white"; font.letterSpacing: -2 * s; opacity: 0.95; anchors.horizontalCenter: parent.horizontalCenter
                 Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), "HH:mm") }
             }
             Text {
-                text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase(); font.family: mainFont.name; font.pixelSize: 15 * s; color: root.accentColor
+                text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase(); font.family: mainFontFamily; font.pixelSize: 15 * s; color: root.accentColor
                 font.letterSpacing: 4 * s; horizontalAlignment: Text.AlignHCenter; opacity: 0.7; anchors.horizontalCenter: parent.horizontalCenter
             }
         }
@@ -205,13 +206,13 @@ Item {
                 }
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
-                    Text { text: "WELCOME BACK"; font.family: mainFont.name; font.pixelSize: 12 * s; color: "white"; opacity: 0.5; font.letterSpacing: 2 * s }
-                    Text { text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (typeof userModel !== "undefined" && userModel.lastUser ? userModel.lastUser : "USER")).toUpperCase(); font.family: mainFont.name; font.pixelSize: 22 * s; font.weight: Font.Bold; color: "white"; font.letterSpacing: 1 * s }
+                    Text { text: "WELCOME BACK"; font.family: mainFontFamily; font.pixelSize: 12 * s; color: "white"; opacity: 0.5; font.letterSpacing: 2 * s }
+                    Text { text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (typeof userModel !== "undefined" && userModel.lastUser ? userModel.lastUser : "USER")).toUpperCase(); font.family: mainFontFamily; font.pixelSize: 22 * s; font.weight: Font.Bold; color: "white"; font.letterSpacing: 1 * s }
                 }
             }
             Column {
                 anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 20 * s; visible: opacity > 0.01; opacity: userMorpher.morphRatio; spacing: 15 * s
-                Text { text: "ACCOUNT"; font.family: mainFont.name; font.pixelSize: 13 * s; color: root.accentColor; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 3 * s; opacity: 0.8 }
+                Text { text: "ACCOUNT"; font.family: mainFontFamily; font.pixelSize: 13 * s; color: root.accentColor; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 3 * s; opacity: 0.8 }
                 ListView {
                     width: parent.width; height: 120 * s; model: typeof userModel !== "undefined" ? userModel : null; clip: true; spacing: 5 * s
                     delegate: Item {
@@ -219,12 +220,12 @@ Item {
                         Rectangle { anchors.fill: parent; radius: 10 * s; color: "#1affffff"; visible: innerUserMouse.containsMouse || index === root.userIndex; opacity: (innerUserMouse.containsMouse || index === root.userIndex) ? 1.0 : 0.0 }
                         Row { anchors.centerIn: parent; spacing: 10 * s
                             Rectangle { width: 4 * s; height: 4 * s; radius: 2 * s; color: root.accentColor; anchors.verticalCenter: parent.verticalCenter; visible: index === root.userIndex }
-                            Text { text: (model.realName || model.name || "USER").toUpperCase(); font.family: mainFont.name; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; color: index === root.userIndex ? root.accentColor : "white" }
+                            Text { text: (model.realName || model.name || "USER").toUpperCase(); font.family: mainFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; color: index === root.userIndex ? root.accentColor : "white" }
                         }
                         MouseArea { id: innerUserMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { root.userIndex = index; root.userPopupOpen = false } }
                     }
                 }
-                Text { text: "ESCAPE"; font.family: mainFont.name; font.pixelSize: 9 * s; color: "white"; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 3 * s; opacity: 0.4; MouseArea { anchors.fill: parent; onClicked: root.userPopupOpen = false; cursorShape: Qt.PointingHandCursor } }
+                Text { text: "ESCAPE"; font.family: mainFontFamily; font.pixelSize: 9 * s; color: "white"; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 3 * s; opacity: 0.4; MouseArea { anchors.fill: parent; onClicked: root.userPopupOpen = false; cursorShape: Qt.PointingHandCursor } }
             }
             MouseArea { id: userMouse; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true; visible: !root.userPopupOpen; onClicked: root.userPopupOpen = true; onPressed: userMorpher.scale = 0.98; onReleased: userMorpher.scale = 1.0 }
             Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
@@ -246,7 +247,7 @@ Item {
                 id: passInput; anchors.fill: parent; anchors.leftMargin: 25 * s; anchors.rightMargin: 25 * s
                 anchors.verticalCenterOffset: 2 * s
                 verticalAlignment: TextInput.AlignVCenter; echoMode: TextInput.Password; passwordCharacter: "●"
-                font.family: mainFont.name; font.pixelSize: 22 * s; color: root.accentColor; clip: true; focus: true; selectionColor: "white"
+                font.family: mainFontFamily; font.pixelSize: 22 * s; color: root.accentColor; clip: true; focus: true; selectionColor: "white"
                 font.letterSpacing: 4 * s; onAccepted: root.login()
                 onTextEdited: errText.text = ""
                 property bool wasClicked: false
@@ -263,7 +264,7 @@ Item {
                     anchors.verticalCenterOffset: 25 * s
                     text: ""
                     color: "#ff6666"
-                    font.family: mainFont.name
+                    font.family: mainFontFamily
                     font.pixelSize: 9 * s
                     font.letterSpacing: 2 * s
                 }
@@ -324,21 +325,21 @@ Item {
                 anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter; anchors.topMargin: 27 * s
                 visible: sessionMorpher.morphRatio < 0.99; opacity: (1.0 - sessionMorpher.morphRatio)
                 text: (sessionHelper.currentItem && sessionHelper.currentItem.sName ? sessionHelper.currentItem.sName : "SESSION").toUpperCase()
-                font.family: mainFont.name; font.pixelSize: 15 * s; font.weight: Font.DemiBold; color: root.accentColor; font.letterSpacing: 2 * s
+                font.family: mainFontFamily; font.pixelSize: 15 * s; font.weight: Font.DemiBold; color: root.accentColor; font.letterSpacing: 2 * s
             }
             Column {
                 anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 20 * s; visible: opacity > 0.01; opacity: sessionMorpher.morphRatio; spacing: 15 * s
-                Text { text: "SESSION"; font.family: mainFont.name; font.pixelSize: 13 * s; color: root.accentColor; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 3 * s; opacity: 0.8 }
+                Text { text: "SESSION"; font.family: mainFontFamily; font.pixelSize: 13 * s; color: root.accentColor; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 3 * s; opacity: 0.8 }
                 ListView {
                     width: parent.width; height: 120 * s; model: typeof sessionModel !== "undefined" ? sessionModel : null; clip: true; spacing: 5 * s
                     delegate: Item {
                         width: parent.width; height: 35 * s
                         Rectangle { anchors.fill: parent; radius: 10 * s; color: "#1affffff"; visible: innerSessMouse.containsMouse || index === root.sessionIndex; opacity: (innerSessMouse.containsMouse || index === root.sessionIndex) ? 1.0 : 0.0 }
-                        Text { anchors.centerIn: parent; text: (model.name || "UNNAMED").toUpperCase(); font.family: mainFont.name; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; color: index === root.sessionIndex ? root.accentColor : "white" }
+                        Text { anchors.centerIn: parent; text: (model.name || "UNNAMED").toUpperCase(); font.family: mainFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; color: index === root.sessionIndex ? root.accentColor : "white" }
                         MouseArea { id: innerSessMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { root.sessionIndex = index; root.sessionPopupOpen = false } }
                     }
                 }
-                Text { text: "ESCAPE"; font.family: mainFont.name; font.pixelSize: 9 * s; color: "white"; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 4 * s; opacity: 0.4; MouseArea { anchors.fill: parent; onClicked: root.sessionPopupOpen = false; cursorShape: Qt.PointingHandCursor } }
+                Text { text: "ESCAPE"; font.family: mainFontFamily; font.pixelSize: 9 * s; color: "white"; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 4 * s; opacity: 0.4; MouseArea { anchors.fill: parent; onClicked: root.sessionPopupOpen = false; cursorShape: Qt.PointingHandCursor } }
             }
             MouseArea { id: sessMouse; anchors.fill: parent; hoverEnabled: true; visible: !root.sessionPopupOpen; onClicked: root.sessionPopupOpen = true; cursorShape: Qt.PointingHandCursor; onPressed: sessionMorpher.scale = 0.98; onReleased: sessionMorpher.scale = 1.0 }
             Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
@@ -351,13 +352,13 @@ Item {
             Behavior on opacity { NumberAnimation { duration: 400 } }
             Item { id: rebootBtn; x:0; y:0; width: (parent.width / 2) - 10 * s; height: 50 * s; layer.enabled: true; layer.effect: DropShadow { transparentBorder: true; color: "#35000000"; radius: 25*s; verticalOffset: 8 * s }
                 LiquidGlass { glassRadius: 18 * s; blurBrightness: restMouse.containsMouse ? 0.20 : 0.10; glassTint: "#30101a10"; topRimColor: "#ccffffff" }
-                Text { anchors.centerIn: parent; text: "REBOOT"; font.family: mainFont.name; font.pixelSize: 15 * s; font.weight: Font.DemiBold; color: "white"; opacity: restMouse.containsMouse ? 1.0 : 0.8 }
+                Text { anchors.centerIn: parent; text: "REBOOT"; font.family: mainFontFamily; font.pixelSize: 15 * s; font.weight: Font.DemiBold; color: "white"; opacity: restMouse.containsMouse ? 1.0 : 0.8 }
                 MouseArea { id: restMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof sddm !== "undefined") sddm.reboot() } cursorShape: Qt.PointingHandCursor; onPressed: rebootBtn.scale = 0.98; onReleased: rebootBtn.scale = 1.0 }
                 Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             }
             Item { id: powerBtn; x:0; y:0; width: (parent.width / 2) - 10 * s; height: 50 * s; layer.enabled: true; layer.effect: DropShadow { transparentBorder: true; color: "#35000000"; radius: 25*s; verticalOffset: 8 * s }
                 LiquidGlass { glassRadius: 18 * s; blurBrightness: shutMouse.containsMouse ? 0.20 : 0.10; glassTint: "#30101a10"; topRimColor: "#ccffffff" }
-                Text { anchors.centerIn: parent; text: "POWER"; font.family: mainFont.name; font.pixelSize: 15 * s; font.weight: Font.DemiBold; color: "white"; opacity: shutMouse.containsMouse ? 1.0 : 0.8 }
+                Text { anchors.centerIn: parent; text: "POWER"; font.family: mainFontFamily; font.pixelSize: 15 * s; font.weight: Font.DemiBold; color: "white"; opacity: shutMouse.containsMouse ? 1.0 : 0.8 }
                 MouseArea { id: shutMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof sddm !== "undefined") sddm.powerOff() } cursorShape: Qt.PointingHandCursor; onPressed: powerBtn.scale = 0.98; onReleased: powerBtn.scale = 1.0 }
                 Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             }

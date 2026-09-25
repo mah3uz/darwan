@@ -28,7 +28,9 @@ Rectangle {
     property real ui3: 0
     property string errorMessage: ""
 
-    FontLoader { id: pfDot; source: "font/NDot55.otf" }
+    FolderListModel { id: dotFontFile; showDirs: false; folder: Qt.resolvedUrl("font"); nameFilters: ["NDot55.otf"] }
+    FontLoader { id: pfDot; source: dotFontFile.count > 0 ? "font/NDot55.otf" : "" }
+    readonly property string pfDotFamily: pfDot.status === FontLoader.Ready ? pfDot.name : "monospace"
     readonly property string sansFont: "Roboto, Inter, sans-serif"
 
     ListView {
@@ -117,7 +119,7 @@ Rectangle {
         anchors.left: parent.left
         anchors.margins: 40 * s
         text: "AUTHENTICATE"
-        font.family: pfDot.name
+        font.family: pfDotFamily
         font.pixelSize: 24 * s
         color: "#111111"
         opacity: root.ui1
@@ -162,7 +164,7 @@ Rectangle {
                     id: hourText
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Qt.formatTime(new Date(), "hh")
-                    font.family: pfDot.name
+                    font.family: pfDotFamily
                     font.pixelSize: 110 * s
                     font.letterSpacing: 4 * s
                     color: "#ffffff"
@@ -173,7 +175,7 @@ Rectangle {
                     id: minText
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Qt.formatTime(new Date(), "mm")
-                    font.family: pfDot.name
+                    font.family: pfDotFamily
                     font.pixelSize: 110 * s
                     font.letterSpacing: 4 * s
                     color: "#ea1821"
@@ -248,7 +250,7 @@ Rectangle {
                         
                         Text {
                             text: "•"
-                            font.family: pfDot.source !== "" ? pfDot.name : root.sansFont
+                            font.family: pfDot.status === FontLoader.Ready ? pfDot.name : root.sansFont
                             font.pixelSize: 14 * s
                             color: userMouse.containsMouse ? "#ffffff" : "#ea1821"
                             Behavior on color { ColorAnimation { duration: 150 } }
@@ -258,7 +260,7 @@ Rectangle {
                         Text {
                             id: userNameText
                             text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "USER")).toUpperCase()
-                            font.family: pfDot.source !== "" ? pfDot.name : root.sansFont
+                            font.family: pfDot.status === FontLoader.Ready ? pfDot.name : root.sansFont
                             font.pixelSize: 16 * s
                             font.letterSpacing: 1.5 * s
                             color: "#ffffff"
@@ -267,7 +269,7 @@ Rectangle {
 
                         Text {
                             text: "•"
-                            font.family: pfDot.source !== "" ? pfDot.name : root.sansFont
+                            font.family: pfDot.status === FontLoader.Ready ? pfDot.name : root.sansFont
                             font.pixelSize: 14 * s
                             color: userMouse.containsMouse ? "#ffffff" : "#ea1821"
                             Behavior on color { ColorAnimation { duration: 150 } }
@@ -324,7 +326,7 @@ Rectangle {
                         Text {
                             anchors.centerIn: parent
                             text: root.errorMessage !== "" ? root.errorMessage : "PASSWORD"
-                            font.family: pfDot.source !== "" ? pfDot.name : root.sansFont
+                            font.family: pfDot.status === FontLoader.Ready ? pfDot.name : root.sansFont
                             font.pixelSize: 11 * s
                             font.letterSpacing: 1 * s
                             color: root.errorMessage !== "" ? "#ea1821" : "#888888"
@@ -393,7 +395,7 @@ Rectangle {
                         }
                         Text {
                             text: "→"
-                            font.family: pfDot.source !== "" ? pfDot.name : root.sansFont
+                            font.family: pfDot.status === FontLoader.Ready ? pfDot.name : root.sansFont
                             font.pixelSize: 16 * s
                             color: loginMouse.containsMouse ? "#ffffff" : "#111111"
                             Behavior on color { ColorAnimation { duration: 150 } }
@@ -446,7 +448,7 @@ Rectangle {
                         spacing: 2 * s
                         Text {
                             text: "P"
-                            font.family: pfDot.name
+                            font.family: pfDotFamily
                             font.pixelSize: 36 * s
                             color: "#ffffff"
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -488,7 +490,7 @@ Rectangle {
                         width: parent.width - 16 * s
                         Text {
                             text: "S"
-                            font.family: pfDot.name
+                            font.family: pfDotFamily
                             font.pixelSize: 36 * s
                             color: sessionMouse.containsMouse ? "#111111" : "#ffffff"
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -538,7 +540,7 @@ Rectangle {
                         spacing: 2 * s
                         Text {
                             text: "R"
-                            font.family: pfDot.name
+                            font.family: pfDotFamily
                             font.pixelSize: 36 * s
                             color: rebootMouse.containsMouse ? "#111111" : "#ffffff"
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -581,7 +583,7 @@ Rectangle {
                         spacing: 2 * s
                         Text {
                             text: "Z"
-                            font.family: pfDot.name
+                            font.family: pfDotFamily
                             font.pixelSize: 36 * s
                             color: "#ea1821"
                             anchors.horizontalCenter: parent.horizontalCenter

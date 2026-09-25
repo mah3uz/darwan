@@ -32,8 +32,9 @@ Item {
     property bool userMenuOpen: false
 
     // Fonts
-    FolderListModel { id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
+    FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader      { id: mainFont;  source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
 
     // Helpers
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 1; height: 1; z: -100; delegate: Item { property string sName: model.name || "" } }
@@ -131,7 +132,7 @@ Item {
             Text {
                 id: clockText
                 text: Qt.formatTime(new Date(), "HH:mm")
-                font.family: mainFont.name
+                font.family: mainFontFamily
                 font.pixelSize: 104 * s
                 font.weight: Font.DemiBold
                 color: root.textPrimary
@@ -153,7 +154,7 @@ Item {
             Text {
                 id: dateText
                 text: Qt.formatDate(new Date(), "dddd / MMMM d").toUpperCase()
-                font.family: mainFont.name
+                font.family: mainFontFamily
                 font.pixelSize: 14 * s
                 font.letterSpacing: 8 * s
                 color: root.textSecondary
@@ -179,11 +180,11 @@ Item {
                 
                 Column {
                     spacing: 4 * s; width: parent.width
-                    Text { text: "CURRENT OPERATIVE"; font.family: mainFont.name; font.pixelSize: 10 * s; font.letterSpacing: 2 * s; color: root.textSecondary; opacity: 0.55 }
+                    Text { text: "CURRENT OPERATIVE"; font.family: mainFontFamily; font.pixelSize: 10 * s; font.letterSpacing: 2 * s; color: root.textSecondary; opacity: 0.55 }
                     Text {
                         id: userNameDisplay
                         text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (typeof userModel !== "undefined" && userModel.lastUser ? userModel.lastUser : "UNAUTHENTICATED")).toUpperCase()
-                        font.family: mainFont.name
+                        font.family: mainFontFamily
                         font.pixelSize: 40 * s
                         font.weight: Font.Bold
                         font.letterSpacing: 1 * s
@@ -215,7 +216,7 @@ Item {
                         anchors.rightMargin: 80 * s
                         verticalAlignment: TextInput.AlignVCenter
                         echoMode: TextInput.Password; passwordCharacter: "·"
-                        font.family: mainFont.name
+                        font.family: mainFontFamily
                         font.pixelSize: 22 * s
                         font.letterSpacing: 10 * s
                         color: root.textPrimary
@@ -233,7 +234,7 @@ Item {
                         Text { 
                             anchors.verticalCenter: parent.verticalCenter
                             text: "ENTER ACCESS KEY"
-                            font.family: mainFont.name
+                            font.family: mainFontFamily
                             font.pixelSize: 12 * s
                             font.letterSpacing: 4 * s
                             color: root.textSecondary
@@ -264,7 +265,7 @@ Item {
                     Text {
                         id: enterBtn
                         anchors.right: parent.right; anchors.rightMargin: 15 * s; anchors.verticalCenter: parent.verticalCenter
-                        text: "GO"; font.family: mainFont.name; font.pixelSize: 11 * s; font.letterSpacing: 3 * s; font.weight: Font.Bold
+                        text: "GO"; font.family: mainFontFamily; font.pixelSize: 11 * s; font.letterSpacing: 3 * s; font.weight: Font.Bold
                         color: eMa.containsMouse ? root.accent : root.textPrimary
                         opacity: passInput.text.length > 0 ? 0.8 : 0.0
                         scale: passInput.text.length > 0 ? 1.0 : 0.8
@@ -287,7 +288,7 @@ Item {
                     verticalAlignment: Text.AlignBottom
                     text: ""
                     color: "#f06060"
-                    font.family: mainFont.name
+                    font.family: mainFontFamily
                     font.pixelSize: 12 * s
                     font.letterSpacing: 2 * s
                 }
@@ -348,7 +349,7 @@ Item {
                             Rectangle { width: 3 * s; height: 10 * s; color: root.accent; radius: 1; anchors.verticalCenter: parent.verticalCenter }
                             Text { 
                                 text: "OPERATIVE DIRECTORY // 0" + (typeof userModel !== "undefined" ? userModel.rowCount() : "0")
-                                font.family: mainFont.name; font.pixelSize: 8 * s; font.letterSpacing: 3 * s; font.weight: Font.DemiBold
+                                font.family: mainFontFamily; font.pixelSize: 8 * s; font.letterSpacing: 3 * s; font.weight: Font.DemiBold
                                 color: root.accent; opacity: 0.8
                             }
                         }
@@ -396,7 +397,7 @@ Item {
 
                                     Text {
                                         text: (model.realName || model.name || "UNKNOWN").toUpperCase()
-                                        font.family: mainFont.name; font.pixelSize: 14 * s; font.letterSpacing: 2 * s
+                                        font.family: mainFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s
                                         color: (index === root.userIndex) ? root.accent : (itemMa.containsMouse ? root.textPrimary : root.textSecondary)
                                         anchors.verticalCenter: parent.verticalCenter
                                         Behavior on color { ColorAnimation { duration: 250 } }
@@ -429,7 +430,7 @@ Item {
                     model: [ { label: "SHUTDOWN", act: 1 }, { label: "REBOOT", act: 0 } ]
                     delegate: Text {
                         text: modelData.label
-                        font.family: mainFont.name
+                        font.family: mainFontFamily
                         font.pixelSize: 14 * s
                         font.letterSpacing: 2 * s
                         anchors.verticalCenter: parent.verticalCenter
@@ -469,7 +470,7 @@ Item {
                     Text {
                         id: sessText
                         text: (sessionHelper.currentItem && sessionHelper.currentItem.sName ? sessionHelper.currentItem.sName : "SESSION").toUpperCase()
-                        font.family: mainFont.name
+                        font.family: mainFontFamily
                         font.pixelSize: 14 * s
                         font.letterSpacing: 2 * s
                         anchors.verticalCenter: parent.verticalCenter

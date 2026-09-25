@@ -91,8 +91,9 @@ Rectangle {
     readonly property real smoothMinAngle: -((localTimeMS % 3600000) / 3600000.0) * 360.0 - windupOffset * 5.0
 
     // Fonts
-    FolderListModel { id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
+    FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader { id: outfitFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string outfitFontFamily: outfitFont.status === FontLoader.Ready ? outfitFont.name : "sans-serif"
     TextConstants { id: textConstants }
 
     // Models
@@ -169,7 +170,7 @@ Rectangle {
                         visible: isMajor; property real nRad: clockContainer.minR - 35 * s
                         x: clockContainer.cx + nRad * Math.cos(disp) - width/2
                         y: clockContainer.cy + nRad * Math.sin(disp) - height/2
-                        text: String(index).padStart(2, '0'); font.family: outfitFont.name; font.pixelSize: 22 * s; font.weight: spotlight > 0.5 ? Font.Bold : Font.Normal
+                        text: String(index).padStart(2, '0'); font.family: outfitFontFamily; font.pixelSize: 22 * s; font.weight: spotlight > 0.5 ? Font.Bold : Font.Normal
                         color: isLight ? Qt.rgba(0, 0, 0, spotlight > 0 ? (0.6 + 0.4 * spotlight) : 0.6) : Qt.rgba(1, 1, 1, spotlight > 0 ? (0.4 + spotlight * 0.6) : 0.25)
                         rotation: disp * 180 / Math.PI; transformOrigin: Item.Center
                         antialiasing: true
@@ -199,7 +200,7 @@ Rectangle {
                         visible: isMajor; property real nRad: clockContainer.secR - 30 * s
                         x: clockContainer.cx + nRad * Math.cos(disp) - width/2
                         y: clockContainer.cy + nRad * Math.sin(disp) - height/2
-                        text: String(index).padStart(2, '0'); font.family: outfitFont.name; font.pixelSize: 16 * s; font.weight: spotlight > 0.5 ? Font.Bold : Font.Normal
+                        text: String(index).padStart(2, '0'); font.family: outfitFontFamily; font.pixelSize: 16 * s; font.weight: spotlight > 0.5 ? Font.Bold : Font.Normal
                         color: isLight ? Qt.rgba(0, 0, 0, spotlight > 0 ? (0.6 + 0.4 * spotlight) : 0.6) : Qt.rgba(1, 1, 1, spotlight > 0 ? (0.4 + spotlight * 0.6) : 0.25)
                         rotation: disp * 180 / Math.PI; transformOrigin: Item.Center
                         antialiasing: true
@@ -209,12 +210,12 @@ Rectangle {
 
             Text {
                 anchors.right: indicatorPill.left; anchors.rightMargin: 40 * s; anchors.verticalCenter: parent.verticalCenter
-                text: String(root.curH % 12 || 12).padStart(2, '0'); font.family: outfitFont.name; font.pixelSize: 110 * s; font.weight: Font.Black; color: root.mainText
+                text: String(root.curH % 12 || 12).padStart(2, '0'); font.family: outfitFontFamily; font.pixelSize: 110 * s; font.weight: Font.Black; color: root.mainText
             }
             Column {
                 anchors.left: indicatorPill.right; anchors.leftMargin: 110 * s; anchors.verticalCenter: parent.verticalCenter; spacing: 5 * s
-                Text { text: Qt.formatDate(new Date(), "dd MMM yyyy").toUpperCase(); font.family: outfitFont.name; font.pixelSize: 13 * s; font.letterSpacing: 4 * s; color: root.subColor }
-                Text { text: Qt.formatDate(new Date(), "dddd").toUpperCase(); font.family: outfitFont.name; font.pixelSize: 18 * s; font.letterSpacing: 8 * s; font.weight: Font.Bold; color: root.mainText }
+                Text { text: Qt.formatDate(new Date(), "dd MMM yyyy").toUpperCase(); font.family: outfitFontFamily; font.pixelSize: 13 * s; font.letterSpacing: 4 * s; color: root.subColor }
+                Text { text: Qt.formatDate(new Date(), "dddd").toUpperCase(); font.family: outfitFontFamily; font.pixelSize: 18 * s; font.letterSpacing: 8 * s; font.weight: Font.Bold; color: root.mainText }
             }
         }
     }
@@ -246,7 +247,7 @@ Rectangle {
                     delegate: Item {
                         width: 260 * s; height: 26 * s; property bool itemHover: uItemMa.containsMouse
                         Text {
-                            id: uItemTxt; text: (model.realName || model.name || "").toUpperCase(); font.family: outfitFont.name; font.pixelSize: 13 * s; font.letterSpacing: 2 * s; color: (root.userIndex === index || itemHover) ? root.mainText : root.userItemInactive; anchors.right: parent.right; anchors.rightMargin: itemHover ? 30 * s : 10 * s; anchors.verticalCenter: parent.verticalCenter; Behavior on anchors.rightMargin { NumberAnimation { duration: 200 } }
+                            id: uItemTxt; text: (model.realName || model.name || "").toUpperCase(); font.family: outfitFontFamily; font.pixelSize: 13 * s; font.letterSpacing: 2 * s; color: (root.userIndex === index || itemHover) ? root.mainText : root.userItemInactive; anchors.right: parent.right; anchors.rightMargin: itemHover ? 30 * s : 10 * s; anchors.verticalCenter: parent.verticalCenter; Behavior on anchors.rightMargin { NumberAnimation { duration: 200 } }
                         }
                         Text { text: "✦"; anchors.left: uItemTxt.right; anchors.leftMargin: 8 * s; anchors.verticalCenter: parent.verticalCenter; color: root.mainText; opacity: itemHover ? 1.0 : 0; font.pixelSize: 10 * s; Behavior on opacity { NumberAnimation { duration: 200 } } }
                         MouseArea { id: uItemMa; anchors.fill: parent; hoverEnabled: true; onClicked: { root.userIndex = index; root.userMenuOpen = false } }
@@ -262,7 +263,7 @@ Rectangle {
                 Text {
                     id: userNameDisp; anchors.right: parent.right; anchors.rightMargin: (uMa.containsMouse || root.userMenuOpen) ? 25 * s : 0
                     text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : ((typeof userModel !== "undefined" && userModel.lastUser) ? capitalizeFirst(userModel.lastUser) : "USER")).toUpperCase()
-                    font.family: outfitFont.name; font.pixelSize: 18 * s; font.weight: Font.Bold; font.letterSpacing: 8 * s; color: (uMa.containsMouse || root.userMenuOpen) ? root.mainText : root.dimText; Behavior on color { ColorAnimation { duration: 200 } } Behavior on anchors.rightMargin { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                    font.family: outfitFontFamily; font.pixelSize: 18 * s; font.weight: Font.Bold; font.letterSpacing: 8 * s; color: (uMa.containsMouse || root.userMenuOpen) ? root.mainText : root.dimText; Behavior on color { ColorAnimation { duration: 200 } } Behavior on anchors.rightMargin { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
                 }
                 Text { text: "✦"; anchors.left: userNameDisp.right; anchors.leftMargin: 8 * s; anchors.verticalCenter: userNameDisp.verticalCenter; color: root.mainText; opacity: (uMa.containsMouse || root.userMenuOpen) ? 1.0 : 0; font.pixelSize: 12 * s; Behavior on opacity { NumberAnimation { duration: 200 } } }
                 MouseArea { id: uMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { root.userMenuOpen = !root.userMenuOpen } }
@@ -270,9 +271,9 @@ Rectangle {
             Item {
                 width: parent.width; height: 30 * s
                 TextInput {
-                    id: passInput; anchors.fill: parent; echoMode: TextInput.Password; passwordCharacter: "✦"; color: root.dimText; font.family: outfitFont.name; font.pixelSize: 14 * s; font.letterSpacing: 10 * s; horizontalAlignment: TextInput.AlignRight; verticalAlignment: TextInput.AlignVCenter; focus: true; property bool wasClicked: false; cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
+                    id: passInput; anchors.fill: parent; echoMode: TextInput.Password; passwordCharacter: "✦"; color: root.dimText; font.family: outfitFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 10 * s; horizontalAlignment: TextInput.AlignRight; verticalAlignment: TextInput.AlignVCenter; focus: true; property bool wasClicked: false; cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                     Keys.onReturnPressed: startLoginSequence()
-                    Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: "WAITING FOR KEY"; font.family: outfitFont.name; font.pixelSize: 10 * s; font.letterSpacing: 4 * s; color: root.inputWaitColor; opacity: passInput.text.length === 0 ? 0.4 : 0; Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } } }
+                    Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: "WAITING FOR KEY"; font.family: outfitFontFamily; font.pixelSize: 10 * s; font.letterSpacing: 4 * s; color: root.inputWaitColor; opacity: passInput.text.length === 0 ? 0.4 : 0; Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } } }
                     Rectangle {
                         id: needleCursor; width: 1.5 * s; height: 12 * s; color: root.mainText; anchors.verticalCenter: parent.verticalCenter; x: passInput.cursorRectangle.x; visible: passInput.focus && (passInput.text.length > 0 || passInput.wasClicked)
                         SequentialAnimation { loops: Animation.Infinite; running: needleCursor.visible; NumberAnimation { target: needleCursor; property: "opacity"; from: 1; to: 0.1; duration: 450 } NumberAnimation { target: needleCursor; property: "opacity"; from: 0.1; to: 1; duration: 450 } }
@@ -283,12 +284,12 @@ Rectangle {
             Item {
                 width: parent.width; height: 40 * s
                 Text {
-                    id: loginBtn; anchors.right: parent.right; anchors.rightMargin: btnMa.containsMouse ? 25 * s : 0; text: "ENTER KEY"; font.family: outfitFont.name; font.pixelSize: 11 * s; font.letterSpacing: 4 * s; font.weight: Font.Bold; color: passInput.text.length > 0 ? (btnMa.containsMouse ? root.mainText : root.dimText) : "transparent"; opacity: passInput.text.length > 0 ? 1.0 : 0; Behavior on anchors.rightMargin { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                    id: loginBtn; anchors.right: parent.right; anchors.rightMargin: btnMa.containsMouse ? 25 * s : 0; text: "ENTER KEY"; font.family: outfitFontFamily; font.pixelSize: 11 * s; font.letterSpacing: 4 * s; font.weight: Font.Bold; color: passInput.text.length > 0 ? (btnMa.containsMouse ? root.mainText : root.dimText) : "transparent"; opacity: passInput.text.length > 0 ? 1.0 : 0; Behavior on anchors.rightMargin { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
                 }
                 Text { text: "✦"; anchors.left: loginBtn.right; anchors.leftMargin: 8 * s; anchors.verticalCenter: loginBtn.verticalCenter; color: root.mainText; opacity: (btnMa.containsMouse && passInput.text.length > 0) ? 1.0 : 0; font.pixelSize: 10 * s; Behavior on opacity { NumberAnimation { duration: 200 } } }
                 MouseArea { id: btnMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { startLoginSequence() } }
             }
-            Text { id: errText; width: parent.width; height: 15 * s; verticalAlignment: Text.AlignBottom; horizontalAlignment: Text.AlignRight; text: ""; color: "#ff4444"; font.family: outfitFont.name; font.pixelSize: 10 * s; font.letterSpacing: 2 * s }
+            Text { id: errText; width: parent.width; height: 15 * s; verticalAlignment: Text.AlignBottom; horizontalAlignment: Text.AlignRight; text: ""; color: "#ff4444"; font.family: outfitFontFamily; font.pixelSize: 10 * s; font.letterSpacing: 2 * s }
         }
     }
 
@@ -318,7 +319,7 @@ Rectangle {
     }
     component CwAction: Item {
         id: actItem; width: actTxt.width + 20 * s; height: 15 * s; property string label: ""; signal clicked()
-        Text { id: actTxt; anchors.right: parent.right; anchors.rightMargin: actM.containsMouse ? 15 * s : 0; text: label.toUpperCase(); color: actM.containsMouse ? root.mainText : root.dimText; font.family: outfitFont.name; font.pixelSize: 10 * s; font.letterSpacing: 3 * s; Behavior on color { ColorAnimation { duration: 200 } } Behavior on anchors.rightMargin { NumberAnimation { duration: 200 } } }
+        Text { id: actTxt; anchors.right: parent.right; anchors.rightMargin: actM.containsMouse ? 15 * s : 0; text: label.toUpperCase(); color: actM.containsMouse ? root.mainText : root.dimText; font.family: outfitFontFamily; font.pixelSize: 10 * s; font.letterSpacing: 3 * s; Behavior on color { ColorAnimation { duration: 200 } } Behavior on anchors.rightMargin { NumberAnimation { duration: 200 } } }
         Text { text: "✦"; anchors.left: actTxt.right; anchors.leftMargin: 4 * s; anchors.verticalCenter: actTxt.verticalCenter; color: root.mainText; opacity: actM.containsMouse ? 1.0 : 0; font.pixelSize: 8 * s; Behavior on opacity { NumberAnimation { duration: 200 } } }
         MouseArea { id: actM; anchors.fill: parent; hoverEnabled: true; onClicked: { actItem.clicked() } cursorShape: Qt.PointingHandCursor }
     }

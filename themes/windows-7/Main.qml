@@ -26,7 +26,7 @@ Rectangle {
 
     TextConstants { id: textConstants }
 
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
@@ -157,7 +157,7 @@ Rectangle {
                 id: sessionPill; width: sessionPillText.implicitWidth + 24; height: 24 * s; anchors.verticalCenter: parent.verticalCenter
                 Rectangle { anchors.fill: parent; radius: 3 * s; color: "transparent"; border.color: sessionPillMouse.containsMouse ? "#80b0ccee" : "#40607888"; border.width: 1 * s }
                 Rectangle { anchors.fill: parent; anchors.margins: 1 * s; radius: 2 * s; gradient: Gradient { GradientStop { position: 0.0; color: sessionPillMouse.containsMouse ? "#88c8e0ff" : "#60a0c4e8" } GradientStop { position: 0.5; color: sessionPillMouse.containsMouse ? "#666090b4" : "#404870a0" } GradientStop { position: 1.0; color: sessionPillMouse.containsMouse ? "#886090b8" : "#505888b0" } } }
-                Text { id: sessionPillText; anchors.centerIn: parent; text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0) ? sessionHelper.currentItem.sName : "Session"; font.family: root.customFontName; font.pixelSize: 12 * s; color: "white" }
+                Text { id: sessionPillText; anchors.centerIn: parent; text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0 && sessionHelper.currentItem) ? sessionHelper.currentItem.sName : "Session"; font.family: root.customFontName; font.pixelSize: 12 * s; color: "white" }
                 MouseArea { id: sessionPillMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (typeof sessionModel !== "undefined" && sessionModel.rowCount() > 0) root.sessionIndex = (root.sessionIndex + 1) % sessionModel.rowCount() } }
             }
         }

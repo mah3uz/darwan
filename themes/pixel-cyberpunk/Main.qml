@@ -23,7 +23,7 @@ Rectangle {
     readonly property color metalDark: "#0b151f"
     readonly property color darkTeal: "#132c38"
 
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
@@ -33,6 +33,7 @@ Rectangle {
         id: pf
         source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : ""
     }
+    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
 
     ListView {
         id: sessionHelper
@@ -151,7 +152,7 @@ Rectangle {
         anchors.bottom: loginPanel.top
         anchors.bottomMargin: 6 * s
         color: "#ff4766"
-        font.family: pf.name
+        font.family: pfFamily
         font.pixelSize: 10 * s
         font.bold: true
         opacity: text.length > 0 ? 1 : 0
@@ -186,7 +187,7 @@ Rectangle {
                 id: userLabelText
                 text: "USER //"
                 color: root.electricBlue
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 11 * s
                 font.bold: true
                 font.letterSpacing: 1 * s
@@ -198,7 +199,7 @@ Rectangle {
             Text {
                 text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "User")).toUpperCase()
                 color: userMouse.containsMouse ? root.cyanWire : root.cleanWhite
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 11 * s
                 font.bold: true
                 font.letterSpacing: 1 * s
@@ -246,7 +247,7 @@ Rectangle {
                 anchors.leftMargin: 10 * s
                 anchors.rightMargin: 10 * s
                 color: root.cyanWire
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 12 * s
                 font.letterSpacing: 3 * s
                 echoMode: TextInput.Password
@@ -272,7 +273,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "PASSWORD"
                 color: root.cleanWhite
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 9 * s
                 font.letterSpacing: 1 * s
                 opacity: pwd.text.length === 0 ? 0.5 : 0
@@ -327,7 +328,7 @@ Rectangle {
                 anchors.centerIn: parent
                 text: "➔ LOGIN"
                 color: loginMouse.containsMouse ? root.cyanWire : root.cleanWhite
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 9 * s
                 font.letterSpacing: 1 * s
                 font.bold: true
@@ -378,7 +379,7 @@ Rectangle {
                 Text {
                     text: "WELCOME BACK, " + ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "USER")).toUpperCase()
                     color: root.cyanWire
-                    font.family: pf.name
+                    font.family: pfFamily
                     font.pixelSize: 11 * s
                     font.letterSpacing: 2 * s
                     font.bold: true
@@ -389,7 +390,7 @@ Rectangle {
                 id: clockText
                 text: Qt.formatTime(new Date(), "HH:mm")
                 color: root.cleanWhite
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 32 * s
                 font.bold: true
                 font.letterSpacing: 1 * s
@@ -423,7 +424,7 @@ Rectangle {
                 anchors.centerIn: parent
                 text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase()
                 color: root.electricBlue
-                font.family: pf.name
+                font.family: pfFamily
                 font.pixelSize: 10 * s
                 font.letterSpacing: 3 * s
                 font.bold: true
@@ -463,7 +464,7 @@ Rectangle {
                         anchors.centerIn: parent
                         text: modelData.l
                         color: pm.containsMouse ? root.cyanWire : root.cleanWhite
-                        font.family: pf.name
+                        font.family: pfFamily
                         font.pixelSize: 10 * s
                         font.letterSpacing: 1.5 * s
                         font.bold: true

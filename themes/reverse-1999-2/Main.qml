@@ -36,6 +36,7 @@ Item {
         id: titleFont
         source: "font/Cinzel-Bold.ttf"
     }
+    readonly property string titleFontFamily: titleFont.status === FontLoader.Ready ? titleFont.name : "serif"
 
     // Helpers
     ListView { 
@@ -83,14 +84,14 @@ Item {
             Text {
                 id: hhLab
                 text: Qt.formatTime(new Date(), "HH:mm")
-                font.family: titleFont.name; font.pixelSize: 64 * s; font.letterSpacing: 4 * s; color: root.fg
+                font.family: titleFontFamily; font.pixelSize: 64 * s; font.letterSpacing: 4 * s; color: root.fg
                 layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 10 }
             }
             Rectangle { width: 1.2 * s; height: 40 * s; color: root.gold; opacity: 0.8; anchors.verticalCenter: parent.verticalCenter }
             Column {
                 anchors.verticalCenter: parent.verticalCenter; spacing: 1 * s
-                Text { text: Qt.formatDate(new Date(), "dddd").toUpperCase(); font.family: titleFont.name; font.pixelSize: 14 * s; font.letterSpacing: 4 * s; color: root.gold }
-                Text { text: Qt.formatDate(new Date(), "MMM dd").toUpperCase(); font.family: titleFont.name; font.pixelSize: 10 * s; font.letterSpacing: 3 * s; color: root.fg; opacity: 0.6 }
+                Text { text: Qt.formatDate(new Date(), "dddd").toUpperCase(); font.family: titleFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 4 * s; color: root.gold }
+                Text { text: Qt.formatDate(new Date(), "MMM dd").toUpperCase(); font.family: titleFontFamily; font.pixelSize: 10 * s; font.letterSpacing: 3 * s; color: root.fg; opacity: 0.6 }
             }
         }
         Timer { 
@@ -140,7 +141,7 @@ Item {
                 }
             }
             Text {
-                text: "START"; font.family: titleFont.name; font.pixelSize: 28 * s; font.letterSpacing: 14 * s; color: root.fg
+                text: "START"; font.family: titleFontFamily; font.pixelSize: 28 * s; font.letterSpacing: 14 * s; color: root.fg
                 anchors.centerIn: parent; layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 12 }
             }
             MouseArea { id: startMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.startInteraction() }
@@ -159,7 +160,7 @@ Item {
                 Text {
                     id: userLabel
                     text: (userHelper.currentItem && userHelper.currentItem.uName ? userHelper.currentItem.uName : "USER").toUpperCase()
-                    font.family: titleFont.name; font.pixelSize: 32 * s; font.letterSpacing: 10 * s; color: root.fg
+                    font.family: titleFontFamily; font.pixelSize: 32 * s; font.letterSpacing: 10 * s; color: root.fg
                     anchors.centerIn: parent; layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 15 } 
                     MouseArea { id: userToggleMa; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleUser() }
                 }
@@ -174,7 +175,7 @@ Item {
                     TextInput {
                         id: passInput; width: contentWidth + 10; height: parent.height; anchors.centerIn: parent
                         verticalAlignment: TextInput.AlignVCenter; horizontalAlignment: TextInput.AlignLeft
-                        echoMode: TextInput.Password; passwordCharacter: "✦"; font.family: titleFont.name; font.pixelSize: 32 * s; font.letterSpacing: 15 * s; color: root.fg
+                        echoMode: TextInput.Password; passwordCharacter: "✦"; font.family: titleFontFamily; font.pixelSize: 32 * s; font.letterSpacing: 15 * s; color: root.fg
                         selectionColor: root.gold; onTextEdited: errText.text = ""
                         cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                         onAccepted: doLogin()
@@ -199,7 +200,7 @@ Item {
                 Rectangle { width: 350 * s; height: 1.2 * s; color: root.gold; opacity: 0.5; anchors.horizontalCenter: parent.horizontalCenter }
                 Text {
                     id: errText; height: 15 * s; verticalAlignment: Text.AlignTop
-                    text: ""; color: "#ff4444"; font.family: titleFont.name; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; anchors.horizontalCenter: parent.horizontalCenter
+                    text: ""; color: "#ff4444"; font.family: titleFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; anchors.horizontalCenter: parent.horizontalCenter
                 }
             }
         }
@@ -219,7 +220,7 @@ Item {
             Text {
                 id: sessionLabel
                 text: (sessionHelper.currentItem ? sessionHelper.currentItem.sName : "SESSION").toUpperCase()
-                font.family: titleFont.name; font.pixelSize: 15 * s
+                font.family: titleFontFamily; font.pixelSize: 15 * s
                 font.letterSpacing: (sMa.containsMouse || root.sessionMenuOpen) ? 8 * s : 6 * s
                 color: (sMa.containsMouse || root.sessionMenuOpen) ? root.gold : root.fg
                 anchors.left: parent.left; anchors.leftMargin: 25 * s; opacity: 0.9
@@ -255,7 +256,7 @@ Item {
                         width: 280 * s; height: 32 * s; property bool itemHover: mMa.containsMouse
                         Text { text: "✦"; font.pixelSize: 12 * s; color: root.gold; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; opacity: (root.sessionIndex === index || itemHover) ? 1.0 : 0; Behavior on opacity { NumberAnimation { duration: 200 } } }
                         Text {
-                            text: model.name.toUpperCase(); font.family: titleFont.name; font.pixelSize: 14 * s; font.letterSpacing: 2 * s
+                            text: model.name.toUpperCase(); font.family: titleFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s
                             color: root.fg; opacity: (root.sessionIndex === index || itemHover) ? 1.0 : 0.4
                             anchors.left: parent.left; anchors.leftMargin: 25 * s; anchors.verticalCenter: parent.verticalCenter
                             Behavior on opacity { NumberAnimation { duration: 200 } }
@@ -282,7 +283,7 @@ Item {
                 width: 200 * s; height: 40 * s
                 Text {
                     id: cmdText
-                    text: modelData.text; font.family: titleFont.name; font.pixelSize: 15 * s; font.letterSpacing: bMa.containsMouse ? 8 * s : 6 * s; color: bMa.containsMouse ? root.gold : root.fg
+                    text: modelData.text; font.family: titleFontFamily; font.pixelSize: 15 * s; font.letterSpacing: bMa.containsMouse ? 8 * s : 6 * s; color: bMa.containsMouse ? root.gold : root.fg
                     anchors.right: parent.right; anchors.rightMargin: 25 * s; transformOrigin: Item.Right
                     Behavior on color { ColorAnimation { duration: 300 } }
                     Behavior on font.letterSpacing { NumberAnimation { duration: 450; easing.type: Easing.OutQuart } }

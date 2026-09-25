@@ -71,17 +71,18 @@ Rectangle {
     readonly property color highlightOuter: "#000000"
     readonly property color highlightInner: "#fff200"
     readonly property color highlightBg: "#435293"
-    readonly property string fontName: mainFont.name
+    readonly property string fontName: mainFontFamily
 
     TextConstants { id: textConstants }
 
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
     }
 
     FontLoader { id: mainFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
 
     ListView {
         id: sessionHelper
@@ -253,7 +254,7 @@ Rectangle {
                     Rectangle { anchors.fill: parent; color: root.outlineOuter; radius: 24 * s
                         Rectangle { anchors.fill: parent; anchors.margins: 2 * s; color: root.outlineInner; radius: 22 * s
                             Rectangle { anchors.fill: parent; anchors.margins: 2 * s; color: root.panelBg; radius: 20 * s
-                                Text { text: "Select Player"; anchors.centerIn: parent; anchors.verticalCenterOffset: 2 * s; font.family: mainFont.name; font.pixelSize: 32 * s; color: root.txtColor; style: Text.Outline; styleColor: root.txtShadow }
+                                Text { text: "Select Player"; anchors.centerIn: parent; anchors.verticalCenterOffset: 2 * s; font.family: mainFontFamily; font.pixelSize: 32 * s; color: root.txtColor; style: Text.Outline; styleColor: root.txtShadow }
                             }
                         }
                     }
@@ -288,14 +289,14 @@ Rectangle {
                                                         }
                                                     }
                                                 }
-                                                Text { x: 64 * s; y: 10 * s; text: model.realName || model.name; font.family: mainFont.name; font.pixelSize: 22 * s; color: (userList.currentIndex === index) ? root.highlightInner : root.txtColor; style: Text.Outline; styleColor: root.txtShadow }
+                                                Text { x: 64 * s; y: 10 * s; text: model.realName || model.name; font.family: mainFontFamily; font.pixelSize: 22 * s; color: (userList.currentIndex === index) ? root.highlightInner : root.txtColor; style: Text.Outline; styleColor: root.txtShadow }
                                                 Row {
                                                     x: 64 * s; y: 38 * s; spacing: 15 * s
-                                                    Row { spacing: 4 * s; Canvas { width: 14 * s; height: 14 * s; anchors.verticalCenter: parent.verticalCenter; y: 2 * s; onPaint: { var ctx = getContext("2d"); ctx.fillStyle = "#ff2222"; ctx.strokeStyle = "#000"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(7, 4); ctx.bezierCurveTo(7, 1, 1, 1, 1, 6); ctx.bezierCurveTo(1, 10, 7, 13, 7, 13); ctx.bezierCurveTo(7, 13, 13, 10, 13, 6); ctx.bezierCurveTo(13, 1, 7, 1, 7, 4); ctx.fill(); ctx.stroke(); } } Text { text: (index * 100 + 100) + " HP"; font.family: mainFont.name; font.pixelSize: 16 * s; color: "#ffffff" } }
-                                                    Row { spacing: 4 * s; Canvas { width: 14 * s; height: 14 * s; anchors.verticalCenter: parent.verticalCenter; y: 1 * s; onPaint: { var ctx = getContext("2d"); ctx.fillStyle = "#2255ff"; ctx.strokeStyle = "#000"; ctx.lineWidth=1; ctx.beginPath(); for(var i=0; i<5; i++) { ctx.lineTo(Math.cos((18+i*72)/180*Math.PI)*7+7, -Math.sin((18+i*72)/180*Math.PI)*7+7); ctx.lineTo(Math.cos((54+i*72)/180*Math.PI)*3.5+7, -Math.sin((54+i*72)/180*Math.PI)*3.5+7); } ctx.closePath(); ctx.fill(); ctx.stroke(); } } Text { text: (index * 20 + 20) + " MP"; font.family: mainFont.name; font.pixelSize: 16 * s; color: "#ffffff" } }
-                                                    Text { text: "Classic"; font.family: mainFont.name; font.pixelSize: 16 * s; color: "#ffffff" }
+                                                    Row { spacing: 4 * s; Canvas { width: 14 * s; height: 14 * s; anchors.verticalCenter: parent.verticalCenter; y: 2 * s; onPaint: { var ctx = getContext("2d"); ctx.fillStyle = "#ff2222"; ctx.strokeStyle = "#000"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(7, 4); ctx.bezierCurveTo(7, 1, 1, 1, 1, 6); ctx.bezierCurveTo(1, 10, 7, 13, 7, 13); ctx.bezierCurveTo(7, 13, 13, 10, 13, 6); ctx.bezierCurveTo(13, 1, 7, 1, 7, 4); ctx.fill(); ctx.stroke(); } } Text { text: (index * 100 + 100) + " HP"; font.family: mainFontFamily; font.pixelSize: 16 * s; color: "#ffffff" } }
+                                                    Row { spacing: 4 * s; Canvas { width: 14 * s; height: 14 * s; anchors.verticalCenter: parent.verticalCenter; y: 1 * s; onPaint: { var ctx = getContext("2d"); ctx.fillStyle = "#2255ff"; ctx.strokeStyle = "#000"; ctx.lineWidth=1; ctx.beginPath(); for(var i=0; i<5; i++) { ctx.lineTo(Math.cos((18+i*72)/180*Math.PI)*7+7, -Math.sin((18+i*72)/180*Math.PI)*7+7); ctx.lineTo(Math.cos((54+i*72)/180*Math.PI)*3.5+7, -Math.sin((54+i*72)/180*Math.PI)*3.5+7); } ctx.closePath(); ctx.fill(); ctx.stroke(); } } Text { text: (index * 20 + 20) + " MP"; font.family: mainFontFamily; font.pixelSize: 16 * s; color: "#ffffff" } }
+                                                    Text { text: "Classic"; font.family: mainFontFamily; font.pixelSize: 16 * s; color: "#ffffff" }
                                                 }
-                                                Text { anchors.right: parent.right; anchors.rightMargin: 14 * s; y: 38 * s; text: "00:00:00"; font.family: mainFont.name; font.pixelSize: 16 * s; color: "#ffffff" }
+                                                Text { anchors.right: parent.right; anchors.rightMargin: 14 * s; y: 38 * s; text: "00:00:00"; font.family: mainFontFamily; font.pixelSize: 16 * s; color: "#ffffff" }
                                                 Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 2 * s; anchors.rightMargin: 2 * s; height: 2 * s; y: 70 * s; color: root.outlineOuter }
                                                 Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 2 * s; anchors.rightMargin: 2 * s; height: 2 * s; y: 72 * s; color: root.itemOutlineInner }
                                                 Row {
@@ -320,7 +321,7 @@ Rectangle {
                                 Rectangle {
                                     anchors.fill: parent; anchors.topMargin: 4 * s; color: (passwordInput.activeFocus) ? "#151a37" : "transparent"
                                     TextInput {
-                                        id: passwordInput; anchors.fill: parent; anchors.leftMargin: 14 * s; anchors.rightMargin: 40 * s; verticalAlignment: TextInput.AlignVCenter; font.family: mainFont.name; font.pixelSize: 20 * s; color: "#ffffff"; echoMode: TextInput.Password; focus: true; passwordCharacter: "*"; clip: true; cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 } selectionColor: root.highlightBg; property bool wasClicked: false
+                                        id: passwordInput; anchors.fill: parent; anchors.leftMargin: 14 * s; anchors.rightMargin: 40 * s; verticalAlignment: TextInput.AlignVCenter; font.family: mainFontFamily; font.pixelSize: 20 * s; color: "#ffffff"; echoMode: TextInput.Password; focus: true; passwordCharacter: "*"; clip: true; cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 } selectionColor: root.highlightBg; property bool wasClicked: false
                                         onTextChanged: { if (text.length > 0) { if (userList.currentItem && userList.currentItem.delegateAvatar) userList.currentItem.delegateAvatar.jump() } }
                                         Text { text: "Enter Passphrase... "; opacity: parent.text.length === 0 ? 1 : 0; Behavior on opacity { NumberAnimation { duration: 400 } } color: "#a0a0a0"; font: parent.font; style: Text.Outline; styleColor: "#000"; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 1 * s }
                                         Rectangle { id: customCursor; width: 2 * s; height: 22 * s; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: passwordInput.cursorRectangle.x; visible: passwordInput.focus && (passwordInput.text.length > 0 || passwordInput.wasClicked); SequentialAnimation { loops: Animation.Infinite; running: customCursor.visible; NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: 450 } NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: 450 } } }
@@ -342,7 +343,7 @@ Rectangle {
                 
                 TerraButton {
                     visible: !root.isQuickshell
-                    text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0) ? "World: " + sessionHelper.currentItem.sName : "Select World"
+                    text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0 && sessionHelper.currentItem) ? "World: " + sessionHelper.currentItem.sName : "Select World"
                     fontPixelSize: 24
                     onClicked: { if (typeof sessionModel !== "undefined" && sessionModel.rowCount() > 0) root.sessionIndex = (root.sessionIndex + 1) % sessionModel.rowCount() }
                 }

@@ -5,7 +5,7 @@ import QtQuick.Window 2.15
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
-import Qt.labs.settings 1.0
+import QtCore
 
 Rectangle {
     id: root
@@ -18,6 +18,7 @@ Rectangle {
     // Settings
     Settings {
         id: settings
+        location: StandardPaths.writableLocation(StandardPaths.GenericConfigLocation) + "/darwan/osumania.conf"
         category: "osumania"
         property int   laneCount:    4
         property real  noteSpeed:    1.0
@@ -109,8 +110,17 @@ Rectangle {
     property var laneNotes: [[], [], [], []]
 
     // Assets
-    FolderListModel { id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf","*.otf"] }
+    FolderListModel { id: avatarFiles; showDirs: false; folder: Qt.resolvedUrl("avatars"); nameFilters: ["*.png"] }
+    // Only point at avatars that exist: a missing file is a load warning, not a silent fallback.
+    function avatarFor(login, systemIcon) {
+        var own = Qt.resolvedUrl("avatars/" + login + ".png")
+        if (avatarFiles.count > 0 && login !== "" && avatarFiles.indexOf(own) >= 0)
+            return own
+        return systemIcon ? systemIcon : Qt.resolvedUrl("avatars/pfp.png")
+    }
+    FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf","*.otf"] }
     FontLoader   { id: mainFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0,"fileName") : "" }
+    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
     TextConstants { id: textConstants }
 
     // SDDM Bridges
@@ -195,7 +205,7 @@ Rectangle {
             Text {
                 anchors.centerIn: parent
                 text: mc.label; color: mcMa.containsMouse ? "white" : Qt.rgba(1,1,1,0.6)
-                font.family: mainFont.name; font.pixelSize: 13*s; font.weight: Font.Black
+                font.family: mainFontFamily; font.pixelSize: 13*s; font.weight: Font.Black
                 font.italic: true; font.letterSpacing: 1.5*s
                 Behavior on color { ColorAnimation { duration: 200 } }
             }
@@ -222,7 +232,7 @@ Rectangle {
             Rectangle { width: 40*s; height: 1.5*s; color: mh.accent; anchors.verticalCenter: parent.verticalCenter; opacity: 0.6 }
             Text {
                 text: mh.title.toUpperCase(); color: "white"
-                font.family: mainFont.name; font.pixelSize: 22*s; font.weight: Font.Black; font.letterSpacing: 10*s
+                font.family: mainFontFamily; font.pixelSize: 22*s; font.weight: Font.Black; font.letterSpacing: 10*s
             }
             Rectangle { width: 40*s; height: 1.5*s; color: mh.accent; anchors.verticalCenter: parent.verticalCenter; opacity: 0.6 }
         }
@@ -272,7 +282,7 @@ Rectangle {
                             Image {
                                 id: hudAvatar; anchors.fill:parent
                                 // Custom Avatar
-                                source: (userHelper.currentItem && userHelper.currentItem.uLogin) ? "avatars/" + userHelper.currentItem.uLogin + ".png" : "avatars/pfp.png"
+                                source: root.avatarFor(userHelper.currentItem ? userHelper.currentItem.uLogin : "", userHelper.currentItem ? userHelper.currentItem.uSystemIcon : "")
                                 fillMode: Image.PreserveAspectCrop
                                 onStatusChanged: {
                                     if (status === Image.Error) {
@@ -294,12 +304,12 @@ Rectangle {
                         anchors.verticalCenter:parent.verticalCenter; spacing:4*s
                         Text {
                             text:(userHelper.currentItem?userHelper.currentItem.uName:"PLAYER").toUpperCase()
-                            color:"white"; font.family:mainFont.name; font.pixelSize:19*s; font.weight:Font.Black; font.italic:false; font.letterSpacing:1*s
+                            color:"white"; font.family:mainFontFamily; font.pixelSize:19*s; font.weight:Font.Black; font.italic:false; font.letterSpacing:1*s
                         }
                         Row {
                             spacing:12*s
-                            Text { text:"#721"; color:root.accentColor; font.family:mainFont.name; font.pixelSize:10*s; font.weight:Font.Black }
-                            Text { text:"6,512 PP"; color:"#888"; font.family:mainFont.name; font.pixelSize:10*s; font.weight:Font.Bold }
+                            Text { text:"#721"; color:root.accentColor; font.family:mainFontFamily; font.pixelSize:10*s; font.weight:Font.Black }
+                            Text { text:"6,512 PP"; color:"#888"; font.family:mainFontFamily; font.pixelSize:10*s; font.weight:Font.Bold }
                             Rectangle { width:1.5*s; height:8*s; color:"#33ffffff"; anchors.verticalCenter:parent.verticalCenter }
                             
                             // XP Display
@@ -307,7 +317,7 @@ Rectangle {
                                 width:120*s; height:12*s; anchors.verticalCenter:parent.verticalCenter
                                 Row {
                                     anchors.fill:parent; spacing:8*s
-                                    Text { text:"LV100"; color:"#66ffffff"; font.family:mainFont.name; font.pixelSize:9*s; font.weight:Font.Black; anchors.verticalCenter:parent.verticalCenter }
+                                    Text { text:"LV100"; color:"#66ffffff"; font.family:mainFontFamily; font.pixelSize:9*s; font.weight:Font.Black; anchors.verticalCenter:parent.verticalCenter }
                                     Rectangle {
                                         width:85*s; height:3*s; radius:1.5*s; color:"#22ffffff"; anchors.verticalCenter:parent.verticalCenter
                                         Rectangle { width:parent.width*0.88; height:parent.height; radius:1.5*s; color:root.accentColor }
@@ -332,12 +342,12 @@ Rectangle {
                     anchors.centerIn:parent; spacing:0
                     Text { 
                         anchors.horizontalCenter:parent.horizontalCenter
-                        text:"ENVIRONMENT STATUS"; color:root.accentColor; font.family:mainFont.name; font.pixelSize:8*s; font.weight:Font.Black; font.letterSpacing:3*s; opacity:0.8
+                        text:"ENVIRONMENT STATUS"; color:root.accentColor; font.family:mainFontFamily; font.pixelSize:8*s; font.weight:Font.Black; font.letterSpacing:3*s; opacity:0.8
                     }
                     Text {
                         anchors.horizontalCenter:parent.horizontalCenter
                         text:sessionHelper.currentItem ? sessionHelper.currentItem.sName.toUpperCase() : "DEFAULT"
-                        color:"white"; font.family:mainFont.name; font.pixelSize:14*s; font.weight:Font.Black; font.letterSpacing:1.5*s
+                        color:"white"; font.family:mainFontFamily; font.pixelSize:14*s; font.weight:Font.Black; font.letterSpacing:1.5*s
                     }
                 }
                 MouseArea {
@@ -358,11 +368,11 @@ Rectangle {
                         Text {
                             property string timeStr: Qt.formatTime(new Date(),"HH:mm")
                             Timer { interval:1000; running:true; repeat:true; onTriggered: parent.timeStr=Qt.formatTime(new Date(),"HH:mm") }
-                            text:timeStr; color:"white"; font.family:mainFont.name; font.pixelSize:28*s; font.weight:Font.Black
+                            text:timeStr; color:"white"; font.family:mainFontFamily; font.pixelSize:28*s; font.weight:Font.Black
                         }
                         Text {
                             text:Qt.formatDate(new Date(), "ddd, MMM d").toUpperCase()
-                            color:root.accentColor; font.family:mainFont.name; font.pixelSize:10*s; font.weight:Font.Black; font.letterSpacing:1.5*s
+                            color:root.accentColor; font.family:mainFontFamily; font.pixelSize:10*s; font.weight:Font.Black; font.letterSpacing:1.5*s
                         }
                     }
                 }
@@ -414,12 +424,12 @@ Rectangle {
                         Text {
                             anchors.centerIn: parent; anchors.verticalCenterOffset: 6*s; anchors.horizontalCenterOffset: 4*s
                             text: "osu!"; color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.4)
-                            font.family: mainFont.name; font.pixelSize: 140*s; font.weight: Font.Black; font.italic: true
+                            font.family: mainFontFamily; font.pixelSize: 140*s; font.weight: Font.Black; font.italic: true
                         }
                         Text {
                             anchors.centerIn: parent
                             text: "osu!"; color: "white"
-                            font.family: mainFont.name; font.pixelSize: 140*s; font.weight: Font.Black; font.italic: true
+                            font.family: mainFontFamily; font.pixelSize: 140*s; font.weight: Font.Black; font.italic: true
                         }
                     }
 
@@ -440,7 +450,7 @@ Rectangle {
                         Text {
                             anchors.centerIn: parent; anchors.verticalCenterOffset: 4*s
                             text: "M A N I A   E D I T I O N"
-                            color: "white"; font.family: mainFont.name; font.pixelSize: 14*s; font.weight: Font.Black; opacity: 0.6
+                            color: "white"; font.family: mainFontFamily; font.pixelSize: 14*s; font.weight: Font.Black; opacity: 0.6
                         }
                     }
 
@@ -486,7 +496,7 @@ Rectangle {
                             anchors.fill: parent; anchors.leftMargin: 20*s; anchors.rightMargin: 20*s
                             verticalAlignment: TextInput.AlignVCenter; horizontalAlignment: TextInput.AlignHCenter
                             clip: true; color: "transparent"; cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
-                            font.family: mainFont.name; font.pixelSize: 18*s; font.weight: Font.DemiBold
+                            font.family: mainFontFamily; font.pixelSize: 18*s; font.weight: Font.DemiBold
                             font.letterSpacing: 4*s; echoMode: TextInput.Password; focus: true
                             property bool wasClicked: false
                             selectByMouse: false
@@ -496,7 +506,7 @@ Rectangle {
                             Text {
                                 anchors.centerIn: parent
                                 text: "ACCESS REQUIRED"; color: Qt.rgba(1,1,1,0.6)
-                                font.family: mainFont.name; font.pixelSize: 12*s; font.weight: Font.Black
+                                font.family: mainFontFamily; font.pixelSize: 12*s; font.weight: Font.Black
                                 font.letterSpacing: 4*s; visible: passField.text.length === 0
                             }
                         }
@@ -554,7 +564,7 @@ Rectangle {
                         }
                         Text {
                             anchors.centerIn: parent; text: "CONFIG"; color: "white"
-                            font.family: mainFont.name; font.pixelSize: 10*s; font.weight: Font.Black; font.letterSpacing: 1*s; opacity: 0.5
+                            font.family: mainFontFamily; font.pixelSize: 10*s; font.weight: Font.Black; font.letterSpacing: 1*s; opacity: 0.5
                         }
                         MouseArea { id: configMa; anchors.fill: parent; hoverEnabled: true; onClicked: root.showingSettings = true }
                     }
@@ -580,6 +590,7 @@ Rectangle {
                 }
 
                 Row {
+                    id: diffRow
                     anchors.horizontalCenter:parent.horizontalCenter; spacing:20*s
                     property var diffs: [
                         { name:"EASY",       stars:1, col:"#2ECC71", desc:"Beginner friendly" },
@@ -590,31 +601,33 @@ Rectangle {
                     Repeater {
                         model: 4
                         Item {
+                            id: diffCard
+                            readonly property int diffIndex: index
                             width:180*s; height:240*s
                             Rectangle {
                                 anchors.fill:parent; radius:15*s
-                                color: Qt.rgba(parent.parent.diffs[index].col.r, parent.parent.diffs[index].col.g, parent.parent.diffs[index].col.b, diffMa.containsMouse?0.15:0.05)
-                                border.color: diffMa.containsMouse ? parent.parent.diffs[index].col : "#33ffffff"; border.width:2*s
+                                color: Qt.rgba(diffRow.diffs[index].col.r, diffRow.diffs[index].col.g, diffRow.diffs[index].col.b, diffMa.containsMouse?0.15:0.05)
+                                border.color: diffMa.containsMouse ? diffRow.diffs[index].col : "#33ffffff"; border.width:2*s
                                 Behavior on color { ColorAnimation { duration:200 } }
                                 Column {
                                     anchors.centerIn:parent; spacing:12*s; width:parent.width-20*s
                                     Text {
                                         anchors.horizontalCenter:parent.horizontalCenter
-                                        text:parent.parent.parent.parent.diffs[index].name
-                                        color:parent.parent.parent.parent.diffs[index].col
-                                        font.family:mainFont.name; font.pixelSize:22*s; font.weight:Font.Black
+                                        text:diffRow.diffs[index].name
+                                        color:diffRow.diffs[index].col
+                                        font.family:mainFontFamily; font.pixelSize:22*s; font.weight:Font.Black
                                     }
                                     Row {
                                         anchors.horizontalCenter:parent.horizontalCenter; spacing:4*s
                                         Repeater {
-                                            model: parent.parent.parent.parent.parent.diffs[index].stars
-                                            Text { text:"★"; color:parent.parent.parent.parent.parent.parent.diffs[index].col; font.pixelSize:14*s }
+                                            model: diffRow.diffs[index].stars
+                                            Text { text:"★"; color:diffRow.diffs[diffCard.diffIndex].col; font.pixelSize:14*s }
                                         }
                                     }
                                     Text {
                                         width:parent.width; horizontalAlignment:Text.AlignHCenter; wrapMode:Text.Wrap
-                                        text:parent.parent.parent.parent.diffs[index].desc
-                                        color:"#88ffffff"; font.family:mainFont.name; font.pixelSize:12*s
+                                        text:diffRow.diffs[index].desc
+                                        color:"#88ffffff"; font.family:mainFontFamily; font.pixelSize:12*s
                                     }
                                 }
                             }
@@ -636,7 +649,7 @@ Rectangle {
             anchors.bottom:parent.bottom; anchors.bottomMargin:40*s
             anchors.right:parent.right; anchors.rightMargin:10*s
             text:""; color:"#ff4455"
-            font.family:mainFont.name; font.pixelSize:14*s; font.weight:Font.Black; font.italic:true
+            font.family:mainFontFamily; font.pixelSize:14*s; font.weight:Font.Black; font.italic:true
         }
     }
 
@@ -680,10 +693,10 @@ Rectangle {
             Text {
                 anchors.right:parent.right
                 text:String(root.maniaScore).padStart(8,"0")
-                color:"white"; font.family:mainFont.name; font.pixelSize:32*s; font.weight:Font.Black
+                color:"white"; font.family:mainFontFamily; font.pixelSize:32*s; font.weight:Font.Black
                 layer.enabled:true; layer.effect:DropShadow { color:"#88000000"; radius:4; samples:9; horizontalOffset:1*s; verticalOffset:1*s }
             }
-            Text { anchors.right:parent.right; text:root.maniaAccuracy.toFixed(2)+"%"; color:"#ccffffff"; font.family:mainFont.name; font.pixelSize:14*s }
+            Text { anchors.right:parent.right; text:root.maniaAccuracy.toFixed(2)+"%"; color:"#ccffffff"; font.family:mainFontFamily; font.pixelSize:14*s }
         }
 
         // Combo
@@ -694,7 +707,7 @@ Rectangle {
             Text {
                 id: comboText
                 text:root.maniaCombo+"x"; color:"white"
-                font.family:mainFont.name; font.pixelSize:44*s; font.weight:Font.Black
+                font.family:mainFontFamily; font.pixelSize:44*s; font.weight:Font.Black
                 NumberAnimation on scale { id:comboPopAnim; from:1.3; to:1.0; duration:150; easing.type:Easing.OutBack }
                 layer.enabled:true; layer.effect:DropShadow { color:root.glowColor; radius:14; samples:17 }
             }
@@ -704,13 +717,13 @@ Rectangle {
         Column {
             anchors.bottom:parent.bottom; anchors.bottomMargin:90*s
             anchors.right:maniaField.right; anchors.rightMargin:-80*s; spacing:2*s
-            Text { text:root.maniaHits+" / 20 HITS"; color:"#aaffffff"; font.family:mainFont.name; font.pixelSize:12*s; anchors.right:parent.right }
+            Text { text:root.maniaHits+" / 20 HITS"; color:"#aaffffff"; font.family:mainFontFamily; font.pixelSize:12*s; anchors.right:parent.right }
             Row {
                 anchors.right:parent.right; spacing:6*s
-                Text { text:root.mania300s+"×"; color:root.accentColor; font.family:mainFont.name; font.pixelSize:11*s; font.weight:Font.Bold }
-                Text { text:root.mania100s+"×"; color:root.glowColor;   font.family:mainFont.name; font.pixelSize:11*s; font.weight:Font.Bold }
-                Text { text:root.mania50s+"×";  color:"#aaaaaa";         font.family:mainFont.name; font.pixelSize:11*s; font.weight:Font.Bold }
-                Text { text:root.maniaMisses+"×"; color:"#ff4455";       font.family:mainFont.name; font.pixelSize:11*s; font.weight:Font.Bold }
+                Text { text:root.mania300s+"×"; color:root.accentColor; font.family:mainFontFamily; font.pixelSize:11*s; font.weight:Font.Bold }
+                Text { text:root.mania100s+"×"; color:root.glowColor;   font.family:mainFontFamily; font.pixelSize:11*s; font.weight:Font.Bold }
+                Text { text:root.mania50s+"×";  color:"#aaaaaa";         font.family:mainFontFamily; font.pixelSize:11*s; font.weight:Font.Bold }
+                Text { text:root.maniaMisses+"×"; color:"#ff4455";       font.family:mainFontFamily; font.pixelSize:11*s; font.weight:Font.Bold }
             }
         }
 
@@ -719,7 +732,7 @@ Rectangle {
             anchors.top:progressBg.bottom; anchors.topMargin:16*s
             anchors.horizontalCenter:maniaField.horizontalCenter
             text:root.keyNames.join("   "); color:"#44ffffff"
-            font.family:mainFont.name; font.pixelSize:14*s; font.letterSpacing:8*s; font.weight:Font.Black
+            font.family:mainFontFamily; font.pixelSize:14*s; font.letterSpacing:8*s; font.weight:Font.Black
         }
 
         // Playfield
@@ -785,7 +798,7 @@ Rectangle {
             id: readyText
             anchors.centerIn:parent; anchors.verticalCenterOffset:-80*s
             text:"PRESS  " + root.keyNames.join("  ") + "  TO PLAY!"
-            color:"white"; font.family:mainFont.name; font.pixelSize:18*s; font.weight:Font.Black; font.letterSpacing:4*s
+            color:"white"; font.family:mainFontFamily; font.pixelSize:18*s; font.weight:Font.Black; font.letterSpacing:4*s
             property bool autoHidden: false
             opacity: (root.maniaHits===0 && root.gameActive && !autoHidden) ? 0.8 : 0
             Behavior on opacity { NumberAnimation { duration:400 } }
@@ -910,7 +923,7 @@ Rectangle {
                         Text {
                             anchors.centerIn:parent; text:modelData.label
                             color:fMa.containsMouse?modelData.col:"white"
-                            font.family:mainFont.name; font.pixelSize:16*s; font.weight:Font.Black; font.letterSpacing:2*s
+                            font.family:mainFontFamily; font.pixelSize:16*s; font.weight:Font.Black; font.letterSpacing:2*s
                         }
                         MouseArea {
                             id: fMa; anchors.fill:parent; hoverEnabled:true; cursorShape:Qt.PointingHandCursor
@@ -1049,7 +1062,7 @@ Rectangle {
         Text {
             id: fbTxt
             property color col: "white"
-            color:col; font.family:mainFont.name; font.pixelSize:24*s; font.weight:Font.Black
+            color:col; font.family:mainFontFamily; font.pixelSize:24*s; font.weight:Font.Black
             layer.enabled:true; layer.effect:DropShadow { color:Qt.rgba(col.r,col.g,col.b,0.7); radius:8; samples:13 }
             NumberAnimation on y   { from:y;   to:y-50*s; duration:600; easing.type:Easing.OutCubic }
             NumberAnimation on opacity { from:1; to:0;     duration:600; easing.type:Easing.InCubic }
@@ -1263,7 +1276,7 @@ Rectangle {
                             layer.enabled:true; layer.effect:DropShadow { color:root.glowColor; radius:10; samples:13; opacity:0.5 }
                             Text {
                                 anchors.centerIn:parent; text: root.bindingIdx === index ? "?" : root.keyNames[index]
-                                color:"white"; font.family:mainFont.name; font.pixelSize:36*s; font.weight:Font.Black
+                                color:"white"; font.family:mainFontFamily; font.pixelSize:36*s; font.weight:Font.Black
                             }
                             // Key Decoration
                             Rectangle {
@@ -1281,7 +1294,7 @@ Rectangle {
                     anchors.top:parent.bottom; anchors.topMargin:10*s; anchors.horizontalCenter:parent.horizontalCenter
                     text: root.bindingIdx !== -1 ? "PRESS ANY KEY TO BIND..." : "CLICK A BOX TO CUSTOMIZE BINDINGS"
                     color: root.bindingIdx !== -1 ? root.accentColor : "#888"
-                    font.family:mainFont.name; font.pixelSize:11*s; font.weight:Font.Black; font.letterSpacing:2*s
+                    font.family:mainFontFamily; font.pixelSize:11*s; font.weight:Font.Black; font.letterSpacing:2*s
                 }
             }
 
@@ -1304,8 +1317,8 @@ Rectangle {
                         border.width:2*s
                         Column {
                             anchors.centerIn:parent; spacing:6*s
-                            Text { anchors.horizontalCenter:parent.horizontalCenter; text:modelData.name; color:"white"; font.family:mainFont.name; font.pixelSize:13*s; font.weight:Font.Bold }
-                            Text { anchors.horizontalCenter:parent.horizontalCenter; text:modelData.label; color:root.accentColor; font.family:mainFont.name; font.pixelSize:18*s; font.weight:Font.Black }
+                            Text { anchors.horizontalCenter:parent.horizontalCenter; text:modelData.name; color:"white"; font.family:mainFontFamily; font.pixelSize:13*s; font.weight:Font.Bold }
+                            Text { anchors.horizontalCenter:parent.horizontalCenter; text:modelData.label; color:root.accentColor; font.family:mainFontFamily; font.pixelSize:18*s; font.weight:Font.Black }
                         }
                         MouseArea {
                             anchors.fill:parent; cursorShape:Qt.PointingHandCursor
@@ -1336,7 +1349,7 @@ Rectangle {
                 }
                 Text {
                     anchors.centerIn:parent; text:"CONFIRM CHANGES"
-                    color:"white"; font.family:mainFont.name; font.pixelSize:18*s; font.weight:Font.Black; font.letterSpacing:4*s
+                    color:"white"; font.family:mainFontFamily; font.pixelSize:18*s; font.weight:Font.Black; font.letterSpacing:4*s
                 }
                 MouseArea {
                     id: exitMa; anchors.fill:parent; hoverEnabled:true; cursorShape:Qt.PointingHandCursor

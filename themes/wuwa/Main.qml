@@ -38,13 +38,14 @@ Rectangle {
 
     TextConstants { id: textConstants }
 
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
     }
 
     FontLoader { id: mainFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
+    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
 
     // Helpers
     ListView {
@@ -104,7 +105,7 @@ Rectangle {
     // Interface
     Item {
         id: mainUI; anchors.fill: parent; opacity: root.uiOpacity
-        Component.onCompleted: NumberAnimation { target: root; property: "uiOpacity"; from: 0; to: 1; duration: 1400; easing.type: Easing.OutCubic }
+        NumberAnimation { running: true; target: root; property: "uiOpacity"; from: 0; to: 1; duration: 1400; easing.type: Easing.OutCubic }
 
         Image {
             source: "logo.png"; width: 200 * s; fillMode: Image.PreserveAspectFit; anchors.left: parent.left; anchors.leftMargin: 44 * s; anchors.top: parent.top; anchors.topMargin: 32 * s; opacity: 0.92
@@ -113,7 +114,7 @@ Rectangle {
 
         Text {
             anchors.right: parent.right; anchors.rightMargin: 44 * s; anchors.top: parent.top; anchors.topMargin: 36 * s
-            text: "OS_PRODUCT_0.9.0_A7281901_L1920444"; font.family: mainFont.name; font.pixelSize: 11 * s; color: root.wGhost; opacity: 0.5; font.letterSpacing: 0.5 * s
+            text: "OS_PRODUCT_0.9.0_A7281901_L1920444"; font.family: mainFontFamily; font.pixelSize: 11 * s; color: root.wGhost; opacity: 0.5; font.letterSpacing: 0.5 * s
         }
 
         Column {
@@ -132,7 +133,7 @@ Rectangle {
                             else { n = "User" }
                             return n.toUpperCase()
                         }
-                        font.family: mainFont.name; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; font.bold: true; color: root.wWhite
+                        font.family: mainFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; font.bold: true; color: root.wWhite
                     }
                 }
                 MouseArea { id: uMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof userModel !== "undefined" && userModel.count > 0) root.userIndex = (root.userIndex + 1) % userModel.count } }
@@ -148,17 +149,17 @@ Rectangle {
                     SequentialAnimation { id: jitterAnim; NumberAnimation { target: passPulse; property: "opacity"; from: 0.2; to: 0.9; duration: 60 } NumberAnimation { target: passPulse; property: "opacity"; from: 0.9; to: 0.2; duration: 400 } }
                 }
                 TextInput {
-                    id: passIn; anchors.fill: parent; anchors.leftMargin: 16 * s; anchors.rightMargin: 16 * s; font.family: mainFont.name; font.pixelSize: 15 * s; font.letterSpacing: 5 * s; color: root.wWhite; echoMode: TextInput.Password; passwordCharacter: "*"; horizontalAlignment: TextInput.AlignLeft; verticalAlignment: TextInput.AlignVCenter
+                    id: passIn; anchors.fill: parent; anchors.leftMargin: 16 * s; anchors.rightMargin: 16 * s; font.family: mainFontFamily; font.pixelSize: 15 * s; font.letterSpacing: 5 * s; color: root.wWhite; echoMode: TextInput.Password; passwordCharacter: "*"; horizontalAlignment: TextInput.AlignLeft; verticalAlignment: TextInput.AlignVCenter
                     onTextEdited: { errText.text = ""; jitterAnim.restart() }
                     property bool wasClicked: false; cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                     selectionColor: root.wCyan; onAccepted: doLogin()
-                    Text { text: "Enter password..."; font.family: mainFont.name; font.pixelSize: 13 * s; font.letterSpacing: 1 * s; color: "#77ffffff"; anchors.verticalCenter: parent.verticalCenter; opacity: passIn.text.length === 0 ? 1.0 : 0 }
+                    Text { text: "Enter password..."; font.family: mainFontFamily; font.pixelSize: 13 * s; font.letterSpacing: 1 * s; color: "#77ffffff"; anchors.verticalCenter: parent.verticalCenter; opacity: passIn.text.length === 0 ? 1.0 : 0 }
                     Rectangle { id: customCursor; width: 2 * s; height: 20 * s; color: root.wCyan; anchors.verticalCenter: parent.verticalCenter; x: passIn.cursorRectangle.x; visible: passIn.focus && (passIn.text.length > 0 || passIn.wasClicked); SequentialAnimation { loops: Animation.Infinite; running: customCursor.visible; NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: 450 } NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: 450 } } }
                     MouseArea { anchors.fill: parent; onClicked: { passIn.forceActiveFocus(); passIn.wasClicked = true } }
                 }
             }
 
-            Text { id: errText; height: 14 * s; text: ""; color: "#ff4444"; font.family: mainFont.name; font.pixelSize: 12 * s; font.letterSpacing: 1 * s }
+            Text { id: errText; height: 14 * s; text: ""; color: "#ff4444"; font.family: mainFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 1 * s }
 
             Item {
                 width: parent.width; height: 34 * s; visible: !root.isQuickshell
@@ -166,7 +167,7 @@ Rectangle {
                 Row {
                     anchors.left: parent.left; anchors.leftMargin: 12 * s; anchors.verticalCenter: parent.verticalCenter; spacing: 8 * s
                     Rectangle { width: 6 * s; height: 6 * s; radius: 3 * s; color: root.wCyan; anchors.verticalCenter: parent.verticalCenter }
-                    Text { text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0) ? sessionHelper.currentItem.sName : "Select Session"; font.family: mainFont.name; font.pixelSize: 12 * s; color: root.wSilver }
+                    Text { text: (typeof sessionModel !== "undefined" && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0 && sessionHelper.currentItem) ? sessionHelper.currentItem.sName : "Select Session"; font.family: mainFontFamily; font.pixelSize: 12 * s; color: root.wSilver }
                 }
                 MouseArea { id: sesMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.sessionPopupOpen = !root.sessionPopupOpen }
             }
@@ -181,7 +182,7 @@ Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top; anchors.topMargin: 8 * s; width: 32 * s; height: 32 * s
                     onPaint: { var ctx = getContext("2d"); ctx.clearRect(0,0,width,height); ctx.strokeStyle = root.wWhite; ctx.lineWidth = 2 * s; ctx.lineCap = "round"; ctx.beginPath(); ctx.arc(width/2, height/2, width*0.33, -Math.PI*0.7, Math.PI*0.8); ctx.stroke(); ctx.fillStyle = root.wWhite; ctx.beginPath(); ctx.moveTo(width*0.2, height*0.18); ctx.lineTo(width*0.38, height*0.06); ctx.lineTo(width*0.38, height*0.32); ctx.closePath(); ctx.fill(); }
                 }
-                Text { text: "Restart"; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom; font.family: mainFont.name; font.pixelSize: 12 * s; color: root.wWhite; opacity: 0.85 }
+                Text { text: "Restart"; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom; font.family: mainFontFamily; font.pixelSize: 12 * s; color: root.wWhite; opacity: 0.85 }
                 MouseArea { id: restartMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof sddm !== "undefined") sddm.reboot() } }
             }
             Item {
@@ -191,21 +192,21 @@ Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top; anchors.topMargin: 8 * s; width: 32 * s; height: 32 * s
                     onPaint: { var ctx = getContext("2d"); ctx.clearRect(0,0,width,height); ctx.strokeStyle = root.wWhite; ctx.lineWidth = 2 * s; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(width/2, height*0.1); ctx.lineTo(width/2, height*0.45); ctx.stroke(); ctx.beginPath(); ctx.arc(width/2, height/2, width*0.33, -Math.PI*0.65, -Math.PI*0.35, true); ctx.stroke(); }
                 }
-                Text { text: "Shutdown"; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom; font.family: mainFont.name; font.pixelSize: 12 * s; color: root.wWhite; opacity: 0.85 }
+                Text { text: "Shutdown"; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom; font.family: mainFontFamily; font.pixelSize: 12 * s; color: root.wWhite; opacity: 0.85 }
                 MouseArea { id: shutdownMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof sddm !== "undefined") sddm.powerOff() } }
             }
         }
 
         Text {
             anchors.left: parent.left; anchors.leftMargin: 44 * s; anchors.bottom: parent.bottom; anchors.bottomMargin: 26 * s
-            text: "Kuro Games  ·  Wuthering Waves"; font.family: mainFont.name; font.pixelSize: 11 * s; color: root.wGhost; opacity: 0.5; font.letterSpacing: 0.5 * s
+            text: "Kuro Games  ·  Wuthering Waves"; font.family: mainFontFamily; font.pixelSize: 11 * s; color: root.wGhost; opacity: 0.5; font.letterSpacing: 0.5 * s
         }
 
         Row {
             anchors.right: parent.right; anchors.rightMargin: 44 * s; anchors.bottom: parent.bottom; anchors.bottomMargin: 26 * s; spacing: 12 * s
-            Text { id: wuwaDate; font.family: mainFont.name; font.pixelSize: 12 * s; color: root.wSilver; opacity: 0.6; font.letterSpacing: 1.5 * s; anchors.verticalCenter: parent.verticalCenter }
+            Text { id: wuwaDate; font.family: mainFontFamily; font.pixelSize: 12 * s; color: root.wSilver; opacity: 0.6; font.letterSpacing: 1.5 * s; anchors.verticalCenter: parent.verticalCenter }
             Rectangle { width: 2 * s; height: 16 * s; color: root.wCyan; opacity: 0.5; anchors.verticalCenter: parent.verticalCenter }
-            Text { id: wuwaTime; font.family: mainFont.name; font.pixelSize: 16 * s; color: root.wWhite; font.bold: true; font.letterSpacing: 1.5 * s; anchors.verticalCenter: parent.verticalCenter }
+            Text { id: wuwaTime; font.family: mainFontFamily; font.pixelSize: 16 * s; color: root.wWhite; font.bold: true; font.letterSpacing: 1.5 * s; anchors.verticalCenter: parent.verticalCenter }
             Timer { interval: 1000; running: true; repeat: true; onTriggered: { var d = new Date(); wuwaTime.text = Qt.formatTime(d, "HH:mm"); wuwaDate.text = Qt.formatDate(d, "yyyy / MM / dd") } Component.onCompleted: triggered() }
         }
 
@@ -220,7 +221,7 @@ Rectangle {
                     width: 14 * s; height: 14 * s; anchors.verticalCenter: parent.verticalCenter
                     onPaint: { var ctx = getContext("2d"); ctx.clearRect(0, 0, width, height); var cx = width / 2, cy = height / 2; var outer = width * 0.48; var inner = width * 0.12; ctx.fillStyle = "#bbcccccc"; ctx.beginPath(); ctx.moveTo(cx, cy - outer); ctx.lineTo(cx + inner, cy - inner); ctx.lineTo(cx + outer, cy); ctx.lineTo(cx + inner, cy + inner); ctx.lineTo(cx, cy + outer); ctx.lineTo(cx - inner, cy + inner); ctx.lineTo(cx - outer, cy); ctx.lineTo(cx - inner, cy - inner); ctx.closePath(); ctx.fill(); }
                 }
-                Text { text: "Tap to land in Solaris-3"; font.family: mainFont.name; font.pixelSize: 15 * s; font.letterSpacing: 1.2 * s; color: "#ccffffff"; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "Tap to land in Solaris-3"; font.family: mainFontFamily; font.pixelSize: 15 * s; font.letterSpacing: 1.2 * s; color: "#ccffffff"; anchors.verticalCenter: parent.verticalCenter }
                 Canvas {
                     width: 14 * s; height: 14 * s; anchors.verticalCenter: parent.verticalCenter
                     onPaint: { var ctx = getContext("2d"); ctx.clearRect(0, 0, width, height); var cx = width / 2, cy = height / 2; var outer = width * 0.48; var inner = width * 0.12; ctx.fillStyle = "#bbcccccc"; ctx.beginPath(); ctx.moveTo(cx, cy - outer); ctx.lineTo(cx + inner, cy - inner); ctx.lineTo(cx + outer, cy); ctx.lineTo(cx + inner, cy + inner); ctx.lineTo(cx, cy + outer); ctx.lineTo(cx - inner, cy + inner); ctx.lineTo(cx - outer, cy); ctx.lineTo(cx - inner, cy - inner); ctx.closePath(); ctx.fill(); }
@@ -241,7 +242,7 @@ Rectangle {
                 Rectangle { width: parent.width * 0.7; height: 1 * s; anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter; gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0.0; color: "transparent" } GradientStop { position: 0.5; color: root.wCyan } GradientStop { position: 1.0; color: "transparent" } } }
                 Column {
                     anchors.fill: parent; anchors.margins: 12 * s; spacing: 4 * s
-                    Text { text: "SESSION"; anchors.horizontalCenter: parent.horizontalCenter; font.family: mainFont.name; font.pixelSize: 10 * s; font.letterSpacing: 4 * s; color: root.wCyan; opacity: 0.7 }
+                    Text { text: "SESSION"; anchors.horizontalCenter: parent.horizontalCenter; font.family: mainFontFamily; font.pixelSize: 10 * s; font.letterSpacing: 4 * s; color: root.wCyan; opacity: 0.7 }
                     Rectangle { width: parent.width; height: 1 * s; color: "#22ffffff" }
                     ListView {
                         width: parent.width; height: sessionBlade.bladeH - 44 * s; model: typeof sessionModel !== "undefined" ? sessionModel : null; clip: true; spacing: 3 * s
@@ -253,7 +254,7 @@ Rectangle {
                                 Row {
                                     anchors.left: parent.left; anchors.leftMargin: 16 * s; anchors.verticalCenter: parent.verticalCenter; spacing: 10 * s
                                     Rectangle { width: 5 * s; height: 5 * s; rotation: 45; color: (index === root.sessionIndex) ? root.wCyan : root.wGhost; anchors.verticalCenter: parent.verticalCenter }
-                                    Text { text: model.name; font.family: mainFont.name; font.pixelSize: 13 * s; font.letterSpacing: 0.8 * s; color: (index === root.sessionIndex) ? root.wWhite : root.wSilver }
+                                    Text { text: model.name; font.family: mainFontFamily; font.pixelSize: 13 * s; font.letterSpacing: 0.8 * s; color: (index === root.sessionIndex) ? root.wWhite : root.wSilver }
                                 }
                                 MouseArea { id: dMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { root.sessionIndex = index; root.sessionPopupOpen = false } }
                             }

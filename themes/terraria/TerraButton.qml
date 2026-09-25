@@ -39,7 +39,7 @@ Item {
                     id: buttonText
                     text: btn.text
                     anchors.centerIn: parent
-                    font.family: mainFont.name
+                    font.family: mainFontFamily
                     font.pixelSize: btn.fontPixelSize
                     color: btnMouse.containsMouse ? "#fff200" : "#ffffff"
                     style: Text.Outline

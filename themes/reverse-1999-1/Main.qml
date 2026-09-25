@@ -35,7 +35,7 @@ Rectangle {
 
     TextConstants { id: textConstants }
 
-    FolderListModel {
+    FolderListModel { showDirs: false;
         id: fontFolder
         folder: Qt.resolvedUrl("font")
         nameFilters: ["*.ttf", "*.otf"]
@@ -45,6 +45,7 @@ Rectangle {
         id: serifFont
         source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : ""
     }
+    readonly property string serifFontFamily: serifFont.status === FontLoader.Ready ? serifFont.name : "serif"
 
     // Helpers
     ListView { 
@@ -118,17 +119,17 @@ Rectangle {
             id: timeLabels
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 15 * s; z: 50 
 
-            Text { id: hhLab; text: Qt.formatTime(new Date(), "HH"); font.family: serifFont.name; font.pixelSize: 100 * s; font.letterSpacing: 4 * s; color: root.fg; layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 12 } }
-            Text { id: mmLab; text: Qt.formatTime(new Date(), "mm"); font.family: serifFont.name; font.pixelSize: 100 * s; font.letterSpacing: 4 * s; color: root.fg; layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 12 } }
+            Text { id: hhLab; text: Qt.formatTime(new Date(), "HH"); font.family: serifFontFamily; font.pixelSize: 100 * s; font.letterSpacing: 4 * s; color: root.fg; layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 12 } }
+            Text { id: mmLab; text: Qt.formatTime(new Date(), "mm"); font.family: serifFontFamily; font.pixelSize: 100 * s; font.letterSpacing: 4 * s; color: root.fg; layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 12 } }
         }
 
         Column {
             anchors.right: parent.right; anchors.top: timeLabels.bottom; anchors.topMargin: 0; spacing: 5 * s; z: 100 
-            Text { text: Qt.formatDate(new Date(), "dddd").toUpperCase(); font.family: serifFont.name; font.pixelSize: 16 * s; font.letterSpacing: 8 * s; color: root.gold; opacity: 0.8; anchors.right: parent.right }
+            Text { text: Qt.formatDate(new Date(), "dddd").toUpperCase(); font.family: serifFontFamily; font.pixelSize: 16 * s; font.letterSpacing: 8 * s; color: root.gold; opacity: 0.8; anchors.right: parent.right }
             Row {
                 anchors.right: parent.right; spacing: 12 * s
                 Rectangle { width: 40 * s; height: 1; color: root.gold; opacity: 0.3; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: Qt.formatDate(new Date(), "MMM dd yyyy").toUpperCase(); font.family: serifFont.name; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; color: root.fg; opacity: 0.6 }
+                Text { text: Qt.formatDate(new Date(), "MMM dd yyyy").toUpperCase(); font.family: serifFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; color: root.fg; opacity: 0.6 }
             }
         }
 
@@ -153,7 +154,7 @@ Rectangle {
             Text {
                 id: uLabel
                 text: (userHelper.currentItem && userHelper.currentItem.uName ? userHelper.currentItem.uName : "UNKNOWN").toUpperCase()
-                font.family: serifFont.name; font.pixelSize: 48 * s; font.letterSpacing: 4 * s
+                font.family: serifFontFamily; font.pixelSize: 48 * s; font.letterSpacing: 4 * s
                 color: (root.userMenuOpen || uMa.containsMouse) ? root.gold : root.fg
                 anchors.right: parent.right; scale: uMa.containsMouse ? 1.05 : 1.0; transformOrigin: Item.Right
                 Behavior on color { ColorAnimation { duration: 250 } }
@@ -176,7 +177,7 @@ Rectangle {
                             Text { text: "✦"; font.pixelSize: 12 * s; color: root.gold; anchors.right: parent.right; opacity: (root.userIndex === index || uItemMa.containsMouse) ? 1.0 : 0; Behavior on opacity { NumberAnimation { duration: 200 } } }
                             Text {
                                 text: (model.realName || model.name).toUpperCase()
-                                font.family: serifFont.name; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; color: root.fg; opacity: (root.userIndex === index || uItemMa.containsMouse) ? 1.0 : 0.4
+                                font.family: serifFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; color: root.fg; opacity: (root.userIndex === index || uItemMa.containsMouse) ? 1.0 : 0.4
                                 anchors.right: parent.right; anchors.rightMargin: 25 * s; anchors.verticalCenter: parent.verticalCenter; Behavior on opacity { NumberAnimation { duration: 200 } }
                             }
                             MouseArea { id: uItemMa; anchors.fill: parent; hoverEnabled: true; onClicked: { root.userIndex = index; root.userMenuOpen = false } }
@@ -196,7 +197,7 @@ Rectangle {
             
             TextInput {
                 id: passInput; anchors.fill: parent; verticalAlignment: TextInput.AlignVCenter; horizontalAlignment: TextInput.AlignRight
-                echoMode: TextInput.Password; passwordCharacter: "✦"; inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhSensitiveData | Qt.ImhNoAutoUppercase; font.family: serifFont.name; font.pixelSize: 22 * s; font.letterSpacing: 10 * s; color: root.fg; focus: true
+                echoMode: TextInput.Password; passwordCharacter: "✦"; inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhSensitiveData | Qt.ImhNoAutoUppercase; font.family: serifFontFamily; font.pixelSize: 22 * s; font.letterSpacing: 10 * s; color: root.fg; focus: true
                 property bool wasClicked: false; cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                 selectionColor: root.gold; rightPadding: passInput.text.length > 0 ? 50 * s : 0
                 onTextEdited: errText.text = ""
@@ -206,7 +207,7 @@ Rectangle {
                 
                 Text {
                     anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: "W A I T I N G   F O R   P A S S W O R D"
-                    font.family: serifFont.name; font.pixelSize: 12 * s; font.letterSpacing: 3 * s; color: root.gold
+                    font.family: serifFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 3 * s; color: root.gold
                     opacity: passInput.text.length === 0 ? 0.4 : 0
                     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
                     layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 3 }
@@ -236,7 +237,7 @@ Rectangle {
         Text {
             id: errText; width: parent.width; horizontalAlignment: Text.AlignRight
             height: 15 * s; verticalAlignment: Text.AlignTop
-            text: ""; color: "#ff4444"; font.family: serifFont.name; font.pixelSize: 12 * s; font.letterSpacing: 2 * s
+            text: ""; color: "#ff4444"; font.family: serifFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 2 * s
         }
     }
 
@@ -250,7 +251,7 @@ Rectangle {
             Text {
                 id: sLabel
                 text: (sessionHelper.currentItem && sessionHelper.currentItem.sName ? sessionHelper.currentItem.sName : "WAYLAND").toUpperCase()
-                font.family: serifFont.name; font.pixelSize: 18 * s; font.letterSpacing: (sMa.containsMouse || root.sessionMenuOpen) ? 8 * s : 6 * s; color: (root.sessionMenuOpen || sMa.containsMouse) ? root.gold : root.fg; opacity: 0.8
+                font.family: serifFontFamily; font.pixelSize: 18 * s; font.letterSpacing: (sMa.containsMouse || root.sessionMenuOpen) ? 8 * s : 6 * s; color: (root.sessionMenuOpen || sMa.containsMouse) ? root.gold : root.fg; opacity: 0.8
                 Behavior on color { ColorAnimation { duration: 250 } }
                 Behavior on font.letterSpacing { NumberAnimation { duration: 450; easing.type: Easing.OutQuart } }
                 layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 4 }
@@ -270,7 +271,7 @@ Rectangle {
                             width: 250 * s; height: 32 * s; property bool itemHover: mMa.containsMouse
                             Text { text: "✦"; font.pixelSize: 12 * s; color: root.gold; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; opacity: (root.sessionIndex === index || mMa.containsMouse) ? 1.0 : 0; Behavior on opacity { NumberAnimation { duration: 200 } } }
                             Text {
-                                text: model.name.toUpperCase(); font.family: serifFont.name; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; color: root.fg; opacity: (root.sessionIndex === index || mMa.containsMouse) ? 1.0 : 0.4
+                                text: model.name.toUpperCase(); font.family: serifFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s; color: root.fg; opacity: (root.sessionIndex === index || mMa.containsMouse) ? 1.0 : 0.4
                                 anchors.left: parent.left; anchors.leftMargin: 25 * s; anchors.verticalCenter: parent.verticalCenter; Behavior on opacity { NumberAnimation { duration: 200 } }
                             }
                             MouseArea { id: mMa; anchors.fill: parent; hoverEnabled: true; onClicked: { root.sessionIndex = index; root.sessionMenuOpen = false } }
@@ -283,14 +284,14 @@ Rectangle {
         Row {
             spacing: 25 * s
             Text { 
-                text: "REBOOT"; font.family: serifFont.name; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: root.fg; opacity: rMa.containsMouse ? 1.0 : 0.4; scale: rMa.containsMouse ? 1.05 : 1.0
+                text: "REBOOT"; font.family: serifFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: root.fg; opacity: rMa.containsMouse ? 1.0 : 0.4; scale: rMa.containsMouse ? 1.05 : 1.0
                 Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
                 Behavior on opacity { ColorAnimation { duration: 250 } }
                 MouseArea { id: rMa; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof sddm !== "undefined") sddm.reboot() } }
             }
             Rectangle { width: 1; height: 10 * s; color: root.gold; opacity: 0.2; anchors.verticalCenter: parent.verticalCenter }
             Text { 
-                text: "SHUTDOWN"; font.family: serifFont.name; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: root.fg; opacity: pMa.containsMouse ? 1.0 : 0.4; scale: pMa.containsMouse ? 1.05 : 1.0
+                text: "SHUTDOWN"; font.family: serifFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: root.fg; opacity: pMa.containsMouse ? 1.0 : 0.4; scale: pMa.containsMouse ? 1.05 : 1.0
                 Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
                 Behavior on opacity { ColorAnimation { duration: 250 } }
                 MouseArea { id: pMa; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof sddm !== "undefined") sddm.powerOff() } }

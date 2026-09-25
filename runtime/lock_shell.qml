@@ -1,136 +1,68 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import QtMultimedia
-import "./shim"
-
+import "contract"
 
 ShellRoot {
-    id: shellRoot
+    id: root
 
-    property string activeTheme: Quickshell.env("QS_THEME") || "nier-automata"
-    property string themePath: Quickshell.env("QS_THEME_PATH") || (Quickshell.shellDir + "/themes_link/" + activeTheme)
+    property bool locked: true
+    readonly property string themePath: Quickshell.env("DARWAN_THEME_PATH")
+    readonly property var sessions: JSON.parse(Quickshell.env("DARWAN_SESSIONS") || "[]")
 
-    readonly property var sddm: sddmShim.sddm
-    readonly property var config: sddmShim.config
-    readonly property var userModel: sddmShim.userModel
-    readonly property var sessionModel: sddmShim.sessionModel
-    readonly property bool isWayland: Quickshell.env("XDG_SESSION_TYPE") === "wayland"
-    property bool authenticated: false
-    property bool sessionLocked: true
-    property bool isTesting: Quickshell.env("QS_TESTING") === "1"
-
-    SddmShim {
-        id: sddmShim
-        themePath: shellRoot.themePath
+    function unlock(windup) {
+        if (!locked)
+            return
+        Quickshell.execDetached(["loginctl", "unlock-session"])
+        exitTimer.interval = windup ? 500 : 100
+        exitTimer.start()
     }
 
-    Connections {
-        target: sddmShim.sddm
-        function onLoginSucceeded() {
-            shellRoot.authenticated = true
+    function run(action) {
+        Quickshell.execDetached(["sh", "-c", "if [ -d /run/systemd/system ]; then systemctl " + action + "; else loginctl " + action + "; fi"])
+    }
 
-            // Hyprland session lock fix
-            if (Quickshell.env("XDG_CURRENT_DESKTOP") === "Hyprland" || Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") !== "") {
-                Quickshell.execDetached(["hyprctl", "keyword", "misc:allow_session_lock_restore", "1"]);
-            }
-            Quickshell.execDetached(["loginctl", "unlock-session"]);
-
-            // Dynamic exit delay
-            let delay = 100;
-            if (activeTheme.includes("clockwork") && sddmShim.config.enableWindup === "true") {
-                delay = 500;
-            }
-            quitTimer.interval = delay;
-            quitTimer.start()
+    Timer {
+        interval: (parseInt(Quickshell.env("DARWAN_UNLOCK_AFTER")) || 0) * 1000
+        running: interval > 0
+        onTriggered: {
+            console.warn("darwan: test lock timed out; unlocking")
+            root.unlock(false)
         }
     }
 
     Timer {
-        id: quitTimer
-        interval: 3000
+        id: exitTimer
         onTriggered: {
-            shellRoot.sessionLocked = false
-            Qt.quit()
+            root.locked = false
+            Qt.callLater(() => Qt.quit())
         }
     }
 
-    Component {
-        id: themeComponent
-        Loader {
-            anchors.fill: parent
-            source: "file://" + shellRoot.themePath + "/Main.qml"
-            
-            onLoaded: {
-                item.forceActiveFocus()
-            }
-            onStatusChanged: {
-                if (status === Loader.Error) {
-                    console.error("FAILED to load theme:", source)
+    WlSessionLock {
+        locked: root.locked
+
+        WlSessionLockSurface {
+            color: "black"
+
+            ThemeHost {
+                id: host
+                anchors.fill: parent
+                themePath: root.themePath
+                overlayPath: Quickshell.env("DARWAN_OVERLAY") || ""
+                hostMode: "lock"
+                userName: Quickshell.env("DARWAN_USER") || Quickshell.env("USER") || ""
+                userRealName: Quickshell.env("DARWAN_REAL_NAME") || userName
+                sessionList: root.sessions
+                authBackend: PamAuth {}
+                // Unload before quitting: a playing video crashes Qt's FFmpeg backend on exit.
+                onUnlocked: {
+                    unload()
+                    root.unlock(config.enableWindup === "true")
                 }
-            }
-        }
-    }
-
-    Loader {
-        id: waylandLoader
-        active: shellRoot.isWayland
-        sourceComponent: Component {
-            WlSessionLock {
-                id: lock
-                locked: shellRoot.sessionLocked
-                surface: Component {
-                    WlSessionLockSurface {
-                        color: "black"
-                        
-                        // Absorb unhandled gestures
-                        PinchHandler { target: null }
-                        WheelHandler { target: null }
-                        
-                        MouseArea {
-                            anchors.fill: parent
-                            acceptedButtons: Qt.AllButtons
-                            hoverEnabled: true
-                            onWheel: (wheel) => { wheel.accepted = true }
-                        }
-
-                        Loader {
-                            anchors.fill: parent
-                            sourceComponent: themeComponent
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Loader {
-        id: x11Loader
-        active: !shellRoot.isWayland
-        sourceComponent: Component {
-            Variants {
-                model: Quickshell.screens
-                delegate: Window {
-                    id: window
-                    required property var modelData
-                    screen: modelData
-                    width: isTesting ? 1280 : screen.width
-                    height: isTesting ? 720 : screen.height
-                    visible: shellRoot.sessionLocked
-                    visibility: isTesting ? Window.Windowed : Window.FullScreen
-                    
-                    onClosing: (close) => {
-                        close.accepted = shellRoot.authenticated || shellRoot.isTesting;
-                    }
-                    
-                    flags: Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.MaximizeUsingFullscreenGeometryHint
-                    color: "black"
-
-                    Loader {
-                        anchors.fill: parent
-                        sourceComponent: themeComponent
-                    }
-                }
+                onPowerOffRequested: root.run("poweroff")
+                onRebootRequested: root.run("reboot")
+                onSuspendRequested: root.run("suspend")
             }
         }
     }
