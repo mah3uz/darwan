@@ -360,8 +360,8 @@ Rectangle {
                             }
                             MouseArea { anchors.fill: parent; onClicked: { passIn.forceActiveFocus(); passIn.wasClicked = true } }
                             Keys.enabled: loginFormVisible
-                            Keys.onReturnPressed: { if (loginFormVisible && typeof sddm !== "undefined") sddm.login(activeUserLogin, passIn.text, root.sessionIndex) }
-                            Keys.onEnterPressed: { if (loginFormVisible && typeof sddm !== "undefined") sddm.login(activeUserLogin, passIn.text, root.sessionIndex) }
+                            Keys.onReturnPressed: { if (!loginFormVisible) loginFormVisible = true; else if (typeof sddm !== "undefined") sddm.login(activeUserLogin, passIn.text, root.sessionIndex) }
+                            Keys.onEnterPressed: { if (!loginFormVisible) loginFormVisible = true; else if (typeof sddm !== "undefined") sddm.login(activeUserLogin, passIn.text, root.sessionIndex) }
                         }
                     }
 

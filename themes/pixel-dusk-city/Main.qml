@@ -217,7 +217,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -1 * s
                     color: root.textWhite
                     font.family: pfRegFamily; font.pixelSize: 14 * s; font.letterSpacing: 3 * s
-                    echoMode: TextInput.Password; onTextEdited: err.text = ""; passwordCharacter: "─"
+                    echoMode: TextInput.Password; onTextEdited: errorMessage.text = ""; passwordCharacter: "─"
                     focus: true; clip: true
                     cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                     selectionColor: root.amberHot

@@ -180,7 +180,14 @@ Item {
         focus: true
         active: host.configReady && !host.unloading && host.themePath !== ""
         source: active ? "file://" + host.themePath + "/Main.qml" : ""
-        onLoaded: item.forceActiveFocus()
+        // Themes that mark their own field `focus: true` keep it, as they do under SDDM.
+        onLoaded: Qt.callLater(() => {
+            let f = themeLoader.Window.activeFocusItem
+            while (f && f !== item)
+                f = f.parent
+            if (item && f !== item)
+                item.forceActiveFocus()
+        })
         onStatusChanged: {
             if (status === Loader.Error)
                 console.error("darwan: failed to load " + source)

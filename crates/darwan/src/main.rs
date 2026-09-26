@@ -84,6 +84,9 @@ enum Cmd {
         /// Hide each theme's font/ folder, as on a fresh clone without licensed fonts
         #[arg(long)]
         no_fonts: bool,
+        /// Type the mock password and press Return; fail if the theme does not unlock
+        #[arg(long)]
+        login: bool,
         /// Virtual screen size
         #[arg(long, default_value = "1920x1080", value_parser = check::parse_size)]
         size: (u32, u32),
@@ -169,6 +172,7 @@ fn main() -> ExitCode {
             ids,
             all,
             no_fonts,
+            login,
             size,
             shots,
             jobs,
@@ -179,6 +183,7 @@ fn main() -> ExitCode {
                 ids,
                 all,
                 no_fonts,
+                login,
                 size,
                 shots,
                 jobs,

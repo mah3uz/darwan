@@ -12,6 +12,7 @@ pub struct Options {
     pub ids: Vec<String>,
     pub all: bool,
     pub no_fonts: bool,
+    pub login: bool,
     pub size: (u32, u32),
     pub shots: Option<PathBuf>,
     pub jobs: usize,
@@ -126,6 +127,7 @@ fn check_one(paths: &Paths, theme: &Theme, opts: &Options, work: &Path, screen: 
         )
         .env("DARWAN_CHECK_FONTS", if opts.no_fonts { "1" } else { "0" })
         .env("DARWAN_USER", "traveler")
+        .env("DARWAN_CHECK_LOGIN", if opts.login { "1" } else { "0" })
         .stdin(Stdio::null())
         .stdout(log.try_clone().unwrap())
         .stderr(log);
@@ -163,6 +165,9 @@ fn check_one(paths: &Paths, theme: &Theme, opts: &Options, work: &Path, screen: 
         Some(Some(0)) => String::new(),
         Some(Some(2)) => "theme failed to load; the fallback prompt was shown".into(),
         Some(Some(3)) => "text with no font family (missing font and no fallback)".into(),
+        Some(Some(4)) => {
+            "cannot unlock: typing the password and pressing Return did not log in".into()
+        }
         Some(Some(code)) => format!("quickshell exited with {code}"),
         Some(None) => "quickshell was killed by a signal".into(),
     };

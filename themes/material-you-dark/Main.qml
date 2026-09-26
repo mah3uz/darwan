@@ -609,7 +609,7 @@ Rectangle {
                             }
                             
                             onAccepted: {
-                                if (!root.isQuickshell && pwd.text !== "") {
+                                if (pwd.text !== "") {
                                     let currentUser = userHelper.currentItem ? userHelper.currentItem.uLogin : userModel.lastUser;
                                     sddm.login(currentUser, pwd.text, root.sessionIndex);
                                 }
