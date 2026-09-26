@@ -23,6 +23,6 @@ pkgbase = darwan
 	optdepends = noto-fonts-cjk: Chinese text in the Genshin theme
 	options = !lto
 	source = darwan-0.1.0.tar.gz::https://github.com/mah3uz/darwan/archive/refs/tags/v0.1.0.tar.gz
-	sha256sums = SKIP
+	sha256sums = bf3ab003c94aed64583dab63a7d38428dc12e2c8477decfcf203dc9d2383b45c
 
 pkgname = darwan

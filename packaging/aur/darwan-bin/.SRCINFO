@@ -23,6 +23,6 @@ pkgbase = darwan-bin
 	options = !strip
 	options = !debug
 	source = https://github.com/mah3uz/darwan/releases/download/v0.1.0/darwan-0.1.0-x86_64.pkg.tar.zst
-	sha256sums = SKIP
+	sha256sums = 3ba191c03a368c340ded0935b0c2059b29cdb7545198996d5666470c15d0aaac
 
 pkgname = darwan-bin

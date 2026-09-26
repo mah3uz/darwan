@@ -21,7 +21,6 @@ set_sum "$aur/darwan/PKGBUILD" "$(sha256sum "$work/darwan-$ver.tar.gz" | cut -d'
 
 echo "==> building the package from the tag"
 cp "$aur/darwan/PKGBUILD" "$work/"
-cp "$work/darwan-$ver.tar.gz" "$work/"
 (cd "$work" && makepkg -f --noconfirm)
 mkdir -p "$dist"
 asset=$dist/darwan-$ver-x86_64.pkg.tar.zst
