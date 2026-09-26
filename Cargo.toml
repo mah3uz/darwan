@@ -5,5 +5,5 @@ members = ["crates/darwan", "crates/darwan-core", "crates/darwan-gui", "crates/d
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-license = "GPL-3.0-or-later"
+license = "GPL-3.0-only"
 rust-version = "1.98"

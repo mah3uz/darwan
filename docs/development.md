@@ -109,17 +109,18 @@ git push
 ```
 
 **6. Update the AUR packages.** Each AUR package is its own git repository. The first time, clone both next to this
-checkout (this needs an AUR account with your SSH key):
+checkout (this needs an AUR account with your SSH key). The AUR only accepts pushes to `master`, so the clone must not
+take your `init.defaultBranch`:
 
 ```sh
-git clone ssh://aur@aur.archlinux.org/darwan.git ../aur-darwan
-git clone ssh://aur@aur.archlinux.org/darwan-bin.git ../aur-darwan-bin
+git -c init.defaultBranch=master clone ssh://aur@aur.archlinux.org/darwan.git ../aur-darwan
+git -c init.defaultBranch=master clone ssh://aur@aur.archlinux.org/darwan-bin.git ../aur-darwan-bin
 ```
 
 Then, for every release, copy the files across and push. For `darwan`:
 
 ```sh
-cp packaging/aur/darwan/PKGBUILD packaging/aur/darwan/.SRCINFO ../aur-darwan/
+cp packaging/aur/darwan/{PKGBUILD,.SRCINFO,LICENSE} ../aur-darwan/
 git -C ../aur-darwan commit -am "Update to 0.1.0"
 git -C ../aur-darwan push
 ```
@@ -127,15 +128,17 @@ git -C ../aur-darwan push
 And for `darwan-bin`:
 
 ```sh
-cp packaging/aur/darwan-bin/PKGBUILD packaging/aur/darwan-bin/.SRCINFO ../aur-darwan-bin/
+cp packaging/aur/darwan-bin/{PKGBUILD,.SRCINFO,LICENSE} ../aur-darwan-bin/
 git -C ../aur-darwan-bin commit -am "Update to 0.1.0"
 git -C ../aur-darwan-bin push
 ```
 
-The first push to a new AUR repository needs `git add PKGBUILD .SRCINFO` before the commit, since `-a` only picks up
-files git already tracks.
+The first push to a new AUR repository needs `git add PKGBUILD .SRCINFO LICENSE` before the commit, since `-a` only
+picks up files git already tracks. `LICENSE` covers the packaging files themselves; the AUR asks every package
+repository for one.
 
-A fix to packaging alone, with no new release, bumps `pkgrel` instead of `pkgver` and skips steps 2 to 4.
+A fix to packaging alone, with no new release, bumps `pkgrel` instead of `pkgver` and skips steps 2 to 4. Run
+`just srcinfo` after editing a PKGBUILD, since the AUR shows what `.SRCINFO` says, not the PKGBUILD.
 
 ## Demo animations
 
