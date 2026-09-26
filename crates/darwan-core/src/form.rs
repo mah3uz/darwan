@@ -184,6 +184,6 @@ mod tests {
         let cfg = UserConfig::parse("[themes.osu]\ngameMode = \"arcade\"\n").unwrap();
         let f = fields(&theme("osu"), &cfg);
         let g = field(&f, "Start screen");
-        assert_eq!((g.value.as_str(), g.is_set), ("game", false));
+        assert_eq!((g.value.as_str(), g.is_set), ("menu", false));
     }
 }
