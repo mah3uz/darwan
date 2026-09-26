@@ -61,23 +61,33 @@
 
 #### 📦 DEPENDENCIES
 
-`makepkg -s` installs these for you.
+Your AUR helper or `makepkg -s` installs these for you.
 
 | | Packages |
 |--:|:---|
 | **Required** | `quickshell` `qt6-base` `qt6-declarative` `qt6-5compat` `qt6-multimedia` `qt6-multimedia-ffmpeg` `polkit` `ttf-jetbrains-mono-nerd` |
 | **Optional** | `sddm` (the login screen) · `libfaketime` (`darwan preview --at`) · `noto-fonts-cjk` (Chinese text in Genshin Impact) |
-| **Build** | `rust` `lld` `git` |
+| **Build** (`darwan` only) | `rust` `lld` |
 
-#### 🚀 BUILD & INSTALL
+#### 🚀 INSTALL
+
+From the AUR, with a helper such as `paru` or `yay`:
 
 ```sh
-git clone https://github.com/mah3uz/darwan.git
-cd darwan/packaging/arch
-makepkg -si
+paru -S darwan-bin   # prebuilt from the latest release
+paru -S darwan       # built from the latest release's source
 ```
 
-The PKGBUILD builds the tagged release from GitHub, runs the tests and installs one `darwan` package:
+Without a helper:
+
+```sh
+git clone https://aur.archlinux.org/darwan-bin.git
+cd darwan-bin && makepkg -si
+```
+
+From a checkout of this repository, `just install` builds the package from the committed `HEAD` and installs it.
+
+Either package installs:
 
 | Path | What |
 |:---|:---|
@@ -90,13 +100,16 @@ The PKGBUILD builds the tagged release from GitHub, runs the tests and installs 
 
 #### 🧪 RUN FROM SOURCE (DEVELOPMENT)
 
+The [`justfile`](./justfile) runs everything against the checkout; `just` lists the recipes.
+
 ```sh
-cargo build --release
-DARWAN_DATA_DIR=$PWD target/release/darwan preview nier-automata
-DARWAN_DATA_DIR=$PWD target/release/darwan-gui
+just darwan list            # the CLI; `just darwan` alone opens the TUI
+just gui                    # the GUI
+just preview nier-automata
+just test lint check        # tests, fmt and clippy, every theme offscreen
 ```
 
-`DARWAN_DATA_DIR` points every binary at `./runtime` and `./themes`, so nothing needs installing. Applying to SDDM and importing fonts still need the installed helper.
+These set `DARWAN_DATA_DIR`, which points every binary at `./runtime` and `./themes`, so nothing needs installing. Applying to SDDM and importing fonts still need the installed helper.
 
 <br>
 <p align="center">━━━━━━━ ❖ ━━━━━━━</p>

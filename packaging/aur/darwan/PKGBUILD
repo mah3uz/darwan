@@ -19,7 +19,7 @@ depends=(
   'quickshell'
   'ttf-jetbrains-mono-nerd'
 )
-makedepends=('cargo' 'git' 'lld')
+makedepends=('cargo' 'lld')
 optdepends=(
   'sddm: use the themes on the login screen'
   'libfaketime: darwan preview --at'
@@ -27,17 +27,17 @@ optdepends=(
 )
 # makepkg's -flto turns cxx-qt's C++ into GCC LTO objects that the Rust link can't resolve.
 options=('!lto')
-source=("git+$url.git#tag=v$pkgver")
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
 prepare() {
-  cd darwan
+  cd "$pkgname-$pkgver"
   export RUSTUP_TOOLCHAIN=stable
   cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
 }
 
 build() {
-  cd darwan
+  cd "$pkgname-$pkgver"
   export RUSTUP_TOOLCHAIN=stable
   export CARGO_TARGET_DIR=target
   # cxx-qt's headers use __FILE__; keep the build directory out of the binary.
@@ -46,7 +46,7 @@ build() {
 }
 
 check() {
-  cd darwan
+  cd "$pkgname-$pkgver"
   export RUSTUP_TOOLCHAIN=stable
   export CARGO_TARGET_DIR=target
   export QT_QPA_PLATFORM=offscreen
@@ -54,7 +54,7 @@ check() {
 }
 
 package() {
-  cd darwan
+  cd "$pkgname-$pkgver"
   install -Dm755 target/release/darwan target/release/darwan-gui -t "$pkgdir/usr/bin"
   install -Dm755 target/release/darwan-helper -t "$pkgdir/usr/lib/darwan"
   install -d "$pkgdir/usr/share/darwan"
