@@ -234,7 +234,10 @@ fn draw_browse(f: &mut Frame, app: &mut App, area: Rect) {
     let image_area = centered_16_9(app, inner);
     let size = image_area.as_size();
     let settled = app.settled();
+    // Terminal graphics sit above text, so an overlay can't cover the image; leave it out instead.
+    let overlay = matches!(app.mode, Mode::Help);
     let placeholder = match app.previews.get(&id, path, size, settled) {
+        _ if overlay => None,
         Lookup::Ready(state) => {
             f.render_stateful_widget(StatefulImage::default().resize(resize()), image_area, state);
             None
