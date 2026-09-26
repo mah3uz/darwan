@@ -7,6 +7,8 @@ import Qt.labs.folderlistmodel
 import SddmComponents 2.0
 
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
         anchors.fill: parent
@@ -401,8 +403,8 @@ Rectangle {
                             Text { text: "TIME"; color: "#99bbbbbb"; font.family: mainFontFamily; font.pixelSize: 9*s; anchors.right: parent.right; font.weight: Font.Black; font.letterSpacing: 1.5*s }
                         }
                         Text {
-                            property string timeStr: Qt.formatTime(new Date(), "HH:mm")
-                            Timer { interval: 1000; running: true; repeat: true; onTriggered: parent.timeStr = Qt.formatTime(new Date(), "HH:mm") }
+                            property string timeStr: Qt.formatTime(new Date(), clockFmt)
+                            Timer { interval: 1000; running: true; repeat: true; onTriggered: parent.timeStr = Qt.formatTime(new Date(), clockFmt) }
                             text: timeStr
                             color: "white"; font.family: mainFontFamily; font.pixelSize: 32*s; font.weight: Font.Bold
                             anchors.verticalCenter: parent.verticalCenter

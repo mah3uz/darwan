@@ -6,6 +6,8 @@ import SddmComponents 2.0
 
 // Pixel Emerald
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     MouseArea { anchors.fill: parent; cursorShape: Qt.ArrowCursor; z: -1 }
 
     readonly property real s: Screen.height / 768
@@ -94,14 +96,14 @@ Rectangle {
                 id: ct
                 anchors.left: parent.left; anchors.leftMargin: 12 * s
                 anchors.top: clockHeader.bottom; anchors.topMargin: 6 * s
-                text: Qt.formatTime(new Date(), "HH:mm")
+                text: Qt.formatTime(new Date(), clockFmt)
                 color: root.inkDark; font.family: pfFamily; font.pixelSize: 40 * s
-                Timer { interval: 1000; running: true; repeat: true; onTriggered: ct.text = Qt.formatTime(new Date(), "HH:mm") }
+                Timer { interval: 1000; running: true; repeat: true; onTriggered: ct.text = Qt.formatTime(new Date(), clockFmt) }
             }
 
             Rectangle { anchors.left: parent.left; anchors.leftMargin: 12 * s; anchors.right: parent.right; anchors.rightMargin: 12 * s; anchors.bottom: parent.bottom; anchors.bottomMargin: 17 * s; height: 1 * s; color: root.emerald; opacity: 0.5 }
 
-            Text { anchors.left: parent.left; anchors.leftMargin: 13 * s; anchors.bottom: parent.bottom; anchors.bottomMargin: 7 * s; text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase(); color: root.inkMid; font.family: pfFamily; font.pixelSize: 8 * s; font.letterSpacing: 1.5 * s }
+            Text { anchors.left: parent.left; anchors.leftMargin: 13 * s; anchors.bottom: parent.bottom; anchors.bottomMargin: 7 * s; text: Qt.formatDate(new Date(), config.dateFormat || "dddd, MMMM d").toUpperCase(); color: root.inkMid; font.family: pfFamily; font.pixelSize: 8 * s; font.letterSpacing: 1.5 * s }
 
             Row {
                 anchors.right: parent.right; anchors.rightMargin: 10 * s

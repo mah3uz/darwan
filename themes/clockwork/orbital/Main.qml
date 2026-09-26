@@ -46,6 +46,10 @@ Rectangle {
 
     // Time
     property int curH: new Date().getHours()
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property bool clock12: config.clockFormat === "12h"
+    readonly property string amPm: clock12 && config.clockShowAmPm === "true" ? (curH < 12 ? "AM" : "PM") : ""
+    function clockHour(h) { return String(clock12 ? h % 12 || 12 : h).padStart(2, "0") }
     property int curM: new Date().getMinutes()
     property int curS: new Date().getSeconds()
     property int curMS: new Date().getMilliseconds()
@@ -210,11 +214,11 @@ Rectangle {
 
             Text {
                 anchors.right: indicatorPill.left; anchors.rightMargin: 40 * s; anchors.verticalCenter: parent.verticalCenter
-                text: String(root.curH % 12 || 12).padStart(2, '0'); font.family: outfitFontFamily; font.pixelSize: 110 * s; font.weight: Font.Black; color: root.mainText
+                text: root.clockHour(root.curH); font.family: outfitFontFamily; font.pixelSize: 110 * s; font.weight: Font.Black; color: root.mainText
             }
             Column {
                 anchors.left: indicatorPill.right; anchors.leftMargin: 110 * s; anchors.verticalCenter: parent.verticalCenter; spacing: 5 * s
-                Text { text: Qt.formatDate(new Date(), "dd MMM yyyy").toUpperCase(); font.family: outfitFontFamily; font.pixelSize: 13 * s; font.letterSpacing: 4 * s; color: root.subColor }
+                Text { text: Qt.formatDate(new Date(), config.dateFormatNoWeekday || "dd MMM yyyy").toUpperCase() + (root.amPm ? " · " + root.amPm : ""); font.family: outfitFontFamily; font.pixelSize: 13 * s; font.letterSpacing: 4 * s; color: root.subColor }
                 Text { text: Qt.formatDate(new Date(), "dddd").toUpperCase(); font.family: outfitFontFamily; font.pixelSize: 18 * s; font.letterSpacing: 8 * s; font.weight: Font.Bold; color: root.mainText }
             }
         }

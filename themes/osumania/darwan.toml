@@ -16,3 +16,7 @@ choices = [
   { value = "menu", label = "Main menu only" },
   { value = "game", label = "Rhythm game gate" },
 ]
+
+[supports]
+clock_format = true
+date_format = true

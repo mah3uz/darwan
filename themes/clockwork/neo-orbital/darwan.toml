@@ -2,3 +2,7 @@ name = "Neo-Orbital"
 family = "Clockwork"
 author = "Darkkal44"
 background = "image"
+
+[supports]
+clock_format = true
+date_format = true

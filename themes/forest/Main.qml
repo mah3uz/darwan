@@ -8,6 +8,8 @@ import Qt.labs.folderlistmodel
 import SddmComponents 2.0
 
 Item {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
         anchors.fill: parent
@@ -161,12 +163,12 @@ Item {
         Column {
             anchors.centerIn: parent; anchors.verticalCenterOffset: -8 * s; spacing: 5 * s
             Text {
-                id: clockText; text: Qt.formatTime(new Date(), "HH:mm")
+                id: clockText; text: Qt.formatTime(new Date(), clockFmt)
                 font.family: mainFontFamily; font.pixelSize: 90 * s; font.weight: Font.Medium; color: "white"; font.letterSpacing: -2 * s; opacity: 0.95; anchors.horizontalCenter: parent.horizontalCenter
-                Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), "HH:mm") }
+                Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), clockFmt) }
             }
             Text {
-                text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase(); font.family: mainFontFamily; font.pixelSize: 15 * s; color: root.accentColor
+                text: Qt.formatDate(new Date(), config.dateFormat || "dddd, MMMM d").toUpperCase(); font.family: mainFontFamily; font.pixelSize: 15 * s; color: root.accentColor
                 font.letterSpacing: 4 * s; horizontalAlignment: Text.AlignHCenter; opacity: 0.7; anchors.horizontalCenter: parent.horizontalCenter
             }
         }

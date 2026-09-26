@@ -6,6 +6,8 @@ import SddmComponents 2.0
 
 // Munchlax Layout
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
         anchors.fill: parent
@@ -57,7 +59,7 @@ Rectangle {
             Text { text: cd.text; color: "#80000000"; font: cd.font; x: 2*s; y: 2*s }
             Text {
                 id: cd
-                text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase()
+                text: Qt.formatDate(new Date(), config.dateFormat || "dddd, MMMM d").toUpperCase()
                 color: root.mTeal; font.family: pfFamily; font.pixelSize: 18 * s; font.letterSpacing: 6 * s
             }
         }
@@ -68,9 +70,9 @@ Rectangle {
             Text { text: ct.text; color: "#80000000"; font: ct.font; x: 3*s; y: 3*s }
             Text {
                 id: ct
-                text: Qt.formatTime(new Date(), "HH:mm")
+                text: Qt.formatTime(new Date(), clockFmt)
                 color: root.mCream; font.family: pfFamily; font.pixelSize: 96 * s
-                Timer { interval: 1000; running: true; repeat: true; onTriggered: ct.text = Qt.formatTime(new Date(), "HH:mm") }
+                Timer { interval: 1000; running: true; repeat: true; onTriggered: ct.text = Qt.formatTime(new Date(), clockFmt) }
             }
         }
     }

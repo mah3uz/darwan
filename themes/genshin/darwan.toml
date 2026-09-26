@@ -29,3 +29,7 @@ choices = [
   { value = "4", label = "Dusk" },
 ]
 enabled_when = { background_mode = "static" }
+
+[supports]
+clock_format = true
+date_format = true

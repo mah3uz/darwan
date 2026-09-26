@@ -15,11 +15,16 @@ pub fn command(paths: &Paths, shell: &str, wrapper: &[String]) -> Command {
     };
     cmd.arg("--no-color")
         .arg("-p")
-        .arg(paths.runtime().join(shell))
-        .current_dir(paths.runtime())
+        .arg(paths.runtime().join(shell));
+    runtime_env(&mut cmd, paths);
+    cmd
+}
+
+// What every host of runtime/ needs, whichever program runs it.
+pub fn runtime_env(cmd: &mut Command, paths: &Paths) {
+    cmd.current_dir(paths.runtime())
         .env("QML_XHR_ALLOW_FILE_READ", "1")
         .env("QML2_IMPORT_PATH", paths.runtime().join("imports"));
-    cmd
 }
 
 pub fn theme_env(cmd: &mut Command, theme: &Theme, theme_dir: &Path, overlay: Option<&Path>) {

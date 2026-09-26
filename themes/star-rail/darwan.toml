@@ -7,3 +7,7 @@ file = "font.ttf"
 family = "DIN Next"
 license = "Commercial (Monotype)"
 url = ""
+
+[supports]
+clock_format = true
+date_format = true

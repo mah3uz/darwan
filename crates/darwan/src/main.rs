@@ -59,7 +59,7 @@ enum Cmd {
         /// Check the password with PAM instead of the mock ("test")
         #[arg(long)]
         pam: bool,
-        /// Pretend the time is HH:MM (needs libfaketime)
+        /// Pretend the time is HH:MM (needs libfaketime; mock login only)
         #[arg(long, value_name = "HH:MM")]
         at: Option<String>,
     },

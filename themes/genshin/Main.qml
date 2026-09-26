@@ -6,6 +6,8 @@ import Qt.labs.folderlistmodel
 import SddmComponents 2.0
 
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     id: root
     readonly property real s: (Screen.height / 768) * 0.75
     width: Screen.width
@@ -237,8 +239,8 @@ Rectangle {
                 interval: 1000; running: true; repeat: true
                 onTriggered: {
                     var d = new Date()
-                    genshinTime.text = Qt.formatTime(d, "hh:mm")
-                    genshinDate.text = Qt.formatDate(d, "dddd, MMMM d").toUpperCase()
+                    genshinTime.text = Qt.formatTime(d, clockFmt)
+                    genshinDate.text = Qt.formatDate(d, config.dateFormat || "dddd, MMMM d").toUpperCase()
                 }
                 Component.onCompleted: triggered()
             }

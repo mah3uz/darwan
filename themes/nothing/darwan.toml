@@ -7,3 +7,7 @@ file = "NDot55.otf"
 family = "NDot 55"
 license = "Nothing brand use only"
 url = ""
+
+[supports]
+clock_format = true
+date_format = true

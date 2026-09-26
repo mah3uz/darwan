@@ -16,3 +16,7 @@ choices = [
 key = "enableWindup"
 label = "Windup animation on unlock"
 type = "bool"
+
+[supports]
+clock_format = true
+date_format = true

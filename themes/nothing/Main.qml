@@ -5,6 +5,10 @@ import Qt.labs.folderlistmodel
 import SddmComponents 2.0
 
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property bool clock12: config.clockFormat === "12h"
+    function clockHour(d) { return clock12 ? String(d.getHours() % 12 || 12).padStart(2, "0") : Qt.formatTime(d, "HH") }
+    function withAmPm(d, text) { return clock12 && config.clockShowAmPm === "true" ? text + " · " + (d.getHours() < 12 ? "AM" : "PM") : text }
     id: root
     width: Screen.width
     height: Screen.height
@@ -148,10 +152,10 @@ Rectangle {
                 repeat: true
                 onTriggered: {
                     let d = new Date();
-                    hourText.text = Qt.formatTime(d, "hh");
+                    hourText.text = clockHour(d);
                     minText.text = Qt.formatTime(d, "mm");
                     dayText.text = Qt.formatDate(d, "dddd").toUpperCase();
-                    dateText.text = Qt.formatDate(d, "MMM d").toUpperCase();
+                    dateText.text = withAmPm(d, Qt.formatDate(d, config.dateFormatNoWeekday || "MMM d").toUpperCase());
                 }
             }
             
@@ -163,7 +167,7 @@ Rectangle {
                 Text {
                     id: hourText
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: Qt.formatTime(new Date(), "hh")
+                    text: clockHour(new Date())
                     font.family: pfDotFamily
                     font.pixelSize: 110 * s
                     font.letterSpacing: 4 * s
@@ -201,7 +205,7 @@ Rectangle {
                 }
                 Text {
                     id: dateText
-                    text: Qt.formatDate(new Date(), "MMM d").toUpperCase()
+                    text: withAmPm(new Date(), Qt.formatDate(new Date(), config.dateFormatNoWeekday || "MMM d").toUpperCase())
                     font.family: root.sansFont
                     font.pixelSize: 11 * s
                     font.letterSpacing: 1.5 * s

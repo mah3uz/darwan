@@ -41,6 +41,10 @@ Rectangle {
 
     // Time Logic
     property int curH:  new Date().getHours()
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property bool clock12: config.clockFormat === "12h"
+    readonly property string amPm: clock12 && config.clockShowAmPm === "true" ? (curH < 12 ? "AM" : "PM") : ""
+    function clockHour(h) { return String(clock12 ? h % 12 || 12 : h).padStart(2, "0") }
     property int curM:  new Date().getMinutes()
     property int curS:  new Date().getSeconds()
     property int curMS: new Date().getMilliseconds()
@@ -179,8 +183,8 @@ Rectangle {
                 TapeReel { tickCount: 60; scrollFrac: root.fracSec; unitLabel: "SEC" }
             }
 
-            Text { anchors.top: tapeRow.bottom; anchors.topMargin: 20 * s; anchors.horizontalCenter: tapeRow.horizontalCenter; text: Qt.formatDate(new Date(), "dddd  ·  dd MMM yyyy").toUpperCase(); font.family: mainFontFamily; font.pixelSize: 11*s; font.letterSpacing: 4*s; color: root.dimText }
-            Text { anchors.bottom: tapeRow.top; anchors.bottomMargin: 18 * s; anchors.horizontalCenter: tapeRow.horizontalCenter; text: String(curH).padStart(2,'0') + "  :  " + String(curM).padStart(2,'0') + "  :  " + String(curS).padStart(2,'0'); font.family: mainFontFamily; font.pixelSize: 28*s; font.letterSpacing: 6*s; font.weight: Font.Black; color: root.mainText }
+            Text { anchors.top: tapeRow.bottom; anchors.topMargin: 20 * s; anchors.horizontalCenter: tapeRow.horizontalCenter; text: Qt.formatDate(new Date(), config.dateFormat || "dddd  ·  dd MMM yyyy").toUpperCase(); font.family: mainFontFamily; font.pixelSize: 11*s; font.letterSpacing: 4*s; color: root.dimText }
+            Text { anchors.bottom: tapeRow.top; anchors.bottomMargin: 18 * s; anchors.horizontalCenter: tapeRow.horizontalCenter; text: clockHour(curH) + "  :  " + String(curM).padStart(2,'0') + "  :  " + String(curS).padStart(2,'0') + (amPm ? "  " + amPm : ""); font.family: mainFontFamily; font.pixelSize: 28*s; font.letterSpacing: 6*s; font.weight: Font.Black; color: root.mainText }
         }
 
         Item {

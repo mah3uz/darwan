@@ -3,6 +3,51 @@ use std::fmt;
 use crate::catalog::{Catalog, valid_id};
 use crate::config::{Target, UserConfig};
 
+pub struct DatePreset {
+    pub format: &'static str,
+    pub no_weekday: &'static str,
+    pub label: &'static str,
+}
+
+// Qt date formats. Themes that show the weekday on a line of its own use `no_weekday`, so a preset
+// that starts with the weekday doesn't show it twice.
+pub const DATE_PRESETS: &[DatePreset] = &[
+    DatePreset {
+        format: "dddd, MMMM d",
+        no_weekday: "MMMM d",
+        label: "Saturday, September 26",
+    },
+    DatePreset {
+        format: "ddd, MMM d",
+        no_weekday: "MMM d",
+        label: "Sat, Sep 26",
+    },
+    DatePreset {
+        format: "d MMMM yyyy",
+        no_weekday: "d MMMM yyyy",
+        label: "26 September 2026",
+    },
+    DatePreset {
+        format: "yyyy-MM-dd",
+        no_weekday: "yyyy-MM-dd",
+        label: "2026-09-26",
+    },
+    DatePreset {
+        format: "dd/MM/yyyy",
+        no_weekday: "dd/MM/yyyy",
+        label: "26/09/2026",
+    },
+    DatePreset {
+        format: "MM/dd/yyyy",
+        no_weekday: "MM/dd/yyyy",
+        label: "09/26/2026",
+    },
+];
+
+pub fn date_preset(format: &str) -> Option<&'static DatePreset> {
+    DATE_PRESETS.iter().find(|p| p.format == format)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Key {
     Theme(Target),
@@ -87,10 +132,21 @@ pub fn set(
             }
             _ => Err(format!("clock.show_ampm is true or false, not {value:?}")),
         },
-        Key::DateFormat if value.contains(['\n', '\r']) => {
-            Err("date.format must be one line".into())
+        Key::DateFormat if value.is_empty() => {
+            config.remove_global("date", "format");
+            Ok(())
         }
-        Key::DateFormat => config.set_global("date", "format", toml_edit::value(value)),
+        Key::DateFormat => match date_preset(value) {
+            Some(_) => config.set_global("date", "format", toml_edit::value(value)),
+            None => Err(format!(
+                "date.format is one of {}, or \"\" for the theme's own, not {value:?}",
+                DATE_PRESETS
+                    .iter()
+                    .map(|p| format!("{:?}", p.format))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )),
+        },
         Key::Option { theme, key } => {
             let t = catalog
                 .get(theme)
@@ -165,6 +221,7 @@ mod tests {
             ("osu.gameMode", "arcade"),
             ("osu.noSuchKey", "x"),
             ("date.format", "a\nb"),
+            ("date.format", "ddd d"),
         ] {
             assert!(
                 set(&mut cfg, &cat, &Key::parse(k).unwrap(), v).is_err(),
@@ -187,5 +244,26 @@ mod tests {
         );
         assert!(unset(&mut cfg, &key));
         assert_eq!(get(&cfg, &key), Ok(None));
+    }
+
+    #[test]
+    fn date_format_takes_a_preset_and_empty_means_the_theme_default() {
+        let cat = catalog();
+        let mut cfg = UserConfig::default();
+        set(&mut cfg, &cat, &Key::DateFormat, "yyyy-MM-dd").unwrap();
+        assert_eq!(get(&cfg, &Key::DateFormat), Ok(Some("yyyy-MM-dd".into())));
+        set(&mut cfg, &cat, &Key::DateFormat, "").unwrap();
+        assert_eq!(
+            get(&cfg, &Key::DateFormat),
+            Ok(None),
+            "\"\" unsets instead of storing an empty format"
+        );
+    }
+
+    #[test]
+    fn no_weekday_variants_really_drop_the_weekday() {
+        for p in DATE_PRESETS {
+            assert!(!p.no_weekday.contains("ddd"), "{}", p.format);
+        }
     }
 }

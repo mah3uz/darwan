@@ -5,6 +5,8 @@ import Qt.labs.folderlistmodel
 import SddmComponents 2.0
 
 Item {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
         anchors.fill: parent
@@ -88,7 +90,7 @@ Item {
             Text {
                 id: clockText
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Qt.formatTime(new Date(), "HH:mm")
+                text: Qt.formatTime(new Date(), clockFmt)
                 font.family: mainFontFamily
                 font.pixelSize: 180 * s
                 font.weight: Font.Thin
@@ -96,12 +98,12 @@ Item {
                 style: Text.Normal
                 layer.enabled: true
                 layer.effect: DropShadow { color: "#50000000"; radius: 25 * s; samples: 31; verticalOffset: 6 * s; transparentBorder: true }
-                Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), "HH:mm") }
+                Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), clockFmt) }
             }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase()
+                text: Qt.formatDate(new Date(), config.dateFormat || "dddd, MMMM d").toUpperCase()
                 font.family: mainFontFamily; font.pixelSize: 18 * s
                 font.letterSpacing: 12 * s
                 font.weight: Font.DemiBold

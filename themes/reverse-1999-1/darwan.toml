@@ -1,3 +1,7 @@
 name = "Reverse: 1999 - I"
 author = "Darkkal44"
 background = "video"
+
+[supports]
+clock_format = true
+date_format = true

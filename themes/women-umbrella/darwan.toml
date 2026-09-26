@@ -1,3 +1,7 @@
 name = "Women · Umbrella"
 author = "Darkkal44"
 background = "image"
+
+[supports]
+clock_format = true
+date_format = true

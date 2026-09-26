@@ -4,6 +4,10 @@ import Qt5Compat.GraphicalEffects
 import SddmComponents 2.0
 
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property bool clock12: config.clockFormat === "12h"
+    function clockHour(d) { return clock12 ? String(d.getHours() % 12 || 12).padStart(2, "0") : Qt.formatTime(d, "HH") }
+    function withAmPm(d, text) { return clock12 && config.clockShowAmPm === "true" ? text + " · " + (d.getHours() < 12 ? "AM" : "PM") : text }
     id: root
     width: Screen.width
     height: Screen.height
@@ -133,9 +137,9 @@ Rectangle {
                 repeat: true
                 onTriggered: {
                     let d = new Date();
-                    hText.text = Qt.formatTime(d, "hh");
+                    hText.text = clockHour(d);
                     mText.text = Qt.formatTime(d, "mm");
-                    dateChipText.text = Qt.formatDate(d, "dddd, MMM d").toUpperCase();
+                    dateChipText.text = withAmPm(d, Qt.formatDate(d, config.dateFormat || "dddd, MMM d").toUpperCase());
                 }
             }
 
@@ -145,7 +149,7 @@ Rectangle {
                 
                 Text {
                     id: hText
-                    text: Qt.formatTime(new Date(), "hh")
+                    text: clockHour(new Date())
                     font.family: root.sansFont
                     font.pixelSize: 140 * s
                     font.weight: Font.Bold
@@ -172,7 +176,7 @@ Rectangle {
                 Text {
                     id: dateChipText
                     anchors.centerIn: parent
-                    text: Qt.formatDate(new Date(), "dddd, MMM d").toUpperCase()
+                    text: withAmPm(new Date(), Qt.formatDate(new Date(), config.dateFormat || "dddd, MMM d").toUpperCase())
                     font.family: root.sansFont
                     font.pixelSize: 11 * s
                     font.bold: true

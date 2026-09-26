@@ -6,6 +6,8 @@ import SddmComponents 2.0
 
 // Rainy Room
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
         anchors.fill: parent
@@ -90,14 +92,14 @@ Rectangle {
             spacing: 4 * s
             Text {
                 id: clockText
-                text: Qt.formatTime(new Date(), "HH:mm")
+                text: Qt.formatTime(new Date(), clockFmt)
                 color: "white"; font.family: pfFamily; font.pixelSize: 84 * s
-                Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), "HH:mm") }
+                Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), clockFmt) }
             }
             Row {
                 spacing: 8 * s
                 Rectangle { width: 12 * s; height: 1 * s; color: root.rainBlue; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase(); color: root.lamp; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 3 * s; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: Qt.formatDate(new Date(), config.dateFormat || "dddd, MMMM d").toUpperCase(); color: root.lamp; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 3 * s; anchors.verticalCenter: parent.verticalCenter }
             }
         }
 

@@ -98,8 +98,19 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
 
     let name = &theme.manifest.name;
     let supports = &theme.manifest.supports;
-    let (clock, clock_set) = current(&Key::ClockFormat, "24h");
-    let (ampm, ampm_set) = current(&Key::ClockShowAmPm, "false");
+    // Unset globals show what the theme itself does, declared in its theme.conf.
+    let theme_default = |key: &str, fallback: &'static str| {
+        theme
+            .defaults
+            .get(key)
+            .map_or(fallback, String::as_str)
+            .to_string()
+    };
+    let (clock, clock_set) = current(&Key::ClockFormat, &theme_default("clockFormat", "24h"));
+    let (ampm, ampm_set) = current(
+        &Key::ClockShowAmPm,
+        &theme_default("clockShowAmPm", "false"),
+    );
     let (date, date_set) = current(&Key::DateFormat, "");
     let no_clock = (!supports.clock_format).then(|| format!("{name} doesn't support clock format"));
     out.push(Field {
@@ -125,7 +136,15 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
     out.push(Field {
         key: Key::DateFormat,
         label: "Date format".into(),
-        kind: FieldKind::Text,
+        kind: FieldKind::Choice(
+            std::iter::once((String::new(), "Theme default".to_string()))
+                .chain(
+                    settings::DATE_PRESETS
+                        .iter()
+                        .map(|p| (p.format.to_string(), p.label.to_string())),
+                )
+                .collect(),
+        ),
         value: date,
         is_set: date_set,
         disabled: (!supports.date_format).then(|| format!("{name} doesn't support date format")),
@@ -171,12 +190,19 @@ mod tests {
 
     #[test]
     fn globals_are_shown_but_disabled_with_a_reason_when_unsupported() {
-        let f = fields(&theme("osu"), &UserConfig::default());
+        let f = fields(&theme("ninesols"), &UserConfig::default());
         assert_eq!(
             field(&f, "Clock").disabled.as_deref(),
-            Some("osu! doesn't support clock format")
+            Some("Nine Sols doesn't support clock format"),
+            "Nine Sols shows no clock"
         );
         assert!(field(&f, "Date format").disabled.is_some());
+        let osu = fields(&theme("osu"), &UserConfig::default());
+        assert_eq!(field(&osu, "Clock").disabled, None);
+        assert!(
+            field(&osu, "Date format").disabled.is_some(),
+            "osu! shows a clock but no date"
+        );
     }
 
     #[test]
@@ -185,5 +211,33 @@ mod tests {
         let f = fields(&theme("osu"), &cfg);
         let g = field(&f, "Start screen");
         assert_eq!((g.value.as_str(), g.is_set), ("menu", false));
+    }
+
+    #[test]
+    fn an_unset_clock_shows_the_theme_own_format() {
+        let f = fields(&theme("clockwork/orbital"), &UserConfig::default());
+        let clock = field(&f, "Clock");
+        assert_eq!(
+            (clock.value.as_str(), clock.is_set),
+            ("12h", false),
+            "Orbital is a 12-hour design"
+        );
+        assert_eq!(field(&f, "Show AM/PM").disabled, None);
+        let cfg = UserConfig::parse("[clock]\nformat = \"24h\"\n").unwrap();
+        let clock = &fields(&theme("clockwork/orbital"), &cfg)[2];
+        assert_eq!(
+            (clock.label.as_str(), clock.value.as_str(), clock.is_set),
+            ("Clock", "24h", true)
+        );
+    }
+
+    #[test]
+    fn date_format_is_a_choice_of_presets_led_by_the_theme_default() {
+        let f = fields(&theme("osu"), &UserConfig::default());
+        let FieldKind::Choice(choices) = &field(&f, "Date format").kind else {
+            panic!("date format should be a choice");
+        };
+        assert_eq!(choices[0], (String::new(), "Theme default".to_string()));
+        assert_eq!(choices.len(), 1 + settings::DATE_PRESETS.len());
     }
 }

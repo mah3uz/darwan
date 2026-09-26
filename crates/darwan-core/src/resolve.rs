@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::catalog::Theme;
 use crate::config::UserConfig;
+use crate::settings;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Issue {
@@ -50,10 +51,24 @@ pub fn resolve(theme: &Theme, config: &UserConfig) -> Resolved {
         );
     }
     if supports.date_format {
-        let date = config
-            .date_format()
-            .map(|v| v.filter(|s| !s.is_empty()).map(str::to_string));
-        global(&mut r, "date.format", "dateFormat", date);
+        match config.date_format() {
+            Ok(Some(f)) if !f.is_empty() => match settings::date_preset(f) {
+                Some(p) => {
+                    r.overlay.insert("dateFormat".into(), p.format.into());
+                    r.overlay
+                        .insert("dateFormatNoWeekday".into(), p.no_weekday.into());
+                }
+                None => r.issues.push(Issue {
+                    key: "date.format".into(),
+                    message: format!("{f:?} is not one of the date presets"),
+                }),
+            },
+            Ok(_) => {}
+            Err(message) => r.issues.push(Issue {
+                key: "date.format".into(),
+                message,
+            }),
+        }
     }
     r
 }
@@ -73,7 +88,20 @@ pub fn check_overlay(theme: &Theme, overlay: &BTreeMap<String, String>) -> Vec<I
                     "true" | "false" => Ok(()),
                     _ => Err(format!("expected true or false, got {value:?}")),
                 },
-                "dateFormat" if supports.date_format => Ok(()),
+                "dateFormat" if supports.date_format => settings::date_preset(value)
+                    .map(drop)
+                    .ok_or_else(|| format!("{value:?} is not a date preset")),
+                "dateFormatNoWeekday" if supports.date_format => {
+                    let expected = overlay
+                        .get("dateFormat")
+                        .and_then(|f| settings::date_preset(f))
+                        .map(|p| p.no_weekday);
+                    if expected == Some(value.as_str()) {
+                        Ok(())
+                    } else {
+                        Err(format!("{value:?} does not match dateFormat"))
+                    }
+                }
                 _ => match theme.manifest.option(key) {
                     Some(opt) => opt.check(value),
                     None => Err(format!("{} has no option {key:?}", theme.manifest.name)),
@@ -154,7 +182,7 @@ mod tests {
 
     #[test]
     fn globals_only_reach_themes_that_support_them() {
-        let config = cfg("[clock]\nformat = \"12h\"\n[date]\nformat = \"ddd d\"\n");
+        let config = cfg("[clock]\nformat = \"12h\"\n[date]\nformat = \"dddd, MMMM d\"\n");
         assert!(resolve(&theme(""), &config).overlay.is_empty());
         let r = resolve(&theme("clock_format = true\ndate_format = true"), &config);
         assert_eq!(
@@ -163,17 +191,32 @@ mod tests {
         );
         assert_eq!(
             r.overlay.get("dateFormat").map(String::as_str),
-            Some("ddd d")
+            Some("dddd, MMMM d")
+        );
+        assert_eq!(
+            r.overlay.get("dateFormatNoWeekday").map(String::as_str),
+            Some("MMMM d"),
+            "two-line themes need the date without the weekday they already show"
         );
     }
 
     #[test]
+    fn a_date_format_that_is_not_a_preset_never_reaches_a_theme() {
+        let r = resolve(
+            &theme("date_format = true"),
+            &cfg("[date]\nformat = \"'; x\"\n"),
+        );
+        assert!(r.overlay.is_empty());
+        assert_eq!(r.issues[0].key, "date.format");
+    }
+
+    #[test]
     fn check_overlay_accepts_what_resolve_produces_and_rejects_anything_else() {
-        let t = theme("clock_format = true");
+        let t = theme("clock_format = true\ndate_format = true");
         let r = resolve(
             &t,
             &cfg(
-                "[clock]\nformat = \"12h\"\n[themes.\"clockwork/orbital\"]\nenableWindup = true\n",
+                "[clock]\nformat = \"12h\"\n[date]\nformat = \"ddd, MMM d\"\n[themes.\"clockwork/orbital\"]\nenableWindup = true\n",
             ),
         );
         assert!(check_overlay(&t, &r.overlay).is_empty());
@@ -188,8 +231,16 @@ mod tests {
         assert_eq!(
             check_overlay(&t, &bad).len(),
             3,
-            "unknown key, unsupported global, bad value"
+            "unknown key, a date format that is not a preset, bad value"
         );
+        let mismatched: BTreeMap<String, String> = [
+            ("dateFormat", "ddd, MMM d"),
+            ("dateFormatNoWeekday", "yyyy"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+        assert_eq!(check_overlay(&t, &mismatched).len(), 1);
     }
 
     #[test]

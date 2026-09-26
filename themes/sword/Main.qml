@@ -5,6 +5,8 @@ import Qt.labs.folderlistmodel
 import SddmComponents 2.0
 
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
         anchors.fill: parent
@@ -83,13 +85,13 @@ Rectangle {
     Column {
         anchors.left: parent.left; anchors.top: parent.top; anchors.leftMargin: 70 * s; anchors.topMargin: 60 * s; spacing: 8 * s; opacity: root.ui
         Text {
-            id: clockText; text: Qt.formatTime(new Date(), "HH:mm"); color: "white"; font.family: shurikenFontFamily; font.pixelSize: 88 * s; font.weight: Font.Thin
-            Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), "HH:mm") }
+            id: clockText; text: Qt.formatTime(new Date(), clockFmt); color: "white"; font.family: shurikenFontFamily; font.pixelSize: 88 * s; font.weight: Font.Thin
+            Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), clockFmt) }
         }
         Row {
             spacing: 10 * s
             Rectangle { width: 22 * s; height: 1 * s; color: "#6090b8"; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: Qt.formatDate(new Date(), "dddd · MMMM d").toUpperCase(); color: "#6090b8"; font.family: shurikenFontFamily; font.pixelSize: 13 * s; font.letterSpacing: 3 * s }
+            Text { text: Qt.formatDate(new Date(), config.dateFormat || "dddd · MMMM d").toUpperCase(); color: "#6090b8"; font.family: shurikenFontFamily; font.pixelSize: 13 * s; font.letterSpacing: 3 * s }
         }
     }
 

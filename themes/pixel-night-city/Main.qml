@@ -5,6 +5,10 @@ import SddmComponents 2.0
 
 // Night City
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property bool clock12: config.clockFormat === "12h"
+    function clockHour(d) { return clock12 ? String(d.getHours() % 12 || 12).padStart(2, "0") : Qt.formatTime(d, "HH") }
+    function withAmPm(d, text) { return clock12 && config.clockShowAmPm === "true" ? text + " · " + (d.getHours() < 12 ? "AM" : "PM") : text }
     // Wayland Cursor Fix
     MouseArea {
         anchors.fill: parent
@@ -102,9 +106,9 @@ Rectangle {
         Row {
             spacing: 20 * s
             Text {
-                id: hT; text: Qt.formatTime(new Date(), "HH")
+                id: hT; text: clockHour(new Date())
                 color: "white"; font.family: pfFamily; font.pixelSize: 100 * s; font.letterSpacing: -5 * s
-                Timer { interval: 60000; running: true; repeat: true; onTriggered: hT.text = Qt.formatTime(new Date(), "HH") }
+                Timer { interval: 60000; running: true; repeat: true; onTriggered: hT.text = clockHour(new Date()) }
                 layer.enabled: true; layer.effect: DropShadow { color: "#80000000"; radius: 6; samples: 8; horizontalOffset: 2 * s; verticalOffset: 2 * s }
             }
             
@@ -120,7 +124,7 @@ Rectangle {
         }
         
         Text {
-            text: Qt.formatDate(new Date(), "dddd, MMMM d").toUpperCase()
+            text: withAmPm(new Date(), Qt.formatDate(new Date(), config.dateFormat || "dddd, MMMM d").toUpperCase())
             color: "white"; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 8 * s
             opacity: 0.8
             layer.enabled: true; layer.effect: DropShadow { color: "#80000000"; radius: 4; samples: 8; horizontalOffset: 1; verticalOffset: 1 }

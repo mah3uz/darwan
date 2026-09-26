@@ -1,3 +1,7 @@
 name = "Windows 7"
 author = "Darkkal44"
 background = "image"
+
+[supports]
+clock_format = true
+date_format = true

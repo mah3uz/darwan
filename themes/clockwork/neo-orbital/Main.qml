@@ -39,6 +39,10 @@ Rectangle {
 
     // Time Engine
     property int curH: new Date().getHours()
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property bool clock12: config.clockFormat === "12h"
+    readonly property string amPm: clock12 && config.clockShowAmPm === "true" ? (curH < 12 ? "AM" : "PM") : ""
+    function clockHour(h) { return String(clock12 ? h % 12 || 12 : h).padStart(2, "0") }
     property int curM: new Date().getMinutes()
     property int curS: new Date().getSeconds()
     property int curMS: new Date().getMilliseconds()
@@ -126,7 +130,7 @@ Rectangle {
 
                     Text {
                         anchors.centerIn: parent
-                        text: String(root.curH).padStart(2, '0')
+                        text: root.clockHour(root.curH)
                         font.family: outfitFontFamily; font.pixelSize: 76 * s; font.weight: Font.Black
                         color: root.mainText
                     }
@@ -243,7 +247,7 @@ Rectangle {
 
                         Text {
                             anchors.centerIn: parent
-                            text: Qt.formatDate(new Date(), "dd MMM yyyy").toUpperCase()
+                            text: Qt.formatDate(new Date(), config.dateFormatNoWeekday || "dd MMM yyyy").toUpperCase() + (root.amPm ? " · " + root.amPm : "")
                             font.family: outfitFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; font.weight: Font.Bold
                             color: root.mainText
                         }

@@ -1,4 +1,4 @@
-use std::process::ExitCode;
+use std::process::{Command, ExitCode};
 
 use darwan_core::host;
 use darwan_core::paths::Paths;
@@ -14,26 +14,55 @@ pub struct Options {
 }
 
 pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
+    if opts.pam && opts.at.is_some() {
+        return Err("--at works only with the mock login (\"test\"), not --pam".into());
+    }
     let wayland = WaylandSession::discover()?;
     let prepared = overlay::prepare(paths, opts.id.as_deref(), "preview.conf")?;
+    let mode = if opts.sddm { "sddm" } else { "lock" };
 
-    let wrapper = match &opts.at {
-        Some(at) => vec!["faketime".to_string(), format!("today {}", check_time(at)?)],
-        None => Vec::new(),
+    let (mut cmd, program) = match &opts.at {
+        None => {
+            let mut cmd = qs::command(paths, "preview_shell.qml", &[]);
+            qs::theme_env(
+                &mut cmd,
+                &prepared.theme,
+                &prepared.theme.dir,
+                Some(&prepared.overlay),
+            );
+            cmd.env("DARWAN_MODE", mode)
+                .env("DARWAN_AUTH", if opts.pam { "pam" } else { "mock" })
+                .env("DARWAN_USER", host::user_name())
+                .env("DARWAN_HOSTNAME", host::host_name())
+                .env("DARWAN_SESSIONS", host::sessions_json());
+            (cmd, "quickshell")
+        }
+        // TODO: run --at under Quickshell too once it starts under libfaketime. Its jemalloc
+        // deadlocks with libfaketime's preload, so Qt's own qml runner hosts these previews.
+        Some(at) => {
+            let settings = serde_json::json!({
+                "themeId": prepared.theme.id,
+                "themePath": prepared.theme.dir,
+                "overlay": prepared.overlay,
+                "mode": mode,
+                "user": host::user_name(),
+                "hostName": host::host_name(),
+                "sessions": serde_json::from_str::<serde_json::Value>(&host::sessions_json())
+                    .unwrap_or_default(),
+            });
+            let mut cmd = Command::new("faketime");
+            cmd.arg(format!("today {}", check_time(at)?))
+                .arg("qml6")
+                .arg(paths.runtime().join("qml_preview.qml"))
+                .arg("--")
+                .arg(settings.to_string());
+            qs::runtime_env(&mut cmd, paths);
+            // Without this, a qml runner whose stderr is not a terminal logs to the journal.
+            cmd.env("QT_FORCE_STDERR_LOGGING", "1");
+            (cmd, "faketime")
+        }
     };
-    let mut cmd = qs::command(paths, "preview_shell.qml", &wrapper);
-    qs::theme_env(
-        &mut cmd,
-        &prepared.theme,
-        &prepared.theme.dir,
-        Some(&prepared.overlay),
-    );
     wayland.apply(&mut cmd);
-    cmd.env("DARWAN_MODE", if opts.sddm { "sddm" } else { "lock" })
-        .env("DARWAN_AUTH", if opts.pam { "pam" } else { "mock" })
-        .env("DARWAN_USER", host::user_name())
-        .env("DARWAN_HOSTNAME", host::host_name())
-        .env("DARWAN_SESSIONS", host::sessions_json());
     let log_path = darwan_core::paths::state_dir().join("preview.log");
     let log =
         std::fs::File::create(&log_path).map_err(|e| format!("{}: {e}", log_path.display()))?;
@@ -44,16 +73,9 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
     } else {
         println!("Unlock with the password \"test\", or press Ctrl+Q to close.");
     }
-    let status = cmd.status().map_err(|e| {
-        format!(
-            "cannot start {}: {e}",
-            if wrapper.is_empty() {
-                "quickshell"
-            } else {
-                "faketime"
-            }
-        )
-    })?;
+    let status = cmd
+        .status()
+        .map_err(|e| format!("cannot start {program}: {e}"))?;
     if status.success() {
         return Ok(ExitCode::SUCCESS);
     }

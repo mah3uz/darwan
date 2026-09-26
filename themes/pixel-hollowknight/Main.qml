@@ -5,6 +5,8 @@ import Qt.labs.folderlistmodel
 import SddmComponents 2.0
 
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
         anchors.fill: parent
@@ -62,10 +64,10 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter; opacity: root.ui * 0.9
         Row {
             anchors.centerIn: parent; spacing: 40 * s
-            Text { text: Qt.formatDate(new Date(), "ddd, MMM d").toUpperCase(); color: root.lore; font.family: pfFamily; font.pixelSize: 14 * s; font.letterSpacing: 12 * s; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: Qt.formatDate(new Date(), config.dateFormat || "ddd, MMM d").toUpperCase(); color: root.lore; font.family: pfFamily; font.pixelSize: 14 * s; font.letterSpacing: 12 * s; anchors.verticalCenter: parent.verticalCenter }
             Rectangle { width: 1; height: 40 * s; color: root.lantern; opacity: 0.3; anchors.verticalCenter: parent.verticalCenter }
-            Text { id: ctxt; text: Qt.formatTime(new Date(), "HH:mm"); color: "white"; font.family: pfFamily; font.pixelSize: 48 * s; font.letterSpacing: 8 * s; anchors.verticalCenter: parent.verticalCenter
-                Timer { interval: 1000; running: true; repeat: true; onTriggered: ctxt.text = Qt.formatTime(new Date(), "HH:mm") }
+            Text { id: ctxt; text: Qt.formatTime(new Date(), clockFmt); color: "white"; font.family: pfFamily; font.pixelSize: 48 * s; font.letterSpacing: 8 * s; anchors.verticalCenter: parent.verticalCenter
+                Timer { interval: 1000; running: true; repeat: true; onTriggered: ctxt.text = Qt.formatTime(new Date(), clockFmt) }
             }
         }
     }

@@ -1,3 +1,7 @@
 name = "The Last of Us"
 author = "Darkkal44"
 background = "video"
+
+[supports]
+clock_format = true
+date_format = true

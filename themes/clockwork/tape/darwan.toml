@@ -11,3 +11,7 @@ choices = [
   { value = "dark", label = "Dark" },
   { value = "light", label = "Light" },
 ]
+
+[supports]
+clock_format = true
+date_format = true

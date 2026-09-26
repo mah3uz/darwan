@@ -7,3 +7,7 @@ file = "FOT-Rodin Pro DB.otf"
 family = "FOT-Rodin Pro DB"
 license = "Commercial (Fontworks)"
 url = "https://fonts.adobe.com/fonts/fot-rodin-pron"
+
+[supports]
+clock_format = true
+date_format = true

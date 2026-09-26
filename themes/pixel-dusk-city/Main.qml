@@ -4,6 +4,8 @@ import Qt5Compat.GraphicalEffects
 import SddmComponents 2.0
 
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
         anchors.fill: parent
@@ -119,10 +121,10 @@ Rectangle {
 
         Text {
             id: clockText
-            text: Qt.formatTime(new Date(), "HH:mm")
+            text: Qt.formatTime(new Date(), clockFmt)
             color: root.textWhite
             font.family: pfBoldFamily; font.pixelSize: 78 * s
-            Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), "HH:mm") }
+            Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), clockFmt) }
         }
         Row {
             spacing: 8 * s
@@ -135,7 +137,7 @@ Rectangle {
                 }
             }
             Text {
-                text: Qt.formatDate(new Date(), "ddd, MMM d").toUpperCase()
+                text: Qt.formatDate(new Date(), config.dateFormat || "ddd, MMM d").toUpperCase()
                 color: root.amberSoft; font.family: pfMedFamily
                 font.pixelSize: 11 * s; font.letterSpacing: 3 * s
                 anchors.verticalCenter: parent.verticalCenter

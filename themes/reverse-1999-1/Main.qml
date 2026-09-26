@@ -6,6 +6,10 @@ import Qt.labs.folderlistmodel
 import SddmComponents 2.0
 
 Rectangle {
+    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
+    readonly property bool clock12: config.clockFormat === "12h"
+    function clockHour(d) { return clock12 ? String(d.getHours() % 12 || 12).padStart(2, "0") : Qt.formatTime(d, "HH") }
+    function withAmPm(d, text) { return clock12 && config.clockShowAmPm === "true" ? text + " · " + (d.getHours() < 12 ? "AM" : "PM") : text }
     id: root
     width: Screen.width; height: Screen.height
     color: "transparent"
@@ -119,7 +123,7 @@ Rectangle {
             id: timeLabels
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 15 * s; z: 50 
 
-            Text { id: hhLab; text: Qt.formatTime(new Date(), "HH"); font.family: serifFontFamily; font.pixelSize: 100 * s; font.letterSpacing: 4 * s; color: root.fg; layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 12 } }
+            Text { id: hhLab; text: clockHour(new Date()); font.family: serifFontFamily; font.pixelSize: 100 * s; font.letterSpacing: 4 * s; color: root.fg; layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 12 } }
             Text { id: mmLab; text: Qt.formatTime(new Date(), "mm"); font.family: serifFontFamily; font.pixelSize: 100 * s; font.letterSpacing: 4 * s; color: root.fg; layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 12 } }
         }
 
@@ -129,11 +133,11 @@ Rectangle {
             Row {
                 anchors.right: parent.right; spacing: 12 * s
                 Rectangle { width: 40 * s; height: 1; color: root.gold; opacity: 0.3; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: Qt.formatDate(new Date(), "MMM dd yyyy").toUpperCase(); font.family: serifFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; color: root.fg; opacity: 0.6 }
+                Text { text: withAmPm(new Date(), Qt.formatDate(new Date(), config.dateFormatNoWeekday || "MMM dd yyyy").toUpperCase()); font.family: serifFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; color: root.fg; opacity: 0.6 }
             }
         }
 
-        Timer { interval: 1000; running: true; repeat: true; onTriggered: { hhLab.text = Qt.formatTime(new Date(), "HH"); mmLab.text = Qt.formatTime(new Date(), "mm") } }
+        Timer { interval: 1000; running: true; repeat: true; onTriggered: { hhLab.text = clockHour(new Date()); mmLab.text = Qt.formatTime(new Date(), "mm") } }
     }
 
     // Identity

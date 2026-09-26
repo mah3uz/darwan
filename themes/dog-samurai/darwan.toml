@@ -1,3 +1,7 @@
 name = "Dog Samurai"
 author = "Darkkal44"
 background = "video"
+
+[supports]
+clock_format = true
+date_format = true
