@@ -5,7 +5,6 @@ import SddmComponents 2.0
 
 // Night City
 Rectangle {
-    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
     readonly property bool clock12: config.clockFormat === "12h"
     function clockHour(d) { return clock12 ? String(d.getHours() % 12 || 12).padStart(2, "0") : Qt.formatTime(d, "HH") }
     function withAmPm(d, text) { return clock12 && config.clockShowAmPm === "true" ? text + " · " + (d.getHours() < 12 ? "AM" : "PM") : text }

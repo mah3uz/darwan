@@ -23,9 +23,6 @@
 > **What's in the name?**
 > **Darwan** (দারোয়ান, said *dar-waan*) is Bangla for *gatekeeper*: the guard who sits by the gate, checks who's coming in and politely sends everyone else away. This app does that job at both of your computer's gates.
 
-> [!WARNING]
-> Darwan is under active development. This README describes the app as it is being built, so some commands are not available yet. Until the first release, the legacy `sddm.sh` and `quickshell.sh` scripts in this repository still work.
-
 <br>
 <p align="center">━━━━━━━ ❖ ━━━━━━━</p>
 
@@ -42,10 +39,10 @@
 - **One config file.** `~/.config/darwan/config.toml` holds everything. Nothing inside the theme folders is ever edited.
 - **Separate lockscreen and login themes.** Use Orbital for the lock and Rainy Room for SDDM if you like.
 - **Options that know the theme.** Each theme declares what it supports. Options a theme can't use are shown disabled with the reason, and options that depend on another option unlock when it's set.
-- **Test without locking yourself out.** Get a live preview in the GUI, open a windowed preview with a fake password, preview through SDDM's own greeter, or run headless checks across every theme.
-- **Safe SDDM setup.** A tiny, audited helper does the root-only work through polkit, and nothing else runs as root.
+- **Test without locking yourself out.** A live preview in the GUI, a full-screen preview with a mock password, a preview through SDDM's own greeter, and headless checks that load every theme and type the password to make sure it unlocks.
+- **Safe SDDM setup.** A small helper does the root-only work through polkit and checks every value again; nothing else runs as root.
 - **Never locked out.** If a theme fails to load, Darwan shows a plain fallback password prompt instead of a black screen.
-- **Global settings.** 12h/24h clock and date format apply to every theme that supports them.
+- **Global settings.** 12h/24h clock, AM/PM and a date format apply to every theme that supports them. Left unset, each theme keeps its own design.
 
 <br>
 <p align="center">━━━━━━━ ❖ ━━━━━━━</p>
@@ -64,39 +61,42 @@
 
 #### 📦 DEPENDENCIES
 
+`makepkg -s` installs these for you.
+
 | | Packages |
 |--:|:---|
-| **Core** | `quickshell` `qt6-declarative` `qt6-5compat` `qt6-svg` |
-| **Video themes** | `qt6-multimedia` `qt6-multimedia-ffmpeg` `gst-plugins-base` `gst-plugins-good` `gst-plugins-bad` `gst-plugins-ugly` |
-| **Login screen** | `sddm` `polkit` |
-| **Optional** | `libfaketime` (preview at a chosen time of day) |
+| **Required** | `quickshell` `qt6-base` `qt6-declarative` `qt6-5compat` `qt6-multimedia` `qt6-multimedia-ffmpeg` `polkit` `ttf-jetbrains-mono-nerd` |
+| **Optional** | `sddm` (the login screen) · `libfaketime` (`darwan preview --at`) · `noto-fonts-cjk` (Chinese text in Genshin Impact) |
+| **Build** | `rust` `lld` `git` |
 
 #### 🚀 BUILD & INSTALL
 
-From a checkout of this repository:
-
 ```sh
-cd packaging/arch && makepkg -si
+git clone https://github.com/mah3uz/darwan.git
+cd darwan/packaging/arch
+makepkg -si
 ```
 
-The package installs:
+The PKGBUILD builds the tagged release from GitHub, runs the tests and installs one `darwan` package:
 
 | Path | What |
 |:---|:---|
 | `/usr/bin/darwan` | CLI + TUI |
-| `/usr/bin/darwan-gui` | GUI |
-| `/usr/lib/darwan/darwan-helper` | privileged SDDM helper (run through `pkexec`) |
-| `/usr/share/darwan/runtime/` | the QML runtime shared by the lockscreen and previews |
-| `/usr/share/darwan/themes/` | all themes |
+| `/usr/bin/darwan-gui` | GUI, also in your app launcher as *Darwan* |
+| `/usr/lib/darwan/darwan-helper` | privileged SDDM helper, run through `pkexec` |
+| `/usr/share/darwan/runtime/` | the QML runtime shared by the lockscreen and the previews |
+| `/usr/share/darwan/themes/` | all 41 themes |
+| `/usr/share/polkit-1/actions/org.darwan.policy` | lets the helper ask for your password once per session |
 
 #### 🧪 RUN FROM SOURCE (DEVELOPMENT)
 
 ```sh
-DARWAN_DATA_DIR=$PWD cargo run -p darwan -- preview nier-automata
-DARWAN_DATA_DIR=$PWD cargo run -p darwan-gui
+cargo build --release
+DARWAN_DATA_DIR=$PWD target/release/darwan preview nier-automata
+DARWAN_DATA_DIR=$PWD target/release/darwan-gui
 ```
 
-`DARWAN_DATA_DIR` points every binary at `./runtime` and `./themes`, so nothing needs installing.
+`DARWAN_DATA_DIR` points every binary at `./runtime` and `./themes`, so nothing needs installing. Applying to SDDM and importing fonts still need the installed helper.
 
 <br>
 <p align="center">━━━━━━━ ❖ ━━━━━━━</p>
@@ -115,47 +115,60 @@ DARWAN_DATA_DIR=$PWD cargo run -p darwan-gui
 | Command | What it does |
 |:---|:---|
 | `darwan` | open the TUI |
-| `darwan list` | list installed themes |
-| `darwan show <theme>` | show a theme's options, defaults and what it supports |
-| `darwan get <key>` / `darwan set <key> <value>` | read or change a setting, e.g. `darwan set clock.format 12h` |
-| `darwan lock [theme]` | lock the screen now |
-| `darwan preview <theme>` | windowed preview, no real lock ([details](#preview)) |
-| `darwan check [--all]` | headless load test of one or all themes |
-| `darwan sddm apply` / `preview` / `status` / `reset` | manage the login screen ([details](#sddm)) |
-| `darwan doctor` | find missing packages, fonts and conflicting SDDM config |
+| `darwan list` | list the themes; `L` marks the lock theme, `S` the SDDM theme |
+| `darwan show <theme>` | a theme's details, fonts and settings |
+| `darwan get [key]` · `set <key> <value>` · `unset <key>` | read, change or reset a setting, e.g. `darwan set clock.format 12h` |
+| `darwan lock [theme]` | lock the screen now (default: the `[lock]` theme) |
+| `darwan preview [theme]` | full-screen preview, no real lock ([details](#preview)) |
+| `darwan check <theme>… \| --all` | headless test: QML errors, missing fonts, and whether typing the password unlocks |
+| `darwan sddm apply` · `preview` · `status` · `reset` | manage the login screen ([details](#sddm)) |
+| `darwan font import <theme> <file>` | install a licensed font a theme needs |
+| `darwan doctor` | check the session, Quickshell, fonts, the helper and SDDM's config |
+
+Setting keys are `lock.theme`, `sddm.theme`, `clock.format`, `clock.show_ampm`, `date.format` and `<theme>.<option>`.
 
 #### 🖥️ TUI
 
-Run `darwan` in a terminal. You get:
-- a theme list with an animated preview (kitty/sixel, falling back to block characters)
-- an options form generated for the selected theme
+Run `darwan` in a terminal. Themes are grouped into Clockwork, Pixel and Other themes, with a still preview of the selected one (kitty, sixel or iTerm graphics, falling back to block characters). Keys that can't work on your system are greyed out and say why.
 
-| Key | Action |
-|:---|:---|
-| `Enter` | edit the selected theme's options |
-| `p` | open a windowed preview |
-| `a` | apply to the lockscreen |
-| `s` | apply to SDDM (asks for your password through polkit) |
+| Key | Action | Key | Action |
+|:---|:---|:---|:---|
+| `⏎` | settings for the theme | `/` | search by name or id |
+| `p` | preview as the lockscreen | `P` | preview with the SDDM layout |
+| `l` | use as the lock theme | `L` | lock now |
+| `s` | apply to the SDDM login screen | `S` | preview in SDDM's test mode |
+| `f` | import a missing font | `c` | check the theme |
+| `d` | doctor | `?` · `q` | all keys · quit |
 
 #### 🎨 GUI
 
-Run `darwan-gui`. The window has three panes:
+Run `darwan-gui`, or open *Darwan* from your launcher.
 
 | Left | Centre | Right |
 |:---|:---|:---|
-| theme gallery | live preview that updates as you change options | the selected theme's options |
+| theme gallery with search | live preview that reloads as you change settings; click it and type `test` to unlock | the theme's settings, saved as you change them |
 
-The buttons are *Apply to lockscreen*, *Apply to SDDM*, *Full preview* and *SDDM preview*.
+Below the preview: *Use for lock*, *Lock now*, *Full-screen preview*, *Apply to SDDM*, *SDDM test mode* and *Check*, plus *Import…* for missing fonts. *Doctor* is at the top right. The *Lockscreen* / *Login screen layout* switch shows the theme as each host would.
 
 #### 🔒 LOCKSCREEN KEYBIND
 
-Point your window manager's lock keybind at `darwan lock`. For example, in Hyprland:
+*Use for lock* only chooses the theme. To lock with Darwan, point your lock keybind and idle locker at `darwan lock`, and let a new locker take over if one ever crashes. In Hyprland's Lua config:
+
+```lua
+hl.config({ misc = { allow_session_lock_restore = true } })
+hl.bind("SUPER + L", hl.dsp.exec_cmd("darwan lock"), { desc = "Lock" })
+```
+
+or in a classic `hyprland.conf`:
 
 ```ini
+misc {
+    allow_session_lock_restore = true
+}
 bind = SUPER, L, exec, darwan lock
 ```
 
-Pressing the keybind while already locked does nothing, because only one lockscreen runs at a time.
+For hypridle, set `lock_cmd = darwan lock`. Pressing the keybind while already locked does nothing, because only one lockscreen runs at a time, and `darwan lock` refuses to lock while `allow_session_lock_restore` is off.
 
 <br>
 <p align="center">━━━━━━━ ❖ ━━━━━━━</p>
@@ -179,11 +192,11 @@ theme = "clockwork/orbital"
 theme = "pixel-rainyroom"
 
 [clock]
-format = "12h"          # "12h" | "24h"
+format = "12h"          # "12h" | "24h"; unset, each theme keeps its own
 show_ampm = false
 
 [date]
-format = ""             # "" keeps the theme's own style, or a Qt date format like "dddd, MMMM d"
+format = "ddd, MMM d"   # one of the presets below; unset, each theme keeps its own
 
 [themes."clockwork/orbital"]
 themeMode = "light"
@@ -205,18 +218,29 @@ background_index = "3"
 | Genshin Impact | `background_mode` · `background_index` | `time` `random` `static` · `1`–`4` (day, night, dawn, dusk) |
 | Terraria | `background_mode` · `background_index` | `time` `random` `static` · `1`–`5` |
 
-`darwan show <theme>` always lists the current set. The global `clock` and `date` settings apply only to themes that support them. Everywhere else they are shown as disabled.
+`darwan show <theme>` always lists the current set.
+
+The clock settings reach the 39 themes that show a clock and the date setting the 38 that show a date: Nine Sols and Terraria show neither, and osu! has no date. Date presets:
+
+| `date.format` | Looks like |
+|:---|:---|
+| `dddd, MMMM d` | Saturday, September 26 |
+| `ddd, MMM d` | Sat, Sep 26 |
+| `d MMMM yyyy` | 26 September 2026 |
+| `yyyy-MM-dd` | 2026-09-26 |
+| `dd/MM/yyyy` | 26/09/2026 |
+| `MM/dd/yyyy` | 09/26/2026 |
 
 #### 🔤 FONTS
 
-Some themes use fonts that can't be bundled for copyright reasons. Get the font, then use *Import font…* in the GUI or TUI, or drop the file into the theme's `font/` folder.
+Some themes use fonts that can't be bundled for copyright reasons. Until you add them, those themes fall back to a generic font. Get the font, then use *Import…* in the GUI, `f` in the TUI, or `darwan font import <theme> <file>`. In a source checkout, drop the file into the theme's `font/` folder instead.
 
 | Theme | Font | Filename | Licence | Get it |
 |--:|:---|:---|:---|:---|
 | NieR: Automata | FOT-Rodin Pro DB | `FOT-Rodin Pro DB.otf` | Commercial (Fontworks) | [Adobe Fonts](https://fonts.adobe.com/fonts/fot-rodin-pron) |
 | Terraria | Andy Bold | `Andy Bold.ttf` | Commercial (Monotype) | [MyFonts](https://www.myfonts.com/collections/andy-font-matteson-typographics/) |
 | Genshin Impact | HYWenHei-85W | `zhcn.ttf` | Commercial (Hanyi) | [Hanyi](https://www.hanyi.com.cn/) |
-| Sword | The Last Shuriken | `The Last Shuriken.ttf` | Free for personal use | [DaFont](https://www.dafont.com/the-last-shuriken.font) |
+| Sword | The Last Shuriken | `The Last Shuriken.ttf` | Free for personal use (Arterfak Project) | [DaFont](https://www.dafont.com/the-last-shuriken.font) |
 | Honkai: Star Rail | DIN Next | `font.ttf` | Commercial (Monotype) | — |
 | osu! | Torus Regular | `Torus Regular.otf` | Commercial (Paulo Goode) | [Paulo Goode](https://paulogoode.com/torus/) |
 | Nothing | NDot 55 | `NDot55.otf` | Nothing brand use only | No public release |
@@ -237,18 +261,21 @@ You never have to lock your real session to try a theme.
 
 | Mode | How | Password | Good for |
 |:---|:---|:---|:---|
-| **Live preview** | GUI centre pane | `test` | tweaking options and seeing the change instantly |
-| **Windowed preview** | `darwan preview <theme>` | `test` (or real with `--auth pam`) | the exact lockscreen runtime in a window |
-| **SDDM preview** | `darwan sddm preview <theme>` | — (visual only) | checking how it looks on the login screen before applying |
-| **Headless check** | `darwan check --all --shots ./shots` | — | catching QML errors across every theme; saves screenshots |
+| **Live preview** | GUI centre pane | `test` | tweaking settings and seeing the change at once |
+| **Full-screen preview** | `darwan preview <theme>` | `test`, or your real one with `--pam` | the exact lockscreen runtime, without locking; `Ctrl+Q` closes it |
+| **SDDM preview** | `darwan sddm preview <theme>` | — (visual only) | how it looks in SDDM's own greeter before applying |
+| **Headless check** | `darwan check --all --shots ./shots` | typed for you | QML errors, missing fonts and a real unlock test across every theme |
 
 Useful preview flags:
 
 ```sh
-darwan preview clockwork/orbital --size 2560x1440
-darwan preview Genshin --at 18:30        # fake the time of day (needs libfaketime)
-darwan preview nier-automata --at 00:00  # check 12h vs 24h at midnight
+darwan preview genshin --at 18:30          # fake the time of day (needs libfaketime)
+darwan preview nier-automata --at 00:00    # see 12h vs 24h at midnight
+darwan preview pixel-coffee --sddm         # the login screen layout
+darwan preview osu --shot osu.png          # save a 1280x720 still once it has settled
 ```
+
+`--at` runs the preview in Qt's own `qml` runner, because Quickshell can't start under libfaketime, so it always uses the mock password.
 
 <br>
 <p align="center">━━━━━━━ ❖ ━━━━━━━</p>
@@ -264,6 +291,7 @@ darwan preview nier-automata --at 00:00  # check 12h vs 24h at midnight
 
 ```sh
 darwan sddm apply     # apply [sddm] theme + options (asks for your password via polkit)
+darwan sddm preview   # show it in SDDM's test mode first
 darwan sddm status    # show what SDDM will use and any conflicts
 darwan sddm reset     # remove everything Darwan added
 ```
@@ -275,6 +303,7 @@ The SDDM greeter runs as its own user and can't read your home folder, so `apply
 | `/usr/share/sddm/themes/darwan` | points at the chosen theme |
 | `/usr/share/darwan/themes/<theme>/theme.conf.user` | your options, in SDDM's own override format |
 | `/etc/sddm.conf.d/zz-darwan.conf` | `[Theme] Current=darwan` |
+| `/usr/share/darwan/themes/<theme>/font/<file>` | fonts you import |
 
 > [!TIP]
 > SDDM reads `/etc/sddm.conf.d/` in alphabetical order, and later files win. If another file or `/etc/sddm.conf` also sets `Current=`, `darwan doctor` will point it out.
@@ -292,17 +321,18 @@ The SDDM greeter runs as its own user and can't read your home folder, so `apply
 <br>
 
 ```
-crates/darwan-core     Rust library: themes, config, validation, SDDM plan (no Qt)
-crates/darwan          CLI + TUI (clap, ratatui)
-crates/darwan-gui      GUI (cxx-qt + QML), also runs headless checks
-crates/darwan-helper   root-only SDDM writer, launched through pkexec
-runtime/               QML: ThemeHost, SDDM-compatible contract, Quickshell lock shell
-themes/<id>/           Main.qml, theme.conf, metadata.desktop, darwan.toml
+crates/darwan-core     Rust library: themes, config, validation, settings forms (no Qt)
+crates/darwan          CLI + TUI (clap, ratatui); runs Quickshell for the lock, previews and checks
+crates/darwan-gui      GUI (cxx-qt + QML) with the live preview
+crates/darwan-helper   root-only SDDM and font writer, launched through pkexec
+runtime/               QML: ThemeHost, the SDDM contract, the Quickshell lock/preview/check shells
+themes/<id>/           Main.qml, theme.conf, metadata.desktop, darwan.toml, preview.jpg
 ```
 
 - **Themes stay plain SDDM themes.** They read `config.<key>` exactly as they would under SDDM.
 - **One override file for both runtimes.** Darwan resolves your settings into that override format, so the lockscreen and the login screen see the same values.
-- **Themes describe themselves.** Each theme's `darwan.toml` lists its options: labels, types, choices and what it depends on. The TUI and GUI build their forms from it.
+- **Themes describe themselves.** Each theme's `darwan.toml` lists its options (labels, types, choices and what they depend on) and which global settings it supports. The TUI and GUI build their forms from it.
+- **Writing a theme?** [`docs/theme-contract.md`](./docs/theme-contract.md) lists everything a theme can rely on and the rules `darwan check` enforces.
 
 <br>
 <p align="center">━━━━━━━ ◈ ━━━━━━━</p>
@@ -317,7 +347,7 @@ themes/<id>/           Main.qml, theme.conf, metadata.desktop, darwan.toml
 <br>
 
 #### 🔓 A theme broke and I'm stuck on the lockscreen?
-Darwan should show its fallback password prompt. If the screen is ever unresponsive, switch to a TTY (`Ctrl+Alt+F3`), log in, and run `loginctl unlock-session`. Then run `darwan check <theme>` and open an issue with the output.
+Darwan shows its fallback password prompt when a theme fails to load. If the locker itself crashes, switch to a text console (`Ctrl+Alt+F3`), log in and run `darwan lock --replace`, then switch back and unlock. [`docs/lock-recovery.md`](./docs/lock-recovery.md) covers every case. Afterwards, run `darwan check <theme>` and open an issue with the output.
 
 <br>
 
@@ -353,194 +383,210 @@ KWin doesn't support the `ext-session-lock-v1` protocol that the Quickshell lock
 <table style="border-collapse: collapse; border: none;">
 <tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Clockwork · Neo-Orbital</b><br><br>
+<img src="./themes/clockwork/neo-orbital/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Clockwork · Orbital</b><br><br>
+<img src="./themes/clockwork/orbital/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Clockwork · Tape</b><br><br>
+<img src="./themes/clockwork/tape/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+<td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Pixel · Coffee</b><br><br>
-<img src="./themes/pixel-coffee/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/pixel-coffee/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Pixel · Cyberpunk</b><br><br>
+<img src="./themes/pixel-cyberpunk/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Pixel · Dusk City</b><br><br>
-<img src="./themes/pixel-dusk-city/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Pixel · Hollow Knight</b><br><br>
-<img src="./themes/pixel-hollowknight/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Pixel · Munchlax</b><br><br>
-<img src="./themes/pixel-munchlax/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Pixel · Night City</b><br><br>
-<img src="./themes/pixel-night-city/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Pixel · Rainy Room</b><br><br>
-<img src="./themes/pixel-rainyroom/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Pixel · Skyscrapers</b><br><br>
-<img src="./themes/pixel-skyscrapers/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Pixel · Cyberpunk</b><br><br>
-<img src="./themes/pixel-cyberpunk/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/pixel-dusk-city/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Pixel · Emerald</b><br><br>
-<img src="./themes/pixel-emerald/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/pixel-emerald/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Pixel · Hollow Knight</b><br><br>
+<img src="./themes/pixel-hollowknight/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Pixel · Munchlax</b><br><br>
+<img src="./themes/pixel-munchlax/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Pixel · Night City</b><br><br>
+<img src="./themes/pixel-night-city/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Pixel · Rainy Room</b><br><br>
+<img src="./themes/pixel-rainyroom/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Pixel · Sakura</b><br><br>
-<img src="./themes/pixel-sakura/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/pixel-sakura/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Pixel · Skyscrapers</b><br><br>
+<img src="./themes/pixel-skyscrapers/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+<td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Pixel · Waterfall</b><br><br>
-<img src="./themes/pixel-waterfall/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/pixel-waterfall/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Dog Samurai</b><br><br>
+<img src="./themes/dog-samurai/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Enfield</b><br><br>
-<img src="./themes/enfield/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/enfield/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Sword</b><br><br>
-<img src="./themes/sword/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<b>Field</b><br><br>
+<img src="./themes/field/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Forest</b><br><br>
-<img src="./themes/forest/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/forest/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Winter</b><br><br>
-<img src="./themes/winter/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<b>Genshin Impact</b><br><br>
+<img src="./themes/genshin/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Dog Samurai</b><br><br>
-<img src="./themes/dog-samurai/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>The Last of Us</b><br><br>
-<img src="./themes/last-of-us/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Field</b><br><br>
-<img src="./themes/field/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-</tr>
-<tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Girl · Coffee</b><br><br>
-<img src="./themes/girl-coffee/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/girl-coffee/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
+</tr>
+<tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Girl · Pillow</b><br><br>
-<img src="./themes/girl-pillow/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/girl-pillow/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Honkai: Star Rail</b><br><br>
+<img src="./themes/star-rail/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Man · Bicycle</b><br><br>
-<img src="./themes/man-bicycle/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Women · Umbrella</b><br><br>
-<img src="./themes/women-umbrella/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Nothing</b><br><br>
-<img src="./themes/nothing/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/man-bicycle/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Material You</b><br><br>
-<img src="./themes/material-you/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/material-you/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Honkai: Star Rail</b><br><br>
-<img src="./themes/star-rail/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Genshin Impact</b><br><br>
-<img src="./themes/genshin/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Wuthering Waves</b><br><br>
-<img src="./themes/wuwa/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>osu!</b><br><br>
-<img src="./themes/osu/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>osu! mania</b><br><br>
-<img src="./themes/osumania/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<b>Material You Dark</b><br><br>
+<img src="./themes/material-you-dark/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Minecraft</b><br><br>
-<img src="./themes/minecraft/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/minecraft/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>NieR: Automata</b><br><br>
-<img src="./themes/nier-automata/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/nier-automata/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Reverse: 1999 - I</b><br><br>
-<img src="./themes/reverse-1999-1/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<b>Nine Sols</b><br><br>
+<img src="./themes/ninesols/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Reverse: 1999 - II</b><br><br>
-<img src="./themes/reverse-1999-2/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Clockwork</b><br><br>
-<img src="./themes/clockwork/orbital/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Terraria</b><br><br>
-<img src="./themes/terraria/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
-</td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
 <b>Ninja Gaiden</b><br><br>
-<img src="./themes/ninja-gaiden/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<img src="./themes/ninja-gaiden/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Nothing</b><br><br>
+<img src="./themes/nothing/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 </tr>
 <tr>
 <td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Windows 7</b><br><br>
-<img src="./themes/windows-7/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<b>osu!</b><br><br>
+<img src="./themes/osu/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
 <td align="center" width="50%" style="padding: 15px; border: none;">
-<b>Material You Dark</b><br><br>
-<img src="./themes/material-you-dark/preview.gif" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+<b>osu! mania</b><br><br>
+<img src="./themes/osumania/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
+</tr>
+<tr>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Reverse: 1999 - I</b><br><br>
+<img src="./themes/reverse-1999-1/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
 </td>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Reverse: 1999 - II</b><br><br>
+<img src="./themes/reverse-1999-2/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Sword</b><br><br>
+<img src="./themes/sword/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Terraria</b><br><br>
+<img src="./themes/terraria/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>The Last of Us</b><br><br>
+<img src="./themes/last-of-us/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Windows 7</b><br><br>
+<img src="./themes/windows-7/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Winter</b><br><br>
+<img src="./themes/winter/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Women · Umbrella</b><br><br>
+<img src="./themes/women-umbrella/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%" style="padding: 15px; border: none;">
+<b>Wuthering Waves</b><br><br>
+<img src="./themes/wuwa/preview.jpg" width="100%" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"/>
+</td>
+<td></td>
 </tr>
 </table>
 </div>

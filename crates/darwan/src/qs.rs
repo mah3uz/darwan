@@ -20,7 +20,6 @@ pub fn command(paths: &Paths, shell: &str, wrapper: &[String]) -> Command {
     cmd
 }
 
-// What every host of runtime/ needs, whichever program runs it.
 pub fn runtime_env(cmd: &mut Command, paths: &Paths) {
     cmd.current_dir(paths.runtime())
         .env("QML_XHR_ALLOW_FILE_READ", "1")

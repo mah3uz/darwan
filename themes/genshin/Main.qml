@@ -6,7 +6,6 @@ import Qt.labs.folderlistmodel
 import SddmComponents 2.0
 
 Rectangle {
-    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     id: root
     readonly property real s: (Screen.height / 768) * 0.75

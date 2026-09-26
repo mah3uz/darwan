@@ -2,8 +2,7 @@ import QtQuick
 import QtQuick.Window
 import "contract"
 
-// `darwan preview --at` under Qt's qml runner, because Quickshell hangs under libfaketime.
-// Settings arrive as one JSON argument after `--`; the login is always the mock one.
+// Qt's qml runner hosts `preview --at` because Quickshell hangs under libfaketime.
 Window {
     id: win
 

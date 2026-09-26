@@ -116,8 +116,7 @@ pub fn availability(env: &Environment) -> Value {
     })
 }
 
-// `darwan doctor` and `darwan check` print "ok    ", "warn  " and "FAIL  " lines, details indented
-// by 8 spaces, and a plain heading before each group; anything else is shown as plain text.
+// Output that isn't in doctor's and check's line format still shows, as plain text.
 pub fn report(output: &str) -> Value {
     let mut rows: Vec<(&str, String)> = Vec::new();
     for line in output.lines().map(str::trim_end) {

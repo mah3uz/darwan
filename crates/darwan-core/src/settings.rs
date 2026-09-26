@@ -9,8 +9,7 @@ pub struct DatePreset {
     pub label: &'static str,
 }
 
-// Qt date formats. Themes that show the weekday on a line of its own use `no_weekday`, so a preset
-// that starts with the weekday doesn't show it twice.
+// `no_weekday` is for themes that already show the weekday on a line of its own.
 pub const DATE_PRESETS: &[DatePreset] = &[
     DatePreset {
         format: "dddd, MMMM d",

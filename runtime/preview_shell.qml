@@ -7,6 +7,7 @@ ShellRoot {
     id: root
 
     readonly property bool usePam: Quickshell.env("DARWAN_AUTH") === "pam"
+    readonly property string shotPath: Quickshell.env("DARWAN_SHOT") || ""
 
     Window {
         id: win
@@ -53,6 +54,18 @@ ShellRoot {
             host.unload()
             Qt.callLater(() => Qt.quit())
         }
+    }
+
+    // Long enough for a video theme to show real frames and for intro animations to finish.
+    Timer {
+        interval: 4000
+        running: root.shotPath !== "" && (host.themeReady || host.usingFallback)
+        onTriggered: win.contentItem.grabToImage(result => {
+            if (!result.saveToFile(root.shotPath))
+                console.error("darwan: cannot save " + root.shotPath)
+            host.unload()
+            Qt.callLater(() => Qt.quit())
+        }, Qt.size(1280, 720))
     }
 
     MockAuth {

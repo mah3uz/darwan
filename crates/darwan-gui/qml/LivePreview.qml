@@ -91,8 +91,7 @@ Rectangle {
         }
     }
 
-    // Every theme focuses its own password field once loaded. Until the preview is clicked, that
-    // focus goes back where it was, so reloading a theme never takes the keyboard from the window.
+    // Every theme grabs keyboard focus when it loads; until the preview is clicked, give it back.
     property bool engaged: false
     property Item fallbackFocus: null
     property Item focusOutside: null
@@ -138,8 +137,7 @@ Rectangle {
         }
     }
 
-    // Above the theme and passive, so the theme still gets every click, including the press that
-    // focuses its field; a click on its background hands focus to the field the theme chose.
+    // Passive and on top, so the theme still gets every press, including the one that focuses its field.
     Item {
         anchors.fill: parent
         z: 1

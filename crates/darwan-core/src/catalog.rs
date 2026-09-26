@@ -116,7 +116,7 @@ pub fn load_theme(id: String, dir: PathBuf) -> Result<Theme, String> {
     let manifest = Manifest::parse(&manifest_text).map_err(|e| format!("darwan.toml: {e}"))?;
     let conf =
         std::fs::read_to_string(dir.join("theme.conf")).map_err(|e| format!("theme.conf: {e}"))?;
-    let preview = ["preview.gif", "preview.png"]
+    let preview = ["preview.jpg", "preview.png"]
         .iter()
         .map(|f| dir.join(f))
         .find(|p| p.is_file());

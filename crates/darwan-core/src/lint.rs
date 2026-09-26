@@ -44,8 +44,7 @@ pub fn lint(theme: &Theme) -> Vec<String> {
         }
     }
 
-    // [supports] promises the theme follows the global setting, so it must read it, and theme.conf
-    // must say what the theme shows when the setting is unset.
+    // A [supports] flag is a promise; theme.conf also says what the theme shows when it's unset.
     let qml = qml_text(&theme.dir);
     if m.supports.clock_format {
         for (key, allowed) in [
@@ -79,7 +78,7 @@ pub fn lint(theme: &Theme) -> Vec<String> {
     }
 
     if theme.preview.is_none() {
-        problems.push("no preview.gif or preview.png".into());
+        problems.push("no preview.jpg or preview.png".into());
     }
 
     match std::fs::read_to_string(theme.dir.join("metadata.desktop")) {

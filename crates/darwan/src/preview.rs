@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
 use darwan_core::host;
@@ -11,12 +12,27 @@ pub struct Options {
     pub sddm: bool,
     pub pam: bool,
     pub at: Option<String>,
+    pub shot: Option<PathBuf>,
 }
 
 pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
     if opts.pam && opts.at.is_some() {
         return Err("--at works only with the mock login (\"test\"), not --pam".into());
     }
+    if opts.shot.is_some() && opts.at.is_some() {
+        return Err("--shot can't be combined with --at".into());
+    }
+    // Relative to where the user ran darwan, not to runtime/ where the host runs.
+    let shot = match &opts.shot {
+        Some(p) if !p.extension().is_some_and(|x| x == "png") => {
+            return Err(format!(
+                "--shot saves a PNG; {} should end in .png",
+                p.display()
+            ));
+        }
+        Some(p) => Some(std::path::absolute(p).map_err(|e| format!("{}: {e}", p.display()))?),
+        None => None,
+    };
     let wayland = WaylandSession::discover()?;
     let prepared = overlay::prepare(paths, opts.id.as_deref(), "preview.conf")?;
     let mode = if opts.sddm { "sddm" } else { "lock" };
@@ -35,10 +51,12 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
                 .env("DARWAN_USER", host::user_name())
                 .env("DARWAN_HOSTNAME", host::host_name())
                 .env("DARWAN_SESSIONS", host::sessions_json());
+            if let Some(shot) = &shot {
+                cmd.env("DARWAN_SHOT", shot);
+            }
             (cmd, "quickshell")
         }
-        // TODO: run --at under Quickshell too once it starts under libfaketime. Its jemalloc
-        // deadlocks with libfaketime's preload, so Qt's own qml runner hosts these previews.
+        // TODO: back to Quickshell once it starts under libfaketime (its jemalloc deadlocks there).
         Some(at) => {
             let settings = serde_json::json!({
                 "themeId": prepared.theme.id,
@@ -68,7 +86,9 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
         std::fs::File::create(&log_path).map_err(|e| format!("{}: {e}", log_path.display()))?;
     cmd.stdout(log.try_clone().map_err(|e| e.to_string())?)
         .stderr(log);
-    if opts.pam {
+    if let Some(shot) = &shot {
+        println!("Saving {} once the theme has settled.", shot.display());
+    } else if opts.pam {
         println!("Unlock with your password, or press Ctrl+Q to close.");
     } else {
         println!("Unlock with the password \"test\", or press Ctrl+Q to close.");

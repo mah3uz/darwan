@@ -46,7 +46,6 @@ Rectangle {
 
     // Time
     property int curH: new Date().getHours()
-    // darwan: the clock.format and clock.show_ampm settings; theme.conf holds this theme's own.
     readonly property bool clock12: config.clockFormat === "12h"
     readonly property string amPm: clock12 && config.clockShowAmPm === "true" ? (curH < 12 ? "AM" : "PM") : ""
     function clockHour(h) { return String(clock12 ? h % 12 || 12 : h).padStart(2, "0") }

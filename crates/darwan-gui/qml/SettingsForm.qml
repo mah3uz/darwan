@@ -4,7 +4,6 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import org.darwan
 
-// Built from form::fields; every change is validated and saved by darwan-core at once, as in the TUI.
 Rectangle {
     id: form
 

@@ -57,7 +57,6 @@ ApplicationWindow {
         return reasons.find(r => r !== "") || ""
     }
 
-    // What the running command is called, and whether its output is a report worth reading.
     property string jobTitle: ""
     property bool jobReports: false
 

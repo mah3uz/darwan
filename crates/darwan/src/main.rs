@@ -50,7 +50,7 @@ enum Cmd {
         #[arg(long, value_name = "SECONDS")]
         unlock_after: Option<u32>,
     },
-    /// Show a theme in a window without locking
+    /// Show a theme full screen without locking
     Preview {
         id: Option<String>,
         /// Show the SDDM layout (session picker, power buttons) instead of the lock layout
@@ -62,6 +62,9 @@ enum Cmd {
         /// Pretend the time is HH:MM (needs libfaketime; mock login only)
         #[arg(long, value_name = "HH:MM")]
         at: Option<String>,
+        /// Save a 1280x720 PNG of the theme once it has settled, then close
+        #[arg(long, value_name = "FILE")]
+        shot: Option<PathBuf>,
     },
     /// Set up the SDDM login screen
     Sddm {
@@ -151,9 +154,22 @@ fn main() -> ExitCode {
             replace,
             unlock_after,
         } => lock::run(&paths, id.as_deref(), replace, unlock_after),
-        Cmd::Preview { id, sddm, pam, at } => {
-            preview::run(&paths, preview::Options { id, sddm, pam, at })
-        }
+        Cmd::Preview {
+            id,
+            sddm,
+            pam,
+            at,
+            shot,
+        } => preview::run(
+            &paths,
+            preview::Options {
+                id,
+                sddm,
+                pam,
+                at,
+                shot,
+            },
+        ),
         Cmd::Sddm { command } => match command {
             SddmCmd::Apply { id } => sddm::apply(&paths, id.as_deref()),
             SddmCmd::Preview { id } => sddm::preview(&paths, id.as_deref()),

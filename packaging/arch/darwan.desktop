@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Darwan
+GenericName=Lock and Login Themes
+Comment=Preview, configure and apply themes for the lockscreen and the SDDM login screen
+Exec=darwan-gui
+Icon=darwan
+Terminal=false
+Categories=Settings;DesktopSettings;Qt;
+Keywords=lockscreen;login;sddm;quickshell;theme;

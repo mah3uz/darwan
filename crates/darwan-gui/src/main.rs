@@ -6,7 +6,7 @@ use darwan_core::paths::Paths;
 
 fn main() {
     let paths = Paths::detect();
-    // The same environment the Quickshell hosts give themes (see qs::command in the CLI).
+    // Themes read their files through XHR, as they do under the Quickshell hosts.
     unsafe {
         std::env::set_var("QML_XHR_ALLOW_FILE_READ", "1");
     }
@@ -15,6 +15,8 @@ fn main() {
     }
 
     let mut app = QGuiApplication::new();
+    // The Wayland app id, so the compositor matches the window to darwan.desktop and its icon.
+    QGuiApplication::set_desktop_file_name(&QString::from("darwan"));
     let mut engine = QQmlApplicationEngine::new();
     if let Some(mut engine) = engine.as_mut() {
         engine.as_mut().add_import_path(&QString::from(

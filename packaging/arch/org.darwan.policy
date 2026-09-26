@@ -3,7 +3,7 @@
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <policyconfig>
   <vendor>Darwan</vendor>
-  <vendor_url>https://github.com/</vendor_url>
+  <vendor_url>https://github.com/mah3uz/darwan</vendor_url>
   <action id="org.darwan.helper">
     <description>Change the SDDM login screen theme</description>
     <message>Authentication is required to change the login screen theme</message>

@@ -8,7 +8,7 @@ rust-version.workspace = true
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }
 darwan-core = { path = "../darwan-core" }
-image = { version = "0.25.10", default-features = false, features = ["gif", "png"] }
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
 libc = "0.2.189"
 ratatui = "0.30.2"
 ratatui-image = { version = "11.1.0", default-features = false, features = ["crossterm"] }
