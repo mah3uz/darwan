@@ -7,18 +7,19 @@ use std::io::{BufRead, Write};
 use std::process::{Command, ExitCode};
 use std::time::{Duration, Instant};
 
+use darwan_core::catalog::{Catalog, Theme};
+use darwan_core::config::UserConfig;
+use darwan_core::environment::Environment;
+use darwan_core::form::{self, FieldKind};
+use darwan_core::gallery::{ListRow, list_rows};
+use darwan_core::paths::{self, Paths};
+use darwan_core::settings::{self, Key};
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::widgets::ListState;
 use ratatui_image::picker::Picker;
 
-use darwan_core::catalog::{Catalog, Theme};
-use darwan_core::config::UserConfig;
-use darwan_core::form::{self, FieldKind};
-use darwan_core::settings::{self, Key};
-
-use crate::paths::{self, Paths};
 use crate::settings_cmd;
-use logic::{Environment, ListRow, list_rows, step};
+use logic::step;
 use previews::Previews;
 use style::Look;
 
@@ -265,10 +266,10 @@ impl App {
             return Outcome::Stay;
         };
         let id = theme.id.clone();
-        let missing_fonts = settings_cmd::missing_fonts(theme);
+        let missing_fonts = theme.missing_fonts();
         let env = &self.env;
         let (wayland, helper) = (env.wayland.clone(), env.helper.clone());
-        let sddm_preview = env.wayland.clone().and(env.sddm.clone());
+        let sddm_preview = env.sddm_preview();
         match k.code {
             KeyCode::Char('q') => self.quit = true,
             KeyCode::Char('?') => self.mode = Mode::Help,
@@ -420,7 +421,7 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
     let mut app = App::new(
         catalog,
         config,
-        Environment::detect(),
+        Environment::detect(crate::session::WaylandSession::discover().map(drop)),
         picker,
         previews,
         Look::detect(),
@@ -459,7 +460,7 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
             let ran = run_cli(&args, pause);
             terminal = ratatui::init();
             app.previews.clear();
-            app.env = Environment::detect();
+            app.env = Environment::detect(crate::session::WaylandSession::discover().map(drop));
             match (ran, load(paths)) {
                 (Ok(()), Ok((catalog, config))) => {
                     (app.catalog, app.config) = (catalog, config);

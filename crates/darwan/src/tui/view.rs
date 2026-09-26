@@ -12,10 +12,11 @@ use darwan_core::config::Target;
 use darwan_core::form::{self, Field};
 use darwan_core::manifest::Background;
 
-use super::logic::{ListRow, display_name, display_value};
+use super::logic::display_value;
 use super::previews::{Lookup, resize};
 use super::style::Look;
 use super::{App, Mode};
+use darwan_core::gallery::{ListRow, display_name};
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     let [main, footer] =
@@ -38,7 +39,7 @@ fn draw_help(f: &mut Frame, app: &App) {
     let p = look.palette;
     let env = &app.env;
     let ok: Result<(), String> = Ok(());
-    let sddm_preview = env.wayland.clone().and(env.sddm.clone());
+    let sddm_preview = env.sddm_preview();
     let keys: [(&str, &str, &Result<(), String>); 15] = [
         ("↑ ↓  j k", "move", &ok),
         ("g G", "first / last theme", &ok),

@@ -2,8 +2,7 @@ use std::path::Path;
 use std::process::Command;
 
 use darwan_core::catalog::Theme;
-
-use crate::paths::Paths;
+use darwan_core::paths::Paths;
 
 pub fn command(paths: &Paths, shell: &str, wrapper: &[String]) -> Command {
     let mut cmd = match wrapper.split_first() {

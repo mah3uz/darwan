@@ -4,8 +4,8 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use darwan_core::catalog::{Catalog, Theme};
+use darwan_core::paths::Paths;
 
-use crate::paths::Paths;
 use crate::qs;
 
 pub struct Options {

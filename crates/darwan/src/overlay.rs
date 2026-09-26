@@ -3,9 +3,8 @@ use std::path::PathBuf;
 
 use darwan_core::catalog::{Catalog, Theme};
 use darwan_core::config::{Target, UserConfig};
+use darwan_core::paths::{self, Paths};
 use darwan_core::{ini, resolve};
-
-use crate::paths::{self, Paths};
 
 pub struct Prepared {
     pub theme: Theme,

@@ -1,11 +1,10 @@
 use std::process::ExitCode;
 
-use darwan_core::catalog::{Catalog, Theme};
+use darwan_core::catalog::Catalog;
 use darwan_core::config::{Target, UserConfig};
 use darwan_core::form::{self, FieldKind};
+use darwan_core::paths::{self, Paths};
 use darwan_core::settings::{self, Key};
-
-use crate::paths::{self, Paths};
 
 fn load(paths: &Paths) -> Result<(Catalog, UserConfig), String> {
     let (catalog, _) =
@@ -13,15 +12,6 @@ fn load(paths: &Paths) -> Result<(Catalog, UserConfig), String> {
     let path = paths::config_file();
     let config = UserConfig::load(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     Ok((catalog, config))
-}
-
-pub fn missing_fonts(theme: &Theme) -> usize {
-    theme
-        .manifest
-        .fonts
-        .iter()
-        .filter(|f| !theme.dir.join("font").join(&f.file).is_file())
-        .count()
 }
 
 pub fn list(paths: &Paths) -> Result<ExitCode, String> {
@@ -38,7 +28,7 @@ pub fn list(paths: &Paths) -> Result<ExitCode, String> {
             Some(f) => format!("{f} · {}", t.manifest.name),
             None => t.manifest.name.clone(),
         };
-        let fonts = match missing_fonts(t) {
+        let fonts = match t.missing_fonts() {
             0 => String::new(),
             n => format!("  ({n} font{} missing)", if n == 1 { "" } else { "s" }),
         };

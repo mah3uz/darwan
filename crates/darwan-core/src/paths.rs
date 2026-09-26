@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+pub const HELPER: &str = "/usr/lib/darwan/darwan-helper";
+
 pub struct Paths {
     pub data: PathBuf,
 }

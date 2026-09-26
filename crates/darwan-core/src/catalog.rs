@@ -14,6 +14,16 @@ pub struct Theme {
     pub preview: Option<PathBuf>,
 }
 
+impl Theme {
+    pub fn missing_fonts(&self) -> usize {
+        self.manifest
+            .fonts
+            .iter()
+            .filter(|f| !self.dir.join("font").join(&f.file).is_file())
+            .count()
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct LoadProblem {
     pub id: String,

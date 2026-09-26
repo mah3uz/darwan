@@ -3,7 +3,6 @@ mod doctor;
 mod font;
 mod lock;
 mod overlay;
-mod paths;
 mod preview;
 mod qs;
 mod sddm;
@@ -127,7 +126,7 @@ fn main() -> ExitCode {
     unsafe {
         libc::signal(libc::SIGPIPE, libc::SIG_DFL);
     }
-    let paths = paths::Paths::detect();
+    let paths = darwan_core::paths::Paths::detect();
     let command = match Cli::parse().command {
         Some(c) => c,
         None if std::io::stdin().is_terminal() && std::io::stdout().is_terminal() => {

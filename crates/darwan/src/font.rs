@@ -2,8 +2,8 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use darwan_core::catalog::Catalog;
+use darwan_core::paths::Paths;
 
-use crate::paths::Paths;
 use crate::sddm;
 
 // The font is read here, as the user, and piped to the root helper, which never opens a user path.

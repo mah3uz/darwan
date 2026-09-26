@@ -5,12 +5,11 @@ use std::process::{Command, ExitCode, Stdio};
 
 use darwan_core::catalog::{Catalog, Theme};
 use darwan_core::config::{Target, UserConfig};
+use darwan_core::paths::{self, HELPER, Paths};
 use darwan_core::{ini, resolve};
 
-use crate::paths::{self, Paths};
 use crate::session::WaylandSession;
 
-pub const HELPER: &str = "/usr/lib/darwan/darwan-helper";
 pub const INSTALLED_THEMES: &str = "/usr/share/darwan/themes";
 const SDDM_THEMES: &str = "/usr/share/sddm/themes";
 

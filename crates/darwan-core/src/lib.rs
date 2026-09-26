@@ -1,8 +1,12 @@
 pub mod catalog;
 pub mod config;
+pub mod environment;
 pub mod form;
+pub mod gallery;
+pub mod host;
 pub mod ini;
 pub mod lint;
 pub mod manifest;
+pub mod paths;
 pub mod resolve;
 pub mod settings;

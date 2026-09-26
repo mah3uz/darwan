@@ -1,7 +1,9 @@
 use std::process::ExitCode;
 
-use crate::paths::Paths;
-use crate::session::{self, WaylandSession};
+use darwan_core::host;
+use darwan_core::paths::Paths;
+
+use crate::session::WaylandSession;
 use crate::{overlay, qs};
 
 pub struct Options {
@@ -29,10 +31,10 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
     wayland.apply(&mut cmd);
     cmd.env("DARWAN_MODE", if opts.sddm { "sddm" } else { "lock" })
         .env("DARWAN_AUTH", if opts.pam { "pam" } else { "mock" })
-        .env("DARWAN_USER", session::user_name())
-        .env("DARWAN_HOSTNAME", session::host_name())
-        .env("DARWAN_SESSIONS", session::sessions_json());
-    let log_path = crate::paths::state_dir().join("preview.log");
+        .env("DARWAN_USER", host::user_name())
+        .env("DARWAN_HOSTNAME", host::host_name())
+        .env("DARWAN_SESSIONS", host::sessions_json());
+    let log_path = darwan_core::paths::state_dir().join("preview.log");
     let log =
         std::fs::File::create(&log_path).map_err(|e| format!("{}: {e}", log_path.display()))?;
     cmd.stdout(log.try_clone().map_err(|e| e.to_string())?)

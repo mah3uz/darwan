@@ -5,12 +5,13 @@ use std::path::Path;
 use std::process::{Command, ExitCode, Stdio};
 use std::time::{Duration, Instant};
 
+use darwan_core::host;
+use darwan_core::paths::{self, Paths};
 use rustix::fs::{FlockOperation, flock};
 use rustix::io::{FdFlags, fcntl_setfd};
 use rustix::process::{Pid, Signal, kill_process};
 
-use crate::paths::{self, Paths};
-use crate::session::{self, WaylandSession};
+use crate::session::WaylandSession;
 use crate::{overlay, qs};
 
 pub fn run(
@@ -64,8 +65,8 @@ pub fn run(
         cmd.env("DARWAN_UNLOCK_AFTER", secs.to_string());
         eprintln!("Test lock: it unlocks by itself after {secs} s.");
     }
-    cmd.env("DARWAN_USER", session::user_name())
-        .env("DARWAN_SESSIONS", session::sessions_json())
+    cmd.env("DARWAN_USER", host::user_name())
+        .env("DARWAN_SESSIONS", host::sessions_json())
         .stdin(Stdio::null())
         .stdout(log.try_clone().map_err(|e| e.to_string())?)
         .stderr(log);

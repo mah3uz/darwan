@@ -3,8 +3,8 @@ use std::process::{Command, ExitCode};
 
 use darwan_core::catalog::Catalog;
 use darwan_core::manifest::Background;
+use darwan_core::paths::Paths;
 
-use crate::paths::Paths;
 use crate::sddm;
 use crate::session::WaylandSession;
 
@@ -121,14 +121,14 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
         r.warn("SDDM (Qt 6) is not installed; SDDM actions are unavailable");
     } else {
         r.ok("sddm-greeter-qt6 is installed");
-        if Path::new(sddm::HELPER).is_file()
+        if Path::new(darwan_core::paths::HELPER).is_file()
             && Path::new("/usr/share/polkit-1/actions/org.darwan.policy").is_file()
         {
             r.ok("darwan-helper and its polkit policy are installed")
         } else {
             r.warn(format!(
                 "{} or its polkit policy is not installed: `darwan sddm apply` won't work",
-                sddm::HELPER
+                darwan_core::paths::HELPER
             ))
         }
         let link = Path::new("/usr/share/sddm/themes/darwan");
