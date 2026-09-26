@@ -12,7 +12,7 @@
 
 <div align="center">
   <pre>
-    <a href="#features">ꜰᴇᴀᴛᴜʀᴇꜱ</a>  •  <a href="#installation">ɪɴꜱᴛᴀʟʟ</a>  •  <a href="#usage">ᴜꜱᴀɢᴇ</a>  •  <a href="#configuration">ᴄᴏɴꜰɪɢ</a>  •  <a href="#preview">ᴘʀᴇᴠɪᴇᴡ</a>  •  <a href="#sddm">ꜱᴅᴅᴍ</a>  •  <a href="#faq">ꜰᴀǫ</a>  •  <a href="#gallery">ɢᴀʟʟᴇʀʏ</a>  •  <a href="#acknowledgements">ᴀᴄᴋɴᴏᴡʟᴇᴅɢᴇᴍᴇɴᴛꜱ</a>
+    <a href="#features">ꜰᴇᴀᴛᴜʀᴇꜱ</a>  •  <a href="#installation">ɪɴꜱᴛᴀʟʟ</a>  •  <a href="#quick-start">ǫᴜɪᴄᴋ ꜱᴛᴀʀᴛ</a>  •  <a href="#usage">ᴜꜱᴀɢᴇ</a>  •  <a href="#configuration">ᴄᴏɴꜰɪɢ</a>  •  <a href="#preview">ᴘʀᴇᴠɪᴇᴡ</a>  •  <a href="#sddm">ꜱᴅᴅᴍ</a>  •  <a href="#docs">ᴅᴏᴄꜱ</a>  •  <a href="#faq">ꜰᴀǫ</a>  •  <a href="#gallery">ɢᴀʟʟᴇʀʏ</a>  •  <a href="#acknowledgements">ᴀᴄᴋɴᴏᴡʟᴇᴅɢᴇᴍᴇɴᴛꜱ</a>
   </pre>
 </div>
 
@@ -79,27 +79,40 @@ Your AUR helper or `makepkg -s` installs these for you.
 |--------------------------:|:------------------------------------------------------------------------------------------------------------------------------------|
 |              **Required** | `quickshell` `qt6-base` `qt6-declarative` `qt6-5compat` `qt6-multimedia` `qt6-multimedia-ffmpeg` `polkit` `ttf-jetbrains-mono-nerd` |
 |              **Optional** | `sddm` (the login screen) · `libfaketime` (`darwan preview --at`) · `noto-fonts-cjk` (Chinese text in Genshin Impact)               |
-| **Build** (`darwan` only) | `rust` `lld`                                                                                                                        |
+| **Build** (`darwan` only) | `rust` `lld` `librsvg` |
 
 #### 🚀 INSTALL
 
-From the AUR, with a helper such as `paru` or `yay`:
+Darwan is in the AUR as two packages. Install **one** of them:
+
+| Package      | What you get                                                   |
+|:-------------|:---------------------------------------------------------------|
+| `darwan-bin` | the prebuilt release; installs in seconds (**recommended**)    |
+| `darwan`     | the same release, compiled on your machine; takes a few minutes |
+
+With [`paru`](https://aur.archlinux.org/packages/paru):
 
 ```sh
-paru -S darwan-bin   # prebuilt from the latest release
-paru -S darwan       # built from the latest release's source
+paru -S darwan-bin
 ```
 
-Without a helper:
+With [`yay`](https://aur.archlinux.org/packages/yay):
+
+```sh
+yay -S darwan-bin
+```
+
+To compile it yourself, use `darwan` instead of `darwan-bin` in either command.
+
+Without an AUR helper:
 
 ```sh
 git clone https://aur.archlinux.org/darwan-bin.git
-cd darwan-bin && makepkg -si
+cd darwan-bin
+makepkg -si
 ```
 
-From a checkout of this repository, `just install` builds the package from the committed `HEAD` and installs it.
-
-Either package installs:
+The package installs:
 
 | Path                                            | What                                                      |
 |:------------------------------------------------|:----------------------------------------------------------|
@@ -109,23 +122,99 @@ Either package installs:
 | `/usr/share/darwan/runtime/`                    | the QML runtime shared by the lockscreen and the previews |
 | `/usr/share/darwan/themes/`                     | all 41 themes                                             |
 | `/usr/share/polkit-1/actions/org.darwan.policy` | lets the helper ask for your password once per session    |
+| `/usr/share/applications/darwan.desktop`        | the *Darwan* launcher entry                               |
+| `/usr/share/icons/hicolor/*/apps/darwan.*`      | its icon, as SVG and as PNGs from 16 to 512 px            |
 
-#### 🧪 RUN FROM SOURCE (DEVELOPMENT)
+To build from this repository instead, see [Development](./docs/development.md).
 
-The [`justfile`](./justfile) runs everything against the checkout; `just` lists the recipes.
+#### 🗑️ UNINSTALL
+
+If you applied a theme to the login screen, undo that first. It removes the files Darwan's helper wrote, which pacman
+doesn't track:
 
 ```sh
-just darwan list            # the CLI; `just darwan` alone opens the TUI
-just gui                    # the GUI
-just preview nier-automata
-just test lint check        # tests, fmt and clippy, every theme offscreen
+darwan sddm reset
 ```
 
-These set `DARWAN_DATA_DIR`, which points every binary at `./runtime` and `./themes`, so nothing needs installing.
-Applying to SDDM and importing fonts still need the installed helper.
+Then remove the package (`darwan` if you installed that one):
+
+```sh
+sudo pacman -R darwan-bin
+```
+
+Your settings stay in `~/.config/darwan/`; delete that folder too if you want them gone.
 
 <br>
 <p align="center">━━━━━━━ ❖ ━━━━━━━</p>
+
+<a id="quick-start"></a>
+<br>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/-QUICK%20START-e0af68?style=for-the-badge&labelColor=1a1b26&logo=rocket&logoColor=white" height="60" />
+</p>
+
+<br>
+
+From a fresh install to both screens themed, in six steps. `pixel-coffee` is just an example; `darwan list` shows every
+theme's id.
+
+**1. Check your system.** Anything missing is listed with a fix:
+
+```sh
+darwan doctor
+```
+
+**2. Browse the themes.** Open *Darwan* from your app launcher, or the GUI from a terminal:
+
+```sh
+darwan-gui
+```
+
+Prefer the terminal? The TUI has the same themes and settings:
+
+```sh
+darwan
+```
+
+**3. Try one full screen.** Nothing is locked; type `test` to unlock, or press `Ctrl+Q` to close:
+
+```sh
+darwan preview pixel-coffee
+```
+
+**4. Use it for your lockscreen.** Choose the theme:
+
+```sh
+darwan set lock.theme pixel-coffee
+```
+
+Then bind a key to `darwan lock` (see [Lockscreen keybind](#lockscreen-keybind)) and try it; unlock with your real
+password:
+
+```sh
+darwan lock
+```
+
+**5. Use it on the login screen.** See it in SDDM's own greeter first:
+
+```sh
+darwan sddm preview pixel-coffee
+```
+
+Then apply it. This asks for your password, because it writes system files:
+
+```sh
+darwan sddm apply pixel-coffee
+```
+
+Log out to see it. To go back to your previous login screen:
+
+```sh
+darwan sddm reset
+```
+
+**6. Add missing fonts (optional).** Eight themes use commercial fonts that can't be shipped; see [Fonts](#fonts).
 
 <a id="usage"></a>
 <br>
@@ -179,6 +268,8 @@ Run `darwan-gui`, or open *Darwan* from your launcher.
 Below the preview: *Use for lock*, *Lock now*, *Full-screen preview*, *Apply to SDDM*, *SDDM test mode* and *Check*,
 plus *Import…* for missing fonts. *Doctor* is at the top right. The *Lockscreen* / *Login screen layout* switch shows
 the theme as each host would.
+
+<a id="lockscreen-keybind"></a>
 
 #### 🔒 LOCKSCREEN KEYBIND
 
@@ -265,6 +356,8 @@ Terraria show neither, and osu! has no date. Date presets:
 | `dd/MM/yyyy`   | 26/09/2026             |
 | `MM/dd/yyyy`   | 09/26/2026             |
 
+<a id="fonts"></a>
+
 #### 🔤 FONTS
 
 Some themes use fonts that can't be bundled for copyright reasons. Until you add them, those themes fall back to a
@@ -302,14 +395,14 @@ You never have to lock your real session to try a theme.
 | **SDDM preview**        | `darwan sddm preview <theme>`        | — (visual only)                       | how it looks in SDDM's own greeter before applying                  |
 | **Headless check**      | `darwan check --all --shots ./shots` | typed for you                         | QML errors, missing fonts and a real unlock test across every theme |
 
-Useful preview flags:
+Preview flags:
 
-```sh
-darwan preview genshin --at 18:30          # fake the time of day (needs libfaketime)
-darwan preview nier-automata --at 00:00    # see 12h vs 24h at midnight
-darwan preview pixel-coffee --sddm         # the login screen layout
-darwan preview osu --shot osu.png          # save a 1280x720 still once it has settled
-```
+| Flag          | Example                                  | Does                                                    |
+|:--------------|:-----------------------------------------|:--------------------------------------------------------|
+| `--sddm`      | `darwan preview pixel-coffee --sddm`     | shows the login-screen layout instead of the lockscreen |
+| `--pam`       | `darwan preview osu --pam`               | unlocks with your real password instead of `test`       |
+| `--at HH:MM`  | `darwan preview nier-automata --at 00:00` | fakes the time of day (needs `libfaketime`)            |
+| `--shot FILE` | `darwan preview osu --shot osu.png`      | saves a 1280×720 still once the theme has settled       |
 
 `--at` runs the preview in Qt's own `qml` runner, because Quickshell can't start under libfaketime, so it always uses
 the mock password.
@@ -326,12 +419,14 @@ the mock password.
 
 <br>
 
-```sh
-darwan sddm apply     # apply [sddm] theme + options (asks for your password via polkit)
-darwan sddm preview   # show it in SDDM's test mode first
-darwan sddm status    # show what SDDM will use and any conflicts
-darwan sddm reset     # remove everything Darwan added
-```
+| Command                       | Does                                                                          |
+|:------------------------------|:------------------------------------------------------------------------------|
+| `darwan sddm preview [theme]` | shows the theme in SDDM's own greeter, in test mode, before you apply it      |
+| `darwan sddm apply [theme]`   | uses the theme and its settings on the login screen; asks for your password   |
+| `darwan sddm status`          | shows what SDDM will use, and any config file that overrides it               |
+| `darwan sddm reset`           | removes everything Darwan added, back to your previous login screen           |
+
+Without a theme id, `preview` and `apply` use the `[sddm]` theme from your config.
 
 The SDDM greeter runs as its own user and can't read your home folder, so `apply` writes system files through
 `darwan-helper`. The helper checks every value again before writing, and it only ever touches these files:
@@ -379,6 +474,25 @@ themes/<id>/           Main.qml, theme.conf, metadata.desktop, darwan.toml, prev
 <br>
 <p align="center">━━━━━━━ ◈ ━━━━━━━</p>
 
+<a id="docs"></a>
+<br>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/-DOCUMENTATION-bb9af7?style=for-the-badge&labelColor=1a1b26&logo=readthedocs&logoColor=white" height="60" />
+</p>
+
+<br>
+
+| Guide                                                         | Read it when                                                    |
+|:--------------------------------------------------------------|:----------------------------------------------------------------|
+| [Lock recovery](./docs/lock-recovery.md)                      | the lockscreen crashed or hung and you need to get back in      |
+| [Theme contract](./docs/theme-contract.md)                    | you're writing a theme or porting one from another SDDM setup   |
+| [Development](./docs/development.md)                          | you're building from source, running the tests or releasing     |
+| [darwan-assets](https://github.com/mah3uz/darwan-assets)      | you want the demo animations or to re-record them               |
+
+<br>
+<p align="center">━━━━━━━ ❖ ━━━━━━━</p>
+
 <a id="faq"></a>
 <br>
 
@@ -391,8 +505,8 @@ themes/<id>/           Main.qml, theme.conf, metadata.desktop, darwan.toml, prev
 #### 🔓 A theme broke and I'm stuck on the lockscreen?
 
 Darwan shows its fallback password prompt when a theme fails to load. If the locker itself crashes, switch to a text
-console (`Ctrl+Alt+F3`), log in and run `darwan lock --replace`, then switch back and unlock. [
-`docs/lock-recovery.md`](./docs/lock-recovery.md) covers every case. Afterwards, run `darwan check <theme>` and open an
+console (`Ctrl+Alt+F3`), log in and run `darwan lock --replace`, then switch back and unlock.
+[Lock recovery](./docs/lock-recovery.md) covers every case. Afterwards, run `darwan check <theme>` and open an
 issue with the output.
 
 <br>
