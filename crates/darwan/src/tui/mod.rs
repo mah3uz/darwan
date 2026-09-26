@@ -38,6 +38,7 @@ pub enum Mode {
 }
 
 const SETTLE: Duration = Duration::from_millis(120);
+const SAVED_FOR: Duration = Duration::from_secs(15);
 
 pub struct App {
     catalog: Catalog,
@@ -49,6 +50,7 @@ pub struct App {
     list: ListState,
     mode: Mode,
     status: String,
+    status_at: Instant,
     picker: Picker,
     previews: Previews,
     moved_at: Instant,
@@ -96,6 +98,7 @@ impl App {
             list,
             mode: Mode::Browse,
             status: String::new(),
+            status_at: Instant::now(),
             picker,
             previews,
             moved_at: Instant::now(),
@@ -171,9 +174,51 @@ impl App {
         };
     }
 
+    fn status_is_saved(&self) -> bool {
+        self.status.starts_with("saved")
+    }
+
+    // A confirmation fades; a warning stays until the user reads it and moves on.
+    fn expire_status(&mut self) -> bool {
+        let expired = self.status_is_saved() && self.status_at.elapsed() >= SAVED_FOR;
+        if expired {
+            self.status.clear();
+        }
+        expired
+    }
+
+    fn place(&self) -> (Option<usize>, Option<usize>, std::mem::Discriminant<Mode>) {
+        let field = match self.mode {
+            Mode::Form { selected, .. } => Some(selected),
+            _ => None,
+        };
+        (
+            self.list.selected(),
+            field,
+            std::mem::discriminant(&self.mode),
+        )
+    }
+
     fn on_key(&mut self, k: KeyEvent) -> Outcome {
+        let place = self.place();
+        let shown = std::mem::take(&mut self.status);
+        let outcome = self.handle(k);
+        if !self.status.is_empty() {
+            self.status_at = Instant::now();
+        } else if self.place() == place {
+            self.status = shown;
+        }
+        outcome
+    }
+
+    fn handle(&mut self, k: KeyEvent) -> Outcome {
         match std::mem::replace(&mut self.mode, Mode::Browse) {
             Mode::Browse => self.on_browse(k),
+            // Terminals turn the scroll wheel into arrow keys, so only Esc closes the list.
+            Mode::Help if k.code != KeyCode::Esc => {
+                self.mode = Mode::Help;
+                Outcome::Stay
+            }
             Mode::Help => Outcome::Stay,
             Mode::Search => {
                 self.mode = Mode::Search;
@@ -248,7 +293,6 @@ impl App {
     }
 
     fn on_browse(&mut self, k: KeyEvent) -> Outcome {
-        self.status.clear();
         match k.code {
             KeyCode::Char('/') => {
                 self.mode = Mode::Search;
@@ -277,7 +321,7 @@ impl App {
             KeyCode::Up | KeyCode::Char('k') => self.move_selection(Move::Prev),
             KeyCode::Home | KeyCode::Char('g') => self.move_selection(Move::First),
             KeyCode::End | KeyCode::Char('G') => self.move_selection(Move::Last),
-            KeyCode::Enter => {
+            KeyCode::Enter | KeyCode::Right => {
                 self.mode = Mode::Form {
                     selected: 0,
                     editing: None,
@@ -437,6 +481,7 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
             dirty = false;
         }
         dirty |= app.previews.poll();
+        dirty |= app.expire_status();
         let settled = app.settled();
         dirty |= settled && !was_settled;
         was_settled = settled;
@@ -581,8 +626,71 @@ mod tests {
         assert!(s.contains("preview in SDDM's test mode"), "{s}");
         assert!(s.contains("doctor: check the system"), "{s}");
         assert!(s.contains("SDDM (Qt 6) is not installed"), "{s}");
+        for code in [
+            KeyCode::Down,
+            KeyCode::Up,
+            KeyCode::Char('q'),
+            KeyCode::Enter,
+        ] {
+            press(&mut a, code);
+            assert!(
+                matches!(a.mode, Mode::Help),
+                "{code:?} must not close the key list"
+            );
+        }
+        assert!(!a.quit);
         press(&mut a, KeyCode::Esc);
         assert!(matches!(a.mode, Mode::Browse));
+    }
+
+    #[test]
+    fn right_arrow_opens_the_settings_like_enter() {
+        let mut a = app(no_sddm());
+        select(&mut a, "terraria");
+        press(&mut a, KeyCode::Right);
+        assert!(matches!(
+            a.mode,
+            Mode::Form {
+                selected: 0,
+                editing: None
+            }
+        ));
+    }
+
+    #[test]
+    fn a_warning_stays_until_the_user_moves_on() {
+        let mut a = app(no_sddm());
+        select(&mut a, "osu");
+        press(&mut a, KeyCode::Char('s'));
+        press(&mut a, KeyCode::Char('x'));
+        a.status_at = Instant::now().checked_sub(SAVED_FOR * 2).unwrap();
+        a.expire_status();
+        assert_eq!(
+            a.status, "SDDM (Qt 6) is not installed",
+            "it outlives keys and time"
+        );
+        press(&mut a, KeyCode::Down);
+        assert!(a.status.is_empty(), "moving to another theme clears it");
+
+        press(&mut a, KeyCode::Char('s'));
+        press(&mut a, KeyCode::Enter);
+        assert!(a.status.is_empty(), "opening the settings clears it");
+    }
+
+    #[test]
+    fn a_saved_confirmation_fades_on_its_own() {
+        let mut a = app(no_sddm());
+        a.status = "saved: lock.theme = osu".into();
+        a.status_at = Instant::now();
+        assert!(!a.expire_status(), "it stays long enough to read");
+        press(&mut a, KeyCode::Char('x'));
+        assert!(
+            a.status.starts_with("saved"),
+            "a key that does nothing keeps it"
+        );
+        a.status_at = Instant::now().checked_sub(SAVED_FOR).unwrap();
+        assert!(a.expire_status());
+        assert!(a.status.is_empty());
     }
 
     #[test]

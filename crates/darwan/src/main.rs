@@ -1,4 +1,5 @@
 mod check;
+mod completion;
 mod doctor;
 mod font;
 mod lock;
@@ -16,6 +17,7 @@ use std::process::ExitCode;
 use std::time::Duration;
 
 use clap::{Parser, Subcommand};
+use clap_complete::engine::{ArgValueCandidates, ArgValueCompleter};
 
 #[derive(Parser)]
 #[command(
@@ -33,15 +35,30 @@ enum Cmd {
     /// List the themes (L marks the lock theme, S the SDDM theme)
     List,
     /// Show a theme's details, fonts and settings
-    Show { id: String },
+    Show {
+        #[arg(add = ArgValueCandidates::new(completion::themes))]
+        id: String,
+    },
     /// Print a setting, or the whole config without KEY
-    Get { key: Option<String> },
+    Get {
+        #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
+        key: Option<String>,
+    },
     /// Change a setting: lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format or <theme-id>.<option>
-    Set { key: String, value: String },
+    Set {
+        #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
+        key: String,
+        #[arg(add = ArgValueCompleter::new(completion::setting_values))]
+        value: String,
+    },
     /// Put a setting back to its default
-    Unset { key: String },
+    Unset {
+        #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
+        key: String,
+    },
     /// Lock the session with a theme (default: [lock] theme from the config)
     Lock {
+        #[arg(add = ArgValueCandidates::new(completion::themes))]
         id: Option<String>,
         /// Kill a hung darwan locker and take over, e.g. from a TTY after a crash
         #[arg(long)]
@@ -52,6 +69,7 @@ enum Cmd {
     },
     /// Show a theme full screen without locking
     Preview {
+        #[arg(add = ArgValueCandidates::new(completion::themes))]
         id: Option<String>,
         /// Show the SDDM layout (session picker, power buttons) instead of the lock layout
         #[arg(long)]
@@ -80,6 +98,7 @@ enum Cmd {
     Doctor,
     /// Load themes offscreen; fail on any QML warning or error, or if typing the password does not unlock
     Check {
+        #[arg(add = ArgValueCandidates::new(completion::themes))]
         ids: Vec<String>,
         #[arg(long)]
         all: bool,
@@ -87,7 +106,8 @@ enum Cmd {
         #[arg(long)]
         no_fonts: bool,
         /// Virtual screen size
-        #[arg(long, default_value = "1920x1080", value_parser = check::parse_size)]
+        #[arg(long, default_value = "1920x1080", value_parser = check::parse_size,
+              add = ArgValueCandidates::new(completion::sizes))]
         size: (u32, u32),
         /// Save a screenshot of each theme into DIR
         #[arg(long, value_name = "DIR")]
@@ -98,14 +118,22 @@ enum Cmd {
         #[arg(long, default_value_t = 60)]
         timeout: u64,
     },
+    /// Print the script that sets up tab completion, e.g. `source <(darwan completion zsh)`
+    Completion { shell: completion::Shell },
 }
 
 #[derive(Subcommand)]
 enum SddmCmd {
     /// Use a theme for the login screen (default: [sddm] theme from the config)
-    Apply { id: Option<String> },
+    Apply {
+        #[arg(add = ArgValueCandidates::new(completion::themes))]
+        id: Option<String>,
+    },
     /// Show a theme in SDDM's own test mode, with your settings
-    Preview { id: Option<String> },
+    Preview {
+        #[arg(add = ArgValueCandidates::new(completion::themes))]
+        id: Option<String>,
+    },
     /// Show which theme SDDM uses and with which settings
     Status,
     /// Remove everything darwan set up for SDDM
@@ -116,10 +144,12 @@ enum SddmCmd {
 enum FontCmd {
     /// Copy FILE into the theme as the font it needs
     Import {
+        #[arg(add = ArgValueCandidates::new(completion::themes_needing_fonts))]
         id: String,
         file: PathBuf,
         /// Which of the theme's fonts FILE is, when it needs more than one
-        #[arg(long = "as", value_name = "NAME")]
+        #[arg(long = "as", value_name = "NAME",
+              add = ArgValueCompleter::new(completion::font_names))]
         target: Option<String>,
     },
 }
@@ -129,6 +159,9 @@ fn main() -> ExitCode {
     unsafe {
         libc::signal(libc::SIGPIPE, libc::SIG_DFL);
     }
+    clap_complete::CompleteEnv::with_factory(<Cli as clap::CommandFactory>::command)
+        .var(completion::VAR)
+        .complete();
     let paths = darwan_core::paths::Paths::detect();
     let command = match Cli::parse().command {
         Some(c) => c,
@@ -180,6 +213,7 @@ fn main() -> ExitCode {
             command: FontCmd::Import { id, file, target },
         } => font::import(&paths, &id, &file, target.as_deref()),
         Cmd::Doctor => doctor::run(&paths),
+        Cmd::Completion { shell } => completion::print_registration(shell),
         Cmd::Check {
             ids,
             all,

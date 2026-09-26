@@ -239,8 +239,18 @@ darwan sddm reset
 | `darwan sddm apply` · `preview` · `status` · `reset`     | manage the login screen ([details](#sddm))                                        |
 | `darwan font import <theme> <file>`                      | install a licensed font a theme needs                                             |
 | `darwan doctor`                                          | check the session, Quickshell, fonts, the helper and SDDM's config                |
+| `darwan completion bash\|zsh\|fish`                      | print the tab-completion script for your shell                                    |
 
 Setting keys are `lock.theme`, `sddm.theme`, `clock.format`, `clock.show_ampm`, `date.format` and `<theme>.<option>`.
+
+Tab completion offers theme ids, setting keys and each key's values. Load it when your shell starts, so it stays in step
+with the installed version:
+
+```sh
+echo 'source <(darwan completion zsh)' >> ~/.zshrc          # zsh
+echo 'source <(darwan completion bash)' >> ~/.bashrc        # bash
+echo 'darwan completion fish | source' >> ~/.config/fish/config.fish  # fish
+```
 
 #### 🖥️ TUI
 
@@ -248,14 +258,14 @@ Run `darwan` in a terminal. Themes are grouped into Clockwork, Pixel and Other t
 selected one (kitty, sixel or iTerm graphics, falling back to block characters). Keys that can't work on your system are
 greyed out and say why.
 
-| Key | Action                         | Key       | Action                       |
-|:----|:-------------------------------|:----------|:-----------------------------|
-| `⏎` | settings for the theme         | `/`       | search by name or id         |
-| `p` | preview as the lockscreen      | `P`       | preview with the SDDM layout |
-| `l` | use as the lock theme          | `L`       | lock now                     |
-| `s` | apply to the SDDM login screen | `S`       | preview in SDDM's test mode  |
-| `f` | import a missing font          | `c`       | check the theme              |
-| `d` | doctor                         | `?` · `q` | all keys · quit              |
+| Key       | Action                         | Key       | Action                       |
+|:----------|:-------------------------------|:----------|:-----------------------------|
+| `⏎` · `→` | settings for the theme         | `/`       | search by name or id         |
+| `p`       | preview as the lockscreen      | `P`       | preview with the SDDM layout |
+| `l`       | use as the lock theme          | `L`       | lock now                     |
+| `s`       | apply to the SDDM login screen | `S`       | preview in SDDM's test mode  |
+| `f`       | import a missing font          | `c`       | check the theme              |
+| `d`       | doctor                         | `?` · `q` | all keys · quit              |
 
 #### 🎨 GUI
 

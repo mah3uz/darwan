@@ -43,7 +43,7 @@ fn draw_help(f: &mut Frame, app: &App) {
     let keys: [(&str, &str, &Result<(), String>); 15] = [
         ("↑ ↓  j k", "move", &ok),
         ("g G", "first / last theme", &ok),
-        ("⏎", "settings for the theme", &ok),
+        ("⏎ →", "settings for the theme", &ok),
         ("p", "preview as the lockscreen", &env.wayland),
         ("P", "preview with the SDDM layout", &env.wayland),
         ("l", "use as the lock theme", &ok),
@@ -483,7 +483,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
     let hints: Vec<Span> = match &app.mode {
         Mode::Browse => [
             key("↑↓", "move", &ok),
-            key("⏎", "settings", &ok),
+            key("⏎ →", "settings", &ok),
             key("p", "preview", &env.wayland),
             key("l", "use for lock", &ok),
             key("L", "lock now", &env.wayland),
@@ -525,11 +525,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             .collect();
         Line::from(format!(" {}", unavailable.join(" · "))).style(look.fg(p.muted))
     } else {
-        let color = if app.status.starts_with("saved") {
-            p.ok
-        } else {
-            p.warn
-        };
+        let color = if app.status_is_saved() { p.ok } else { p.warn };
         Line::from(format!(" {}", app.status)).style(look.fg(color))
     };
     let [keys, status_area] =
