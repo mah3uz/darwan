@@ -37,7 +37,6 @@ cat <<EOF
 
 Done. Next, by hand:
   gh release create v$ver "$asset" --title "v$ver"     # or: gh release upload v$ver "$asset"
-  Commit packaging/aur, then copy each folder's PKGBUILD, .SRCINFO and LICENSE into its AUR repo and push:
-    git -c init.defaultBranch=master clone ssh://aur@aur.archlinux.org/darwan.git
-    git -c init.defaultBranch=master clone ssh://aur@aur.archlinux.org/darwan-bin.git
+  git commit -am "Release $ver" && git push
+  just aur
 EOF

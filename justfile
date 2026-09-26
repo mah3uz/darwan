@@ -65,6 +65,46 @@ uninstall:
 release:
     packaging/release.sh
 
+# Publish packaging/aur to the AUR, through throwaway clones in dist/aur
+aur:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -n "$(git status --porcelain packaging/aur)" ]; then
+      echo "commit packaging/aur first" >&2
+      exit 1
+    fi
+    url=$(sed -n "s/^url='\(.*\)'/\1/p" packaging/aur/darwan/PKGBUILD)
+    if ! curl -fsIL -o /dev/null "$url/releases/download/v{{ver}}/darwan-{{ver}}-x86_64.pkg.tar.zst"; then
+      echo "the v{{ver}} GitHub Release has no package yet, which darwan-bin downloads" >&2
+      exit 1
+    fi
+    for pkg in darwan darwan-bin; do
+      src=packaging/aur/$pkg
+      if grep -q "^sha256sums=('SKIP')" "$src/PKGBUILD"; then
+        echo "$pkg: no checksum; run just release first" >&2
+        exit 1
+      fi
+      if ! diff -q <(cd "$src" && makepkg --printsrcinfo) "$src/.SRCINFO" >/dev/null; then
+        echo "$pkg: .SRCINFO is stale; run just srcinfo and commit" >&2
+        exit 1
+      fi
+      dir=dist/aur/$pkg
+      rm -rf "$dir"
+      git clone -q "ssh://aur@aur.archlinux.org/$pkg.git" "$dir" 2>/dev/null
+      cp "$src"/{PKGBUILD,.SRCINFO,LICENSE} "$dir"/
+      git -C "$dir" add PKGBUILD .SRCINFO LICENSE
+      if git -C "$dir" diff --cached --quiet; then
+        echo "$pkg: already up to date"
+      else
+        rel=$(sed -n 's/^pkgrel=//p' "$src/PKGBUILD")
+        git -C "$dir" commit -q -m "Update to {{ver}}-$rel"
+        # The AUR only accepts master, whatever init.defaultBranch named the clone's branch.
+        git -C "$dir" push -q origin HEAD:master
+        echo "$pkg: pushed {{ver}}-$rel"
+      fi
+      rm -rf "$dir"
+    done
+
 # Regenerate both AUR packages' .SRCINFO
 srcinfo:
     @for p in darwan darwan-bin; do (cd packaging/aur/$p && makepkg --printsrcinfo > .SRCINFO); done

@@ -1,6 +1,7 @@
 # Development
 
-Building Darwan from source, running it without installing, testing it, and publishing a release.
+Building Darwan from source, running it without installing and testing it. Publishing a release is in
+[Releasing](./releasing.md).
 
 ## What you need
 
@@ -70,75 +71,6 @@ remove it again:
 ```sh
 just uninstall
 ```
-
-## Release
-
-A release is a git tag, a GitHub Release with the prebuilt package attached, and the two AUR packages:
-[`darwan`](https://aur.archlinux.org/packages/darwan) builds the tag's source, and
-[`darwan-bin`](https://aur.archlinux.org/packages/darwan-bin) installs the attached package.
-
-**1. Set the version** in three places: `version` in [`Cargo.toml`](../Cargo.toml), and `pkgver` in
-[`packaging/aur/darwan/PKGBUILD`](../packaging/aur/darwan/PKGBUILD) and
-[`packaging/aur/darwan-bin/PKGBUILD`](../packaging/aur/darwan-bin/PKGBUILD). Reset both `pkgrel` to `1`. Commit it.
-
-**2. Tag and push:**
-
-```sh
-git tag v0.1.0
-git push origin main v0.1.0
-```
-
-**3. Build the release.** This downloads the tag's tarball, fills in both PKGBUILDs' checksums, builds the package into
-`dist/` and regenerates both `.SRCINFO` files:
-
-```sh
-just release
-```
-
-**4. Publish the GitHub Release** with the package attached:
-
-```sh
-gh release create v0.1.0 dist/darwan-0.1.0-x86_64.pkg.tar.zst --title v0.1.0 --generate-notes
-```
-
-**5. Commit the checksums** that step 3 filled in:
-
-```sh
-git commit -am "Release 0.1.0"
-git push
-```
-
-**6. Update the AUR packages.** Each AUR package is its own git repository. The first time, clone both next to this
-checkout (this needs an AUR account with your SSH key). The AUR only accepts pushes to `master`, so the clone must not
-take your `init.defaultBranch`:
-
-```sh
-git -c init.defaultBranch=master clone ssh://aur@aur.archlinux.org/darwan.git ../aur-darwan
-git -c init.defaultBranch=master clone ssh://aur@aur.archlinux.org/darwan-bin.git ../aur-darwan-bin
-```
-
-Then, for every release, copy the files across and push. For `darwan`:
-
-```sh
-cp packaging/aur/darwan/{PKGBUILD,.SRCINFO,LICENSE} ../aur-darwan/
-git -C ../aur-darwan commit -am "Update to 0.1.0"
-git -C ../aur-darwan push
-```
-
-And for `darwan-bin`:
-
-```sh
-cp packaging/aur/darwan-bin/{PKGBUILD,.SRCINFO,LICENSE} ../aur-darwan-bin/
-git -C ../aur-darwan-bin commit -am "Update to 0.1.0"
-git -C ../aur-darwan-bin push
-```
-
-The first push to a new AUR repository needs `git add PKGBUILD .SRCINFO LICENSE` before the commit, since `-a` only
-picks up files git already tracks. `LICENSE` covers the packaging files themselves; the AUR asks every package
-repository for one.
-
-A fix to packaging alone, with no new release, bumps `pkgrel` instead of `pkgver` and skips steps 2 to 4. Run
-`just srcinfo` after editing a PKGBUILD, since the AUR shows what `.SRCINFO` says, not the PKGBUILD.
 
 ## Demo animations
 

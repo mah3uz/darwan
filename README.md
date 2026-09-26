@@ -497,7 +497,7 @@ themes/<id>/           Main.qml, theme.conf, metadata.desktop, darwan.toml, prev
 |:--------------------------------------------------------------|:----------------------------------------------------------------|
 | [Lock recovery](./docs/lock-recovery.md)                      | the lockscreen crashed or hung and you need to get back in      |
 | [Theme contract](./docs/theme-contract.md)                    | you're writing a theme or porting one from another SDDM setup   |
-| [Development](./docs/development.md)                          | you're building from source, running the tests or releasing     |
+| [Development](./docs/development.md)                          | you're building from source or running the tests                |
 | [darwan-assets](https://github.com/mah3uz/darwan-assets)      | you want the demo animations or to re-record them               |
 
 <br>
