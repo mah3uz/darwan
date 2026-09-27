@@ -3,14 +3,23 @@ import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property bool clock12: config.clockFormat === "12h"
     function clockHour(d) { return clock12 ? String(d.getHours() % 12 || 12).padStart(2, "0") : Qt.formatTime(d, "HH") }
     function withAmPm(d, text) { return clock12 && config.clockShowAmPm === "true" ? text + " · " + (d.getHours() < 12 ? "AM" : "PM") : text }
     id: root
     width: Screen.width
     height: Screen.height
+    // Dark follows Nothing OS's own dark look: a black field, near-black cards with a hairline edge.
+    readonly property bool isDark: config.colorScheme === "dark"
+    readonly property color accent: kit.color("accent", "#ea1821")
+    readonly property color accentPressed: config.colorAccent ? Qt.darker(accent, 1.3) : "#b31018"
+    readonly property color cardText: kit.color("text", "#ffffff")
+    readonly property color cardColor: isDark ? "#141414" : "#111111"
+    color: isDark ? "#000000" : "#ffffff"
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
@@ -19,6 +28,7 @@ Rectangle {
         }
         z: -100
     }
+    Background { id: userBg; anchors.fill: parent }
 
     readonly property real s: Screen.height / 768
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
@@ -33,8 +43,8 @@ Rectangle {
 
     FolderListModel { id: dotFontFile; showDirs: false; folder: Qt.resolvedUrl("font"); nameFilters: ["NDot55.otf"] }
     FontLoader { id: pfDot; source: dotFontFile.count > 0 ? "font/NDot55.otf" : "" }
-    readonly property string pfDotFamily: pfDot.status === FontLoader.Ready ? pfDot.name : "monospace"
-    readonly property string sansFont: "Roboto, Inter, sans-serif"
+    readonly property string pfDotFamily: kit.font("clock", pfDot.status === FontLoader.Ready ? pfDot.name : "monospace")
+    readonly property string sansFont: kit.font("text", "Roboto, Inter, sans-serif")
 
     ListView {
         id: sessionHelper
@@ -92,21 +102,21 @@ Rectangle {
 
     SequentialAnimation {
         id: fadeAnim
-        PauseAnimation { duration: 500 }
+        PauseAnimation { duration: kit.dur(500) }
         ParallelAnimation {
-            NumberAnimation { target: root; property: "ui1"; from: 0; to: 1; duration: 900; easing.type: Easing.OutCubic }
-            NumberAnimation { target: root; property: "ui2"; from: 0; to: 1; duration: 900; easing.type: Easing.OutCubic }
-            NumberAnimation { target: root; property: "ui3"; from: 0; to: 1; duration: 900; easing.type: Easing.OutCubic }
+            NumberAnimation { target: root; property: "ui1"; from: 0; to: 1; duration: kit.dur(900); easing.type: kit.ease(Easing.OutCubic) }
+            NumberAnimation { target: root; property: "ui2"; from: 0; to: 1; duration: kit.dur(900); easing.type: kit.ease(Easing.OutCubic) }
+            NumberAnimation { target: root; property: "ui3"; from: 0; to: 1; duration: kit.dur(900); easing.type: kit.ease(Easing.OutCubic) }
         }
     }
 
     SequentialAnimation {
         id: shakeAnim
-        NumberAnimation { target: shakeTranslate; property: "x"; to: 15*s; duration: 50 }
-        NumberAnimation { target: shakeTranslate; property: "x"; to: -15*s; duration: 50 }
-        NumberAnimation { target: shakeTranslate; property: "x"; to: 15*s; duration: 50 }
-        NumberAnimation { target: shakeTranslate; property: "x"; to: -15*s; duration: 50 }
-        NumberAnimation { target: shakeTranslate; property: "x"; to: 0; duration: 50 }
+        NumberAnimation { target: shakeTranslate; property: "x"; to: 15*s; duration: kit.dur(50) }
+        NumberAnimation { target: shakeTranslate; property: "x"; to: -15*s; duration: kit.dur(50) }
+        NumberAnimation { target: shakeTranslate; property: "x"; to: 15*s; duration: kit.dur(50) }
+        NumberAnimation { target: shakeTranslate; property: "x"; to: -15*s; duration: kit.dur(50) }
+        NumberAnimation { target: shakeTranslate; property: "x"; to: 0; duration: kit.dur(50) }
     }
 
     MouseArea {
@@ -124,7 +134,7 @@ Rectangle {
         text: "AUTHENTICATE"
         font.family: pfDotFamily
         font.pixelSize: 24 * s
-        color: "#111111"
+        color: root.isDark ? "#e8e8e8" : "#111111"
         opacity: root.ui1
         transform: Translate { y: (1 - root.ui1) * -20 * s }
     }
@@ -140,7 +150,9 @@ Rectangle {
             width: 280 * s
             height: 280 * s
             radius: 48 * s
-            color: "#111111"
+            color: root.cardColor
+            border.width: root.isDark ? 1 : 0
+            border.color: "#262626"
             opacity: root.ui1
             scale: 0.95 + (0.05 * root.ui1)
             transform: Translate { y: (1 - root.ui1) * 40 * s }
@@ -170,7 +182,7 @@ Rectangle {
                     font.family: pfDotFamily
                     font.pixelSize: 110 * s
                     font.letterSpacing: 4 * s
-                    color: "#ffffff"
+                    color: root.cardText
                     height: 84 * s
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -181,7 +193,7 @@ Rectangle {
                     font.family: pfDotFamily
                     font.pixelSize: 110 * s
                     font.letterSpacing: 4 * s
-                    color: "#ea1821"
+                    color: root.accent
                     height: 84 * s
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -209,7 +221,7 @@ Rectangle {
                     font.pixelSize: 11 * s
                     font.letterSpacing: 1.5 * s
                     font.bold: true
-                    color: "#ffffff"
+                    color: root.cardText
                 }
             }
         }
@@ -220,7 +232,9 @@ Rectangle {
             width: 320 * s
             height: 280 * s
             radius: 48 * s
-            color: "#111111"
+            color: root.cardColor
+            border.width: root.isDark ? 1 : 0
+            border.color: "#262626"
             opacity: root.ui2
             scale: 0.95 + (0.05 * root.ui2)
             transform: [
@@ -239,13 +253,13 @@ Rectangle {
                     width: Math.min(parent.width, (userNameText.implicitWidth + 48 * s))
                     height: 40 * s
                     radius: 20 * s
-                    color: userMouse.pressed ? "#b31018" : (userMouse.containsMouse ? "#ea1821" : "#222222")
-                    border.color: userMouse.containsMouse ? "#ea1821" : "#2a2a2a"
+                    color: userMouse.pressed ? root.accentPressed : (userMouse.containsMouse ? root.accent : "#222222")
+                    border.color: userMouse.containsMouse ? root.accent : "#2a2a2a"
                     border.width: 1 * s
                     scale: userMouse.pressed ? 0.96 : (userMouse.containsMouse ? 1.02 : 1.0)
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on border.color { ColorAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on border.color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(150); easing.type: kit.ease(Easing.OutBack) } }
                     
                     Row {
                         anchors.centerIn: parent
@@ -255,8 +269,8 @@ Rectangle {
                             text: "•"
                             font.family: pfDot.status === FontLoader.Ready ? pfDot.name : root.sansFont
                             font.pixelSize: 14 * s
-                            color: userMouse.containsMouse ? "#ffffff" : "#ea1821"
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            color: userMouse.containsMouse ? "#ffffff" : root.accent
+                            Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         
@@ -266,7 +280,7 @@ Rectangle {
                             font.family: pfDot.status === FontLoader.Ready ? pfDot.name : root.sansFont
                             font.pixelSize: 16 * s
                             font.letterSpacing: 1.5 * s
-                            color: "#ffffff"
+                            color: root.cardText
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
@@ -274,8 +288,8 @@ Rectangle {
                             text: "•"
                             font.family: pfDot.status === FontLoader.Ready ? pfDot.name : root.sansFont
                             font.pixelSize: 14 * s
-                            color: userMouse.containsMouse ? "#ffffff" : "#ea1821"
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            color: userMouse.containsMouse ? "#ffffff" : root.accent
+                            Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -299,10 +313,10 @@ Rectangle {
                     height: 52 * s
                     radius: 26 * s
                     color: pwd.activeFocus ? "#1a1a1a" : "#222222"
-                    border.color: root.errorMessage !== "" ? "#ea1821" : (pwd.activeFocus ? "#ffffff" : "#2a2a2a")
+                    border.color: root.errorMessage !== "" ? root.accent : (pwd.activeFocus ? "#ffffff" : "#2a2a2a")
                     border.width: 1.5 * s
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on border.color { ColorAnimation { duration: 150 } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on border.color { ColorAnimation { duration: kit.dur(150) } }
                     
                     TextInput {
                         id: pwd
@@ -312,7 +326,7 @@ Rectangle {
                         font.family: root.sansFont
                         font.pixelSize: 20 * s
                         font.letterSpacing: 8 * s
-                        color: "#ffffff"
+                        color: root.cardText
                         echoMode: TextInput.Password
                         passwordCharacter: "•"
                         horizontalAlignment: TextInput.AlignHCenter
@@ -332,9 +346,9 @@ Rectangle {
                             font.family: pfDot.status === FontLoader.Ready ? pfDot.name : root.sansFont
                             font.pixelSize: 11 * s
                             font.letterSpacing: 1 * s
-                            color: root.errorMessage !== "" ? "#ea1821" : "#888888"
+                            color: root.errorMessage !== "" ? root.accent : "#888888"
                             opacity: pwd.text === "" && (!pwd.activeFocus || (!pwd.wasClicked && pwd.text.length === 0)) ? 1 : 0
-                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                            Behavior on opacity { NumberAnimation { duration: kit.dur(150) } }
                         }
                         
                         // Cursor
@@ -342,16 +356,16 @@ Rectangle {
                             id: customCursor
                             width: 2 * s
                             height: 20 * s
-                            color: "#ea1821" // Cursor Color
+                            color: root.accent // Cursor Color
                             anchors.verticalCenter: parent.verticalCenter
                             x: pwd.cursorRectangle.x
                             visible: pwd.activeFocus && (pwd.text.length > 0 || pwd.wasClicked) && root.errorMessage === ""
                             
                             SequentialAnimation {
                                 loops: Animation.Infinite
-                                running: customCursor.visible
-                                NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0; duration: 400; easing.type: Easing.InOutQuad }
-                                NumberAnimation { target: customCursor; property: "opacity"; from: 0; to: 1; duration: 400; easing.type: Easing.InOutQuad }
+                                running: customCursor.visible && !kit.reduceMotion
+                                NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0; duration: kit.dur(400); easing.type: kit.ease(Easing.InOutQuad) }
+                                NumberAnimation { target: customCursor; property: "opacity"; from: 0; to: 1; duration: kit.dur(400); easing.type: kit.ease(Easing.InOutQuad) }
                             }
                         }
                         
@@ -378,10 +392,10 @@ Rectangle {
                     width: parent.width
                     height: 52 * s
                     radius: 26 * s
-                    color: loginMouse.pressed ? "#b31018" : (loginMouse.containsMouse ? "#ea1821" : "#ffffff")
+                    color: loginMouse.pressed ? root.accentPressed : (loginMouse.containsMouse ? root.accent : "#ffffff")
                     scale: loginMouse.pressed ? 0.96 : (loginMouse.containsMouse ? 1.02 : 1.0)
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(150); easing.type: kit.ease(Easing.OutBack) } }
                     
                     Row {
                         anchors.centerIn: parent
@@ -394,17 +408,17 @@ Rectangle {
                             font.letterSpacing: 2 * s
                             font.bold: true
                             color: loginMouse.containsMouse ? "#ffffff" : "#111111"
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                         }
                         Text {
                             text: "→"
                             font.family: pfDot.status === FontLoader.Ready ? pfDot.name : root.sansFont
                             font.pixelSize: 16 * s
                             color: loginMouse.containsMouse ? "#ffffff" : "#111111"
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                             transform: Translate {
                                 x: loginMouse.containsMouse ? 4 * s : 0
-                                Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+                                Behavior on x { NumberAnimation { duration: kit.dur(150); easing.type: kit.ease(Easing.OutQuad) } }
                             }
                         }
                     }
@@ -425,7 +439,9 @@ Rectangle {
             width: 280 * s
             height: 280 * s
             radius: 48 * s
-            color: "#111111"
+            color: root.cardColor
+            border.width: root.isDark ? 1 : 0
+            border.color: "#262626"
             opacity: root.ui3
             scale: 0.95 + (0.05 * root.ui3)
             transform: Translate { y: (1 - root.ui3) * 40 * s }
@@ -438,13 +454,13 @@ Rectangle {
                 // Power
                 Rectangle {
                     width: 108 * s; height: 108 * s; radius: 54 * s
-                    color: powerMouse.pressed ? "#b31018" : (powerMouse.containsMouse ? "#ea1821" : "#222222")
-                    border.color: powerMouse.containsMouse ? "#ea1821" : "#2a2a2a"
+                    color: powerMouse.pressed ? root.accentPressed : (powerMouse.containsMouse ? root.accent : "#222222")
+                    border.color: powerMouse.containsMouse ? root.accent : "#2a2a2a"
                     border.width: 1 * s
                     scale: powerMouse.pressed ? 0.92 : (powerMouse.containsMouse ? 1.05 : 1.0)
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on border.color { ColorAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on border.color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
                     
                     Column {
                         anchors.centerIn: parent
@@ -453,7 +469,7 @@ Rectangle {
                             text: "P"
                             font.family: pfDotFamily
                             font.pixelSize: 36 * s
-                            color: "#ffffff"
+                            color: root.cardText
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
                         Text {
@@ -483,9 +499,9 @@ Rectangle {
                     border.color: sessionMouse.containsMouse ? "#ffffff" : "#2a2a2a"
                     border.width: 1 * s
                     scale: sessionMouse.pressed ? 0.92 : (sessionMouse.containsMouse ? 1.05 : 1.0)
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on border.color { ColorAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on border.color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
                     
                     Column {
                         anchors.centerIn: parent
@@ -497,7 +513,7 @@ Rectangle {
                             font.pixelSize: 36 * s
                             color: sessionMouse.containsMouse ? "#111111" : "#ffffff"
                             anchors.horizontalCenter: parent.horizontalCenter
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                         }
                         Text {
                             text: ((sessionHelper.currentItem && sessionHelper.currentItem.sName) ? sessionHelper.currentItem.sName : "PLASMA").toUpperCase()
@@ -510,7 +526,7 @@ Rectangle {
                             elide: Text.ElideRight
                             width: parent.width
                             horizontalAlignment: Text.AlignHCenter
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                         }
                     }
                     
@@ -534,9 +550,9 @@ Rectangle {
                     border.color: rebootMouse.containsMouse ? "#ffffff" : "#2a2a2a"
                     border.width: 1 * s
                     scale: rebootMouse.pressed ? 0.92 : (rebootMouse.containsMouse ? 1.05 : 1.0)
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on border.color { ColorAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on border.color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
                     
                     Column {
                         anchors.centerIn: parent
@@ -547,7 +563,7 @@ Rectangle {
                             font.pixelSize: 36 * s
                             color: rebootMouse.containsMouse ? "#111111" : "#ffffff"
                             anchors.horizontalCenter: parent.horizontalCenter
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                         }
                         Text {
                             text: "REBOOT"
@@ -557,7 +573,7 @@ Rectangle {
                             font.letterSpacing: 1 * s
                             color: rebootMouse.containsMouse ? "#111111" : "#888888"
                             anchors.horizontalCenter: parent.horizontalCenter
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                         }
                     }
                     
@@ -577,9 +593,9 @@ Rectangle {
                     border.color: suspendMouse.containsMouse ? "#444444" : "#2a2a2a"
                     border.width: 1 * s
                     scale: suspendMouse.pressed ? 0.92 : (suspendMouse.containsMouse ? 1.05 : 1.0)
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on border.color { ColorAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on border.color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
                     
                     Column {
                         anchors.centerIn: parent
@@ -588,7 +604,7 @@ Rectangle {
                             text: "Z"
                             font.family: pfDotFamily
                             font.pixelSize: 36 * s
-                            color: "#ea1821"
+                            color: root.accent
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
                         Text {

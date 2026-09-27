@@ -11,3 +11,8 @@ url = "https://fonts.adobe.com/fonts/fot-rodin-pron"
 [supports]
 clock_format = true
 date_format = true
+colors = true
+fonts = ["text", "clock"]
+motion = true
+variants = ["light", "dark"]
+default_variant = "light"

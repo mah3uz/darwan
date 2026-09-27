@@ -3,9 +3,11 @@ import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Window
 import SddmComponents 2.0
+import "darwan"
 
 // Theme
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -21,15 +23,17 @@ Rectangle {
     property int userIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
     property real ui: 0
     // Palette
-    readonly property color cPink: "#da9ead"
+    // Dark changes only the card, to frosted glass over the untouched illustration.
+    readonly property bool isDark: config.colorScheme === "dark"
+    readonly property color cPink: kit.color("accent", "#da9ead")
     readonly property color cPinkLt: "#f0cad5"
     readonly property color cPinkDim: "#c17d91"
     readonly property color cTealMd: "#6ea6a1"
-    readonly property color cCream: "#fdfaf6"
-    readonly property color cCreamy: "#f2ece4"
-    readonly property color cInk: "#324746"
+    readonly property color cCream: isDark ? "#d91c2629" : "#fdfaf6"
+    readonly property color cCreamy: isDark ? "#2a3538" : "#f2ece4"
+    readonly property color cInk: kit.color("text", isDark ? "#e6ecea" : "#324746")
     readonly property color cMuted: "#8fa8a6"
-    readonly property color cField: "#f8f4ef"
+    readonly property color cField: isDark ? "#243034" : "#f8f4ef"
 
     function doLogin() {
         var u = (userHelper.currentItem && userHelper.currentItem.uLogin) ? userHelper.currentItem.uLogin : (typeof userModel !== "undefined" ? userModel.lastUser : "");
@@ -55,7 +59,8 @@ Rectangle {
 
         source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : ""
     }
-    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
+    readonly property string pfFamily: kit.font("text", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
+    readonly property string clockFamily: kit.font("clock", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
 
     ListView {
         id: sessionHelper
@@ -103,17 +108,20 @@ Rectangle {
         property: "ui"
         from: 0
         to: 1
-        duration: 1200
-        easing.type: Easing.OutCubic
+        duration: kit.dur(1200)
+        easing.type: kit.ease(Easing.OutCubic)
     }
 
     // Background
     Image {
+        id: bgImage
         anchors.fill: parent
         source: "bg.png"
         fillMode: Image.PreserveAspectCrop
         smooth: true
+        visible: !userBg.active
     }
+    Background { id: userBg; anchors.fill: parent }
 
     // Card
     Item {
@@ -140,6 +148,25 @@ Rectangle {
 
         }
 
+        // Frosted glass behind the dark card: the illustration, blurred, cut to the card's shape.
+        Item {
+            anchors.fill: parent
+            visible: root.isDark && !userBg.active
+            layer.enabled: visible
+            layer.effect: OpacityMask {
+                maskSource: Rectangle { width: card.width; height: card.height; radius: 24 * s }
+            }
+            FastBlur {
+                anchors.fill: parent
+                radius: 48
+                source: ShaderEffectSource {
+                    sourceItem: bgImage
+                    sourceRect: Qt.rect(card.x, card.y, card.width, card.height)
+                    live: false
+                }
+            }
+        }
+
         // Surface
         Rectangle {
             id: cardBg
@@ -153,7 +180,7 @@ Rectangle {
                 anchors.fill: parent
                 radius: parent.radius
                 color: "transparent"
-                border.color: "#18000000"
+                border.color: root.isDark ? "#26ffffff" : "#18000000"
                 border.width: 1
             }
 
@@ -214,7 +241,7 @@ Rectangle {
                 anchors.left: parent.left
                 text: Qt.formatTime(new Date(), clockFmt)
                 color: root.cInk
-                font.family: pfFamily
+                font.family: root.clockFamily
                 font.pixelSize: 64 * s
 
                 Timer {
@@ -292,7 +319,7 @@ Rectangle {
 
                     Behavior on color {
                         ColorAnimation {
-                            duration: 150
+                            duration: kit.dur(150)
                         }
 
                     }
@@ -347,7 +374,7 @@ Rectangle {
 
                     Behavior on border.color {
                         ColorAnimation {
-                            duration: 250
+                            duration: kit.dur(250)
                         }
 
                     }
@@ -365,7 +392,7 @@ Rectangle {
 
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: 200
+                            duration: kit.dur(200)
                         }
 
                     }
@@ -420,14 +447,14 @@ Rectangle {
 
                         SequentialAnimation {
                             loops: Animation.Infinite
-                            running: needleCursor.visible
+                            running: needleCursor.visible && !kit.reduceMotion
 
                             NumberAnimation {
                                 target: needleCursor
                                 property: "opacity"
                                 from: 1
                                 to: 0.1
-                                duration: 450
+                                duration: kit.dur(450)
                             }
 
                             NumberAnimation {
@@ -435,7 +462,7 @@ Rectangle {
                                 property: "opacity"
                                 from: 0.1
                                 to: 1
-                                duration: 450
+                                duration: kit.dur(450)
                             }
 
                         }
@@ -539,7 +566,7 @@ Rectangle {
 
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: 150
+                            duration: kit.dur(150)
                         }
 
                     }
@@ -574,7 +601,7 @@ Rectangle {
 
                     Behavior on color {
                         ColorAnimation {
-                            duration: 150
+                            duration: kit.dur(150)
                         }
 
                     }
@@ -636,14 +663,14 @@ Rectangle {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: 200
+                                duration: kit.dur(200)
                             }
 
                         }
 
                         Behavior on opacity {
                             NumberAnimation {
-                                duration: 200
+                                duration: kit.dur(200)
                             }
 
                         }
@@ -663,15 +690,15 @@ Rectangle {
 
                         Behavior on width {
                             NumberAnimation {
-                                duration: 250
-                                easing.type: Easing.OutCubic
+                                duration: kit.dur(250)
+                                easing.type: kit.ease(Easing.OutCubic)
                             }
 
                         }
 
                         Behavior on opacity {
                             NumberAnimation {
-                                duration: 250
+                                duration: kit.dur(250)
                             }
 
                         }
@@ -722,14 +749,14 @@ Rectangle {
 
                             Behavior on color {
                                 ColorAnimation {
-                                    duration: 200
+                                    duration: kit.dur(200)
                                 }
 
                             }
 
                             Behavior on opacity {
                                 NumberAnimation {
-                                    duration: 200
+                                    duration: kit.dur(200)
                                 }
 
                             }
@@ -749,15 +776,15 @@ Rectangle {
 
                             Behavior on width {
                                 NumberAnimation {
-                                    duration: 250
-                                    easing.type: Easing.OutCubic
+                                    duration: kit.dur(250)
+                                    easing.type: kit.ease(Easing.OutCubic)
                                 }
 
                             }
 
                             Behavior on opacity {
                                 NumberAnimation {
-                                    duration: 250
+                                    duration: kit.dur(250)
                                 }
 
                             }

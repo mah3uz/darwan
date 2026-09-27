@@ -3,8 +3,10 @@ import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -16,18 +18,21 @@ Rectangle {
     id: root
     width:  Screen.width
     height: Screen.height
-    color:  "#c0bc9e"
+    color:  nierBg
 
-    // Colors
-    readonly property color nierBg:        "#c0bc9e"
-    readonly property color nierDarker:    "#1a1814"
-    readonly property color nierBorder:    "#706c58"
-    readonly property color nierAccent:    "#d0cca8"
-    readonly property color nierText:      "#2a2820"
-    readonly property color nierDot:       "#524e3e"
-    property color nierDark:       "#2a2820"
-    property color nierTextMid:    "#706c58"
-    property color nierSelected:   "#3e3c33"
+    // Colors. Dark is NieR's own inversion, as its menus do on selection: an umber field with sepia text,
+    // and the panels flipped to sepia with umber text.
+    readonly property bool isDark: config.colorScheme === "dark"
+    function v(light, dark) { return isDark ? dark : light }
+    readonly property color nierBg:        v("#c0bc9e", "#2b2922")
+    readonly property color nierDarker:    v("#1a1814", "#e6e1c8")
+    readonly property color nierBorder:    v("#706c58", "#9a9680")
+    readonly property color nierAccent:    kit.color("accent", v("#d0cca8", "#2a2820"))
+    readonly property color nierText:      kit.color("text", v("#2a2820", "#dad4bb"))
+    readonly property color nierDot:       v("#524e3e", "#bdb79c")
+    property color nierDark:       v("#2a2820", "#d0cca8")
+    property color nierTextMid:    v("#706c58", "#a8a38a")
+    property color nierSelected:   v("#3e3c33", "#b8b396")
 
     // Quickshell
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
@@ -35,7 +40,7 @@ Rectangle {
     // Effect
     property real scanPos: 0
     NumberAnimation {
-        target: root; property: "scanPos"; from: 0; to: 1; duration: 4000; loops: Animation.Infinite; running: true
+        target: root; property: "scanPos"; from: 0; to: 1; duration: 4000; loops: Animation.Infinite; running: !kit.reduceMotion
     }
 
     property real  uiOpacity:    0
@@ -59,7 +64,8 @@ Rectangle {
     readonly property string nierFontFamily: nierFont.status === FontLoader.Ready ? nierFont.name : "sans-serif"
 
     // Shared font name string — accessible from everywhere in this file
-    readonly property string fontName: nierFontFamily
+    readonly property string fontName: kit.font("text", nierFontFamily)
+    readonly property string clockFontName: kit.font("clock", nierFontFamily)
 
     // Auto-focus fix for Quickshell (Loader does not propagate focus: true)
     Timer { interval: 300; running: true; onTriggered: pwInput.forceActiveFocus() }
@@ -84,7 +90,7 @@ Rectangle {
         anchors.fill: parent; color: root.nierBg
 
         Image {
-            anchors.fill: parent; source: config.background; fillMode: Image.PreserveAspectCrop
+            anchors.fill: parent; source: root.isDark ? "bg-dark.png" : "bg.png"; fillMode: Image.PreserveAspectCrop
             asynchronous: true; opacity: 0.92
         }
 
@@ -92,7 +98,7 @@ Rectangle {
         Canvas {
             anchors.fill: parent; opacity: 0.04
             onPaint: {
-                var ctx = getContext("2d"); ctx.strokeStyle = "#000000"; ctx.lineWidth = 1;
+                var ctx = getContext("2d"); ctx.strokeStyle = root.isDark ? "#dad4bb" : "#000000"; ctx.lineWidth = 1;
                 var step = 40 * s
                 for (var x = 0; x < width; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
                 for (var y = 0; y < height; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
@@ -117,8 +123,9 @@ Rectangle {
                 transform: Rotation { angle: -90 }
                 SequentialAnimation on y {
                     loops: Animation.Infinite
+                    running: !kit.reduceMotion
                     NumberAnimation { from: ty; to: ty - 60 * s; duration: 25000; easing.type: Easing.Linear }
-                    NumberAnimation { from: ty + 60 * s; to: ty; duration: 0 }
+                    NumberAnimation { from: ty + 60 * s; to: ty; duration: kit.dur(0) }
                 }
             }
         }
@@ -127,7 +134,7 @@ Rectangle {
         Canvas {
             anchors.fill: parent; opacity: 0.05
             onPaint: {
-                var ctx = getContext("2d"); ctx.strokeStyle = "#000000"; ctx.lineWidth = 1;
+                var ctx = getContext("2d"); ctx.strokeStyle = root.isDark ? "#dad4bb" : "#000000"; ctx.lineWidth = 1;
                 for (var y = 0; y < height; y += 3 * s) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
             }
         }
@@ -158,12 +165,14 @@ Rectangle {
 
             SequentialAnimation on y {
                 loops: Animation.Infinite
+                running: !kit.reduceMotion
                 PauseAnimation  { duration: dp.del }
                 NumberAnimation { from: dp.py; to: dp.py - 220; duration: dp.dur; easing.type: Easing.Linear }
-                NumberAnimation { duration: 0; to: dp.py }
+                NumberAnimation { duration: kit.dur(0); to: dp.py }
             }
             SequentialAnimation on opacity {
                 loops: Animation.Infinite
+                running: !kit.reduceMotion
                 PauseAnimation  { duration: dp.del }
                 NumberAnimation { from: 0; to: 0.5;  duration: dp.dur * 0.08 }
                 NumberAnimation { from: 0.5; to: 0.5; duration: dp.dur * 0.72 }
@@ -188,15 +197,17 @@ Rectangle {
             color: root.nierDot; opacity: 0; x: -width
             SequentialAnimation on x {
                 loops: Animation.Infinite
+                running: !kit.reduceMotion
                 PauseAnimation  { duration: sd.del }
                 NumberAnimation { from: -sd.width; to: root.width + sd.width; duration: sd.dur; easing.type: Easing.Linear }
             }
             SequentialAnimation on opacity {
                 loops: Animation.Infinite
+                running: !kit.reduceMotion
                 PauseAnimation  { duration: sd.del }
-                NumberAnimation { from: 0;    to: 0.3;  duration: 150 }
+                NumberAnimation { from: 0;    to: 0.3;  duration: kit.dur(150) }
                 NumberAnimation { from: 0.3;  to: 0.3;  duration: sd.dur - 300 }
-                NumberAnimation { from: 0.3;  to: 0;    duration: 150 }
+                NumberAnimation { from: 0.3;  to: 0;    duration: kit.dur(150) }
             }
         }
     }
@@ -213,7 +224,7 @@ Rectangle {
             onPaint: {
                 var ctx = getContext("2d")
                 ctx.clearRect(0, 0, width, height)
-                ctx.fillStyle = "#524e3e"
+                ctx.fillStyle = root.nierDot
                 var step = 10 * s
                 var count = Math.floor(width / step)
                 var triSize = 3 * s
@@ -259,10 +270,10 @@ Rectangle {
                     property bool hovered: tMa.containsMouse
                     width:  tabContent.implicitWidth + 20 * s
                     height: topBar.height
-                    color:  isActive ? root.nierSelected : (hovered ? "#4a4840" : "transparent")
+                    color:  isActive ? root.nierSelected : (hovered ? root.v("#4a4840", "#a8a38a") : "transparent")
                     border.color: (isActive || hovered) ? root.nierBorder : "transparent"
                     border.width: (isActive || hovered) ? 1 : 0
-                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
 
                     Row {
                         id: tabContent
@@ -299,7 +310,7 @@ Rectangle {
             onPaint: {
                 var ctx = getContext("2d")
                 ctx.clearRect(0, 0, width, height)
-                ctx.fillStyle = "#524e3e"
+                ctx.fillStyle = root.nierDot
                 var step = 10 * s
                 var count = Math.floor(width / step)
                 var triSize = 3 * s
@@ -347,7 +358,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     Rectangle {
                         height: 15 * s; width: chip.implicitWidth + 8 * s
-                        color: "#2c2a24"
+                        color: root.v("#2c2a24", "#c8c3a6")
                         border.color: root.nierBorder; border.width: 1
                         anchors.verticalCenter: parent.verticalCenter
                         Text {
@@ -379,11 +390,11 @@ Rectangle {
         opacity: root.uiOpacity
 
         SequentialAnimation { running: true;
-            PauseAnimation  { duration: 400 }
+            PauseAnimation  { duration: kit.dur(400) }
             ParallelAnimation {
-                NumberAnimation { target: root; property: "uiOpacity"; from: 0; to: 1; duration: 1200; easing.type: Easing.OutExpo }
-                NumberAnimation { target: root; property: "panelOffset"; from: 60 * s; to: 0; duration: 1400; easing.type: Easing.OutExpo }
-                NumberAnimation { target: root; property: "brandReveal"; from: 0; to: 1; duration: 1800; easing.type: Easing.OutQuart }
+                NumberAnimation { target: root; property: "uiOpacity"; from: 0; to: 1; duration: kit.dur(1200); easing.type: kit.ease(Easing.OutExpo) }
+                NumberAnimation { target: root; property: "panelOffset"; from: 60 * s; to: 0; duration: kit.dur(1400); easing.type: kit.ease(Easing.OutExpo) }
+                NumberAnimation { target: root; property: "brandReveal"; from: 0; to: 1; duration: kit.dur(1800); easing.type: kit.ease(Easing.OutQuart) }
             }
             ScriptAction { script: missionTypewriter.start() }
         }
@@ -435,7 +446,7 @@ Rectangle {
                 onPaint: {
                     var ctx = getContext("2d")
                     ctx.clearRect(0, 0, width, height)
-                    ctx.fillStyle = "#524e3e"
+                    ctx.fillStyle = root.nierDot
                     for (var i = 0; i < 55; i++)
                         ctx.fillRect(i * 6 * s, 1 * s, 2 * s, 2 * s)
                 }
@@ -466,15 +477,15 @@ Rectangle {
                         anchors.fill: parent
                         // Lighter hover slide
                         x: (rowItem.sel || rowItem.hovered) ? 4 * s : 0
-                        Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutQuart } }
+                        Behavior on x { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutQuart) } }
 
                         Rectangle {
                             anchors.fill: parent
                             color: rowItem.sel ? root.nierSelected
-                                 : rowItem.hovered ? "#312f29" : "transparent"
+                                 : rowItem.hovered ? root.v("#312f29", "#bfba9e") : "transparent"
                             border.color: rowItem.hovered ? root.nierBorder : "transparent"
                             border.width: rowItem.hovered ? 1 : 0
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: kit.dur(150) } }
 
                             // Bullet glyph
                             Text {
@@ -485,7 +496,7 @@ Rectangle {
                                 x: 14 * s
                                 
                                 scale: rowItem.sel ? 1.2 : 1.0
-                                Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                                Behavior on scale { NumberAnimation { duration: kit.dur(200); easing.type: kit.ease(Easing.OutBack) } }
                             }
 
                             // Username
@@ -496,7 +507,7 @@ Rectangle {
                                 color: rowItem.sel || rowItem.hovered ? root.nierAccent : root.nierText
                                 anchors.verticalCenter: parent.verticalCenter
                                 anchors.left: parent.left; anchors.leftMargin: 36 * s
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                             }
 
                             // Separator
@@ -516,9 +527,9 @@ Rectangle {
                         x: -16 * s
                         visible: rowItem.sel
                         SequentialAnimation on opacity {
-                            running: rowItem.sel; loops: Animation.Infinite
-                            NumberAnimation { from: 1; to: 0.25; duration: 550; easing.type: Easing.InOutSine }
-                            NumberAnimation { from: 0.25; to: 1; duration: 550; easing.type: Easing.InOutSine }
+                            running: (rowItem.sel) && !kit.reduceMotion; loops: Animation.Infinite
+                            NumberAnimation { from: 1; to: 0.25; duration: kit.dur(550); easing.type: kit.ease(Easing.InOutSine) }
+                            NumberAnimation { from: 0.25; to: 1; duration: kit.dur(550); easing.type: kit.ease(Easing.InOutSine) }
                         }
                     }
 
@@ -639,7 +650,7 @@ Rectangle {
                     // Unit Profile Silhouette
                     Rectangle {
                         id: unitIcon; anchors.top: statusHdr.bottom; anchors.topMargin: 10 * s; anchors.left: parent.left; anchors.leftMargin: 10 * s
-                        width: 44 * s; height: 54 * s; color: "#312f29"; border.color: root.nierBorder; border.width: 1
+                        width: 44 * s; height: 54 * s; color: root.v("#312f29", "#bfba9e"); border.color: root.nierBorder; border.width: 1
                         Text { anchors.centerIn: parent; text: "2B"; font.family: root.fontName; font.pixelSize: 18 * s; color: root.nierAccent; opacity: 0.6 }
                     }
 
@@ -689,7 +700,7 @@ Rectangle {
                     }
                     Rectangle {
                         anchors.top: authHdr.bottom; anchors.topMargin: 8 * s; anchors.left: parent.left; anchors.leftMargin: 12 * s; anchors.right: parent.right; anchors.rightMargin: 12 * s; height: 32 * s
-                        color: pwInput.activeFocus ? "#2c2a24" : "#201f1a"; border.color: pwInput.activeFocus ? root.nierAccent : root.nierBorder; border.width: 1
+                        color: pwInput.activeFocus ? root.v("#2c2a24", "#c8c3a6") : root.v("#201f1a", "#d6d1b4"); border.color: pwInput.activeFocus ? root.nierAccent : root.nierBorder; border.width: 1
                         TextInput {
                             id: pwInput; anchors.fill: parent; anchors.leftMargin: 10 * s; anchors.rightMargin: 36 * s
                             anchors.verticalCenterOffset: 3 * s
@@ -698,7 +709,7 @@ Rectangle {
                             selectionColor: root.nierAccent
                             font.letterSpacing: 4 * s
                             property bool wasClicked: false
-                            Text { text: "Passphrase..."; opacity: parent.text.length === 0 ? 1 : 0; Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } } color: root.nierBorder; font.family: root.fontName; font.pixelSize: 11 * s; font.letterSpacing: 1.5 * s; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -3 * s }
+                            Text { text: "Passphrase..."; opacity: parent.text.length === 0 ? 1 : 0; Behavior on opacity { NumberAnimation { duration: kit.dur(400); easing.type: kit.ease(Easing.InOutSine) } } color: root.nierBorder; font.family: root.fontName; font.pixelSize: 11 * s; font.letterSpacing: 1.5 * s; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -3 * s }
                             onTextEdited: errText.text = ""
                             Keys.onPressed: (event) => { if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) doLogin(); else if (event.key === Qt.Key_Tab) { event.accepted = true; if (typeof sessionModel !== "undefined" && sessionModel.rowCount() > 0) root.sessionIndex = (root.sessionIndex + 1) % sessionModel.rowCount(); } else if (event.key === Qt.Key_Up) { event.accepted = true; userList.currentIndex = Math.max(0, userList.currentIndex - 1); } else if (event.key === Qt.Key_Down) { event.accepted = true; userList.currentIndex = Math.min(userList.model.count - 1, userList.currentIndex + 1); } }
                             Rectangle {
@@ -709,11 +720,11 @@ Rectangle {
                                 x: pwInput.cursorRectangle.x + 2 * s
                                 visible: pwInput.focus && (pwInput.text.length > 0 || pwInput.wasClicked)
                                 SequentialAnimation {
-                                    loops: Animation.Infinite; running: customCursor.visible
+                                    loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion
                                     PropertyAction { target: customCursor; property: "opacity"; value: 1 }
-                                    PauseAnimation { duration: 400 }
+                                    PauseAnimation { duration: kit.dur(400) }
                                     PropertyAction { target: customCursor; property: "opacity"; value: 0 }
-                                    PauseAnimation { duration: 400 }
+                                    PauseAnimation { duration: kit.dur(400) }
                                 }
                             }
                             MouseArea {
@@ -727,11 +738,11 @@ Rectangle {
                         Rectangle { 
                             id: loginBtn
                             anchors.right: parent.right; anchors.rightMargin: 2 * s; anchors.verticalCenter: parent.verticalCenter; width: 28 * s; height: 28 * s
-                            color: subMa.pressed ? "#4a4840" : subMa.containsMouse ? "#3a3830" : "#2c2a24"
+                            color: subMa.pressed ? root.v("#4a4840", "#a8a38a") : subMa.containsMouse ? root.v("#3a3830", "#b8b396") : root.v("#2c2a24", "#c8c3a6")
                             border.color: subMa.containsMouse ? root.nierAccent : root.nierBorder; border.width: 1
                             
                             scale: subMa.containsMouse ? 1.15 : 1.0
-                            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                            Behavior on scale { NumberAnimation { duration: kit.dur(200); easing.type: kit.ease(Easing.OutBack) } }
 
                             Text { 
                                 anchors.centerIn: parent; text: "▶"
@@ -760,18 +771,18 @@ Rectangle {
                         model: [ { label: "Power Off", action: "off" }, { label: "Reboot", action: "reboot" } ]
                         Rectangle {
                             id: btnRect
-                            width: parent.width; height: 32 * s; color: bMa.pressed ? "#4a4840" : bMa.containsMouse ? "#3a3830" : "#2c2a24"; border.color: bMa.containsMouse ? root.nierAccent : root.nierBorder; border.width: 1
+                            width: parent.width; height: 32 * s; color: bMa.pressed ? root.v("#4a4840", "#a8a38a") : bMa.containsMouse ? root.v("#3a3830", "#b8b396") : root.v("#2c2a24", "#c8c3a6"); border.color: bMa.containsMouse ? root.nierAccent : root.nierBorder; border.width: 1
                             
                             // Enhanced button animation (slide right)
                             Item {
                                 anchors.fill: parent
                                 x: bMa.containsMouse ? 4 * s : 0
-                                Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                                Behavior on x { NumberAnimation { duration: kit.dur(200); easing.type: kit.ease(Easing.OutCubic) } }
 
                                 Text { 
                                     anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12 * s; 
                                     font.family: root.fontName; font.pixelSize: 11 * s; font.letterSpacing: 1.0; 
-                                    color: bMa.containsMouse ? root.nierAccent : "#b0ac94"; 
+                                    color: bMa.containsMouse ? root.nierAccent : root.v("#b0ac94", "#3a3830"); 
                                     text: "◆ " + modelData.label 
                                 }
                             }
@@ -792,18 +803,18 @@ Rectangle {
                         Rectangle {
                             id: sessionBtn
                             anchors.fill: parent
-                            color: sBtnMa.pressed ? "#4a4840" : sBtnMa.containsMouse ? "#3a3830" : "#2c2a24"; border.color: sBtnMa.containsMouse ? root.nierAccent : root.nierBorder; border.width: 1
+                            color: sBtnMa.pressed ? root.v("#4a4840", "#a8a38a") : sBtnMa.containsMouse ? root.v("#3a3830", "#b8b396") : root.v("#2c2a24", "#c8c3a6"); border.color: sBtnMa.containsMouse ? root.nierAccent : root.nierBorder; border.width: 1
                             
                             Item {
                                 anchors.fill: parent
                                 x: sBtnMa.containsMouse ? 4 * s : 0
-                                Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                                Behavior on x { NumberAnimation { duration: kit.dur(200); easing.type: kit.ease(Easing.OutCubic) } }
 
 
                                 Text { 
                                     anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12 * s; 
                                     font.family: root.fontName; font.pixelSize: 11 * s; font.letterSpacing: 1.0; 
-                                    color: (sBtnMa.containsMouse || parent.parent.parent.sessionMenuOpen) ? root.nierAccent : "#b0ac94"; 
+                                    color: (sBtnMa.containsMouse || parent.parent.parent.sessionMenuOpen) ? root.nierAccent : root.v("#b0ac94", "#3a3830"); 
                                     text: "◆ Session: " + ((sessionModel && sessionModel.count > root.sessionIndex && root.sessionIndex >= 0 && sessionHelper.currentItem) ? sessionHelper.currentItem.sName : "—") 
                                 }
                                 Text {
@@ -827,14 +838,14 @@ Rectangle {
                             clip: true; color: "#1a1814"; border.color: root.nierBorder; border.width: parent.parent.sessionMenuOpen ? 1 : 0
                             z: 100 // Higher z-order to cover following elements
 
-                            Behavior on height { NumberAnimation { duration: 350; easing.type: Easing.OutExpo } }
+                            Behavior on height { NumberAnimation { duration: kit.dur(350); easing.type: kit.ease(Easing.OutExpo) } }
 
                             ListView {
                                 id: sessionMenuLv
                                 anchors.fill: parent; model: sessionModel; spacing: 0; clip: true
                                 delegate: Rectangle {
                                     width: sessionMenuLv.width; height: 30 * s
-                                    color: sItemMa.containsMouse ? "#3a3830" : (root.sessionIndex === index ? "#2c2a24" : "transparent")
+                                    color: sItemMa.containsMouse ? root.v("#3a3830", "#b8b396") : (root.sessionIndex === index ? root.v("#2c2a24", "#c8c3a6") : "transparent")
                                     
 
                                     
@@ -879,7 +890,7 @@ Rectangle {
                                 Row {
                                     spacing: 8 * s; anchors.right: parent.right
                                     Text { text: modelData.label; font.family: root.fontName; font.pixelSize: 7 * s; color: root.nierTextMid; anchors.verticalCenter: parent.verticalCenter }
-                                    Rectangle { width: 40 * s; height: 3 * s; color: "#2c2a24"; anchors.verticalCenter: parent.verticalCenter; Rectangle { width: parent.width * modelData.bar; height: parent.height; color: root.nierBorder } }
+                                    Rectangle { width: 40 * s; height: 3 * s; color: root.v("#2c2a24", "#c8c3a6"); anchors.verticalCenter: parent.verticalCenter; Rectangle { width: parent.width * modelData.bar; height: parent.height; color: root.nierBorder } }
                                     Text { text: modelData.val; font.family: root.fontName; font.pixelSize: 7 * s; color: root.nierText; width: 22 * s; horizontalAlignment: Text.AlignRight }
                                 }
                             }
@@ -895,7 +906,7 @@ Rectangle {
                             Text { text: "SATELLITE LINK [BUNKER]"; font.family: root.fontName; font.pixelSize: 6 * s; color: root.nierTextMid; font.letterSpacing: 1 }
                             Row {
                                 spacing: 8 * s
-                                Rectangle { width: 26 * s; height: 16 * s; color: "#2c2a24"; Text { anchors.centerIn: parent; text: "LINK"; font.family: root.fontName; font.pixelSize: 7 * s; color: root.nierAccent } }
+                                Rectangle { width: 26 * s; height: 16 * s; color: root.v("#2c2a24", "#c8c3a6"); Text { anchors.centerIn: parent; text: "LINK"; font.family: root.fontName; font.pixelSize: 7 * s; color: root.nierAccent } }
                                 Text { text: "SECURE CH-04"; font.family: root.fontName; font.pixelSize: 7 * s; color: root.nierText; anchors.verticalCenter: parent.verticalCenter }
                             }
                         }
@@ -964,7 +975,7 @@ Rectangle {
                     id: clockMainText
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.currentTime
-                    font.family: root.fontName; font.pixelSize: 42 * s
+                    font.family: root.clockFontName; font.pixelSize: 42 * s
                     font.letterSpacing: 2; color: root.nierText; 
                     opacity: 0.9 * root.brandReveal
                 }
@@ -1017,8 +1028,9 @@ Rectangle {
                 property real pulse: 0
                 SequentialAnimation on pulse {
                     loops: Animation.Infinite
-                    NumberAnimation { from: 0; to: 1; duration: 2400; easing.type: Easing.InOutSine }
-                    NumberAnimation { from: 1; to: 0; duration: 2400; easing.type: Easing.InOutSine }
+                    running: !kit.reduceMotion
+                    NumberAnimation { from: 0; to: 1; duration: kit.dur(2400); easing.type: kit.ease(Easing.InOutSine) }
+                    NumberAnimation { from: 1; to: 0; duration: kit.dur(2400); easing.type: kit.ease(Easing.InOutSine) }
                 }
                 onPulseChanged: requestPaint()
 
@@ -1026,6 +1038,7 @@ Rectangle {
                 property real rot: 0
                 SequentialAnimation on rot {
                     loops: Animation.Infinite
+                    running: !kit.reduceMotion
                     NumberAnimation { from: 0; to: 360; duration: 40000; easing.type: Easing.Linear }
                 }
                 transform: Rotation {

@@ -5,13 +5,15 @@ import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     id: root
     readonly property real s: Screen.height / 768
     width: Screen.width
     height: Screen.height
-    color: "#faf0e6"
+    color: isDark ? "#1d1530" : "#faf0e6"
 
     // Wayland Cursor Fix
     MouseArea {
@@ -20,14 +22,19 @@ Rectangle {
         z: -1
     }
 
-    // Colors
-    readonly property color mainText: "#231c1a"
+    // Colors. Dark keeps the pastel chips (neo-brutalism reads even harder on a dark field) and lightens only
+    // what is drawn straight onto the background.
+    readonly property bool isDark: config.colorScheme === "dark"
+    readonly property color mainText: kit.color("text", "#231c1a")
     readonly property color dimText: "#6a5a54"
-    readonly property color outlineColor: "#161110"
+    readonly property color outlineColor: isDark ? "#0b0812" : "#161110"
+    readonly property color dialColor: isDark ? "#e8def5" : outlineColor
+    readonly property color numeralColor: isDark ? "#e8def5" : mainText
     readonly property color pillBg: "#faf0e6"
-    readonly property color peachAccent: "#ffb3a1"
-    readonly property color greenAccent: "#c5e1a5"
-    readonly property color lavenderAccent: "#e1bee7"
+    readonly property color peachAccent: kit.color("accent", "#ffb3a1")
+    readonly property color peachHover: config.colorAccent ? Qt.darker(peachAccent, 1.1) : "#ff9e85"
+    readonly property color greenAccent: kit.color("colorGreen", "#c5e1a5")
+    readonly property color lavenderAccent: kit.color("colorLavender", "#e1bee7")
     readonly property color roseAccent: "#ffcbd5"
 
     // State
@@ -43,15 +50,31 @@ Rectangle {
     readonly property string amPm: clock12 && config.clockShowAmPm === "true" ? (curH < 12 ? "AM" : "PM") : ""
     function clockHour(h) { return String(clock12 ? h % 12 || 12 : h).padStart(2, "0") }
     property int curM: new Date().getMinutes()
-    property int curS: new Date().getSeconds()
-    property int curMS: new Date().getMilliseconds()
-    readonly property real localTimeMS: (curH * 3600000) + (curM * 60000) + (curS * 1000) + curMS
+    // Milliseconds into the day, swept by one native animation instead of a script every frame.
+    property real localTimeMS: 0
+    NumberAnimation { id: clockSweep; target: root; property: "localTimeMS"; duration: 86400000 }
+
+    function syncClock() {
+        var d = new Date()
+        root.curH = d.getHours(); root.curM = d.getMinutes()
+        var ms = ((d.getHours() * 60 + d.getMinutes()) * 60 + d.getSeconds()) * 1000 + d.getMilliseconds()
+        clockSweep.stop()
+        root.localTimeMS = ms
+        // With reduced motion the dial steps once a second instead of sweeping.
+        if (!kit.reduceMotion) {
+            clockSweep.from = ms
+            clockSweep.to = ms + 86400000
+            clockSweep.start()
+        }
+    }
 
     Timer {
-        interval: 16; running: true; repeat: true
+        interval: 1000; running: true; repeat: true
         onTriggered: {
             var d = new Date()
-            root.curH = d.getHours(); root.curM = d.getMinutes(); root.curS = d.getSeconds(); root.curMS = d.getMilliseconds()
+            root.curH = d.getHours(); root.curM = d.getMinutes()
+            if (kit.reduceMotion || d.getSeconds() === 0)
+                root.syncClock()
         }
     }
 
@@ -61,7 +84,8 @@ Rectangle {
     // Fonts
     FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader { id: outfitFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string outfitFontFamily: outfitFont.status === FontLoader.Ready ? outfitFont.name : "sans-serif"
+    readonly property string outfitFontFamily: kit.font("text", outfitFont.status === FontLoader.Ready ? outfitFont.name : "sans-serif")
+    readonly property string clockFontFamily: kit.font("clock", outfitFont.status === FontLoader.Ready ? outfitFont.name : "sans-serif")
     TextConstants { id: textConstants }
 
     // Helpers
@@ -78,8 +102,8 @@ Rectangle {
 
     // Logic
     Timer { interval: 300; running: true; onTriggered: passInput.forceActiveFocus() }
-    Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "uiOpacity"; from: 0; to: 1; duration: 1200; easing.type: Easing.OutCubic }
+    Component.onCompleted: { syncClock(); fadeAnim.start(); keyboard.numLock = true }
+    NumberAnimation { id: fadeAnim; target: root; property: "uiOpacity"; from: 0; to: 1; duration: kit.dur(1200); easing.type: kit.ease(Easing.OutCubic) }
 
     // Background Image
     Image {
@@ -88,7 +112,19 @@ Rectangle {
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         opacity: root.uiOpacity
+        visible: !root.isDark && !userBg.active
     }
+    // The light background is only a gradient, so the dark one is drawn: aubergine into midnight.
+    Rectangle {
+        anchors.fill: parent
+        opacity: root.uiOpacity
+        visible: root.isDark && !userBg.active
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "#2a1f3d" }
+            GradientStop { position: 1.0; color: "#1d1530" }
+        }
+    }
+    Background { id: userBg; anchors.fill: parent; opacity: root.uiOpacity }
 
     // Layout Container
     Item {
@@ -130,7 +166,7 @@ Rectangle {
                     Text {
                         anchors.centerIn: parent
                         text: root.clockHour(root.curH)
-                        font.family: outfitFontFamily; font.pixelSize: 76 * s; font.weight: Font.Black
+                        font.family: root.clockFontFamily; font.pixelSize: 76 * s; font.weight: Font.Black
                         color: root.mainText
                     }
                 }
@@ -162,69 +198,9 @@ Rectangle {
                 }
             }
 
-            // Minute Ring
-            Repeater {
-                model: 60
-                delegate: Item {
-                    z: 10; property real base: index * 6
-                    property real relAngle: { var a = (base + root.smoothMinAngle) % 360; if (a > 180) a -= 360; if (a < -180) a += 360; return a }
-                    property real spotlight: Math.max(0, 1.0 - Math.abs(relAngle) / 4.0)
-                    property bool isMajor: index % 5 == 0
-                    property real disp: (base + root.smoothMinAngle) * Math.PI / 180
-                    property real tx: clockContainer.cx + clockContainer.minR * Math.cos(disp)
-                    property real ty: clockContainer.cy + clockContainer.minR * Math.sin(disp)
-                    visible: tx > -600 * s && tx < 1800 * s
-
-                    Rectangle {
-                        x: parent.tx - width/2; y: parent.ty - height/2; width: isMajor ? 2.5 * s : 1.2 * s; height: isMajor ? 18 * s : 10 * s
-                        color: root.outlineColor
-                        rotation: disp * 180 / Math.PI + 90
-                        antialiasing: true
-                        transformOrigin: Item.Center
-                    }
-                    Text {
-                        visible: isMajor; property real nRad: clockContainer.minR - 32 * s
-                        x: clockContainer.cx + nRad * Math.cos(disp) - width/2
-                        y: clockContainer.cy + nRad * Math.sin(disp) - height/2
-                        text: String(index).padStart(2, '0'); font.family: outfitFontFamily; font.pixelSize: 18 * s; font.weight: Font.Bold
-                        color: root.mainText
-                        rotation: disp * 180 / Math.PI; transformOrigin: Item.Center
-                        antialiasing: true
-                    }
-                }
-            }
-
-            // Second Ring
-            Repeater {
-                model: 60
-                delegate: Item {
-                    z: 10; property real base: index * 6
-                    property real relAngle: { var a = (base + root.smoothSecAngle) % 360; if (a > 180) a -= 360; if (a < -180) a += 360; return a }
-                    property real spotlight: Math.max(0, 1.0 - Math.abs(relAngle) / 4.0)
-                    property bool isMajor: index % 5 == 0
-                    property real disp: (base + root.smoothSecAngle) * Math.PI / 180
-                    property real tx: clockContainer.cx + clockContainer.secR * Math.cos(disp)
-                    property real ty: clockContainer.cy + clockContainer.secR * Math.sin(disp)
-                    visible: tx > -600 * s && tx < 1800 * s
-
-                    Rectangle {
-                        x: parent.tx - width/2; y: parent.ty - height/2; width: isMajor ? 2.0 * s : 1.0 * s; height: isMajor ? 14 * s : 8 * s
-                        color: root.outlineColor
-                        rotation: disp * 180 / Math.PI + 90
-                        antialiasing: true
-                        transformOrigin: Item.Center
-                    }
-                    Text {
-                        visible: isMajor; property real nRad: clockContainer.secR - 28 * s
-                        x: clockContainer.cx + nRad * Math.cos(disp) - width/2
-                        y: clockContainer.cy + nRad * Math.sin(disp) - height/2
-                        text: String(index).padStart(2, '0'); font.family: outfitFontFamily; font.pixelSize: 14 * s; font.weight: Font.Bold
-                        color: root.mainText
-                        rotation: disp * 180 / Math.PI; transformOrigin: Item.Center
-                        antialiasing: true
-                    }
-                }
-            }
+            // Minute and second rings
+            NeoRing { angle: root.smoothMinAngle; radius: clockContainer.minR; numberInset: 32 * s; majorTick: 18 * s; minorTick: 10 * s; majorWidth: 2.5 * s; minorWidth: 1.2 * s; numberSize: 18 * s }
+            NeoRing { angle: root.smoothSecAngle; radius: clockContainer.secR; numberInset: 28 * s; majorTick: 14 * s; minorTick: 8 * s; majorWidth: 2.0 * s; minorWidth: 1.0 * s; numberSize: 14 * s }
 
             // Date & Day Column
             Column {
@@ -326,8 +302,8 @@ Rectangle {
                     transform: Translate {
                         x: uMa.pressed ? 3 * s : (uMa.containsMouse ? -2 * s : 0)
                         y: uMa.pressed ? 3 * s : (uMa.containsMouse ? -2 * s : 0)
-                        Behavior on x { NumberAnimation { duration: 100 } }
-                        Behavior on y { NumberAnimation { duration: 100 } }
+                        Behavior on x { NumberAnimation { duration: kit.dur(100) } }
+                        Behavior on y { NumberAnimation { duration: kit.dur(100) } }
                     }
 
                     Row {
@@ -500,9 +476,9 @@ Rectangle {
 
                                     SequentialAnimation on opacity {
                                         loops: Animation.Infinite
-                                        running: passInput.activeFocus
-                                        NumberAnimation { from: 1.0; to: 0.1; duration: 450 }
-                                        NumberAnimation { from: 0.1; to: 1.0; duration: 450 }
+                                        running: passInput.activeFocus && !kit.reduceMotion
+                                        NumberAnimation { from: 1.0; to: 0.1; duration: kit.dur(450) }
+                                        NumberAnimation { from: 0.1; to: 1.0; duration: kit.dur(450) }
                                     }
                                 }
                             }
@@ -518,9 +494,9 @@ Rectangle {
 
                                 SequentialAnimation on opacity {
                                     loops: Animation.Infinite
-                                    running: passInput.activeFocus && passInput.text.length === 0
-                                    NumberAnimation { from: 1.0; to: 0.1; duration: 450 }
-                                    NumberAnimation { from: 0.1; to: 1.0; duration: 450 }
+                                    running: passInput.activeFocus && passInput.text.length === 0 && !kit.reduceMotion
+                                    NumberAnimation { from: 1.0; to: 0.1; duration: kit.dur(450) }
+                                    NumberAnimation { from: 0.1; to: 1.0; duration: kit.dur(450) }
                                 }
                             }
                         }
@@ -541,14 +517,14 @@ Rectangle {
                 Rectangle {
                     anchors.fill: parent
                     radius: 12 * s
-                    color: btnMa.containsMouse ? "#ff9e85" : root.peachAccent
+                    color: btnMa.containsMouse ? root.peachHover : root.peachAccent
                     border.color: root.outlineColor; border.width: 2.0 * s
 
                     transform: Translate {
                         x: btnMa.pressed ? 3 * s : (btnMa.containsMouse ? -2 * s : 0)
                         y: btnMa.pressed ? 3 * s : (btnMa.containsMouse ? -2 * s : 0)
-                        Behavior on x { NumberAnimation { duration: 100 } }
-                        Behavior on y { NumberAnimation { duration: 100 } }
+                        Behavior on x { NumberAnimation { duration: kit.dur(100) } }
+                        Behavior on y { NumberAnimation { duration: kit.dur(100) } }
                     }
 
                     Row {
@@ -585,9 +561,9 @@ Rectangle {
 
     SequentialAnimation {
         id: shake
-        NumberAnimation { target: loginPanel; property: "anchors.rightMargin"; from: root.marginR; to: root.marginR + 10 * s; duration: 50; easing.type: Easing.InOutSine }
-        NumberAnimation { target: loginPanel; property: "anchors.rightMargin"; to: root.marginR - 10 * s; duration: 50; easing.type: Easing.InOutSine }
-        NumberAnimation { target: loginPanel; property: "anchors.rightMargin"; to: root.marginR; duration: 50; easing.type: Easing.InOutSine }
+        NumberAnimation { target: loginPanel; property: "anchors.rightMargin"; from: root.marginR; to: root.marginR + 10 * s; duration: kit.dur(50); easing.type: kit.ease(Easing.InOutSine) }
+        NumberAnimation { target: loginPanel; property: "anchors.rightMargin"; to: root.marginR - 10 * s; duration: kit.dur(50); easing.type: kit.ease(Easing.InOutSine) }
+        NumberAnimation { target: loginPanel; property: "anchors.rightMargin"; to: root.marginR; duration: kit.dur(50); easing.type: kit.ease(Easing.InOutSine) }
     }
 
     // Action Component
@@ -615,8 +591,8 @@ Rectangle {
             transform: Translate {
                 x: actM.pressed ? 2.5 * s : (actM.containsMouse ? -1.5 * s : 0)
                 y: actM.pressed ? 2.5 * s : (actM.containsMouse ? -1.5 * s : 0)
-                Behavior on x { NumberAnimation { duration: 80 } }
-                Behavior on y { NumberAnimation { duration: 80 } }
+                Behavior on x { NumberAnimation { duration: kit.dur(80) } }
+                Behavior on y { NumberAnimation { duration: kit.dur(80) } }
             }
 
             Text {
@@ -626,6 +602,45 @@ Rectangle {
             }
 
             MouseArea { id: actM; anchors.fill: parent; hoverEnabled: true; onClicked: actItem.clicked(); cursorShape: Qt.PointingHandCursor }
+        }
+    }
+
+    // One ring of the dial, rotated as a whole: its ticks don't change as it turns, so nothing runs per tick.
+    component NeoRing: Item {
+        id: ring
+        property real angle: 0
+        property real radius: 0
+        property real numberInset: 0
+        property real majorTick: 0
+        property real minorTick: 0
+        property real majorWidth: 0
+        property real minorWidth: 0
+        property real numberSize: 0
+        x: clockContainer.cx; y: clockContainer.cy; z: 10
+        rotation: ring.angle
+        Repeater {
+            model: 60
+            delegate: Item {
+                readonly property real base: index * 6
+                readonly property real rad: base * Math.PI / 180
+                readonly property bool isMajor: index % 5 == 0
+                Rectangle {
+                    width: isMajor ? ring.majorWidth : ring.minorWidth; height: isMajor ? ring.majorTick : ring.minorTick
+                    x: ring.radius * Math.cos(rad) - width / 2; y: ring.radius * Math.sin(rad) - height / 2
+                    color: root.dialColor
+                    rotation: base + 90
+                    antialiasing: true
+                    transformOrigin: Item.Center
+                }
+                Text {
+                    visible: isMajor; readonly property real nRad: ring.radius - ring.numberInset
+                    x: nRad * Math.cos(rad) - width / 2; y: nRad * Math.sin(rad) - height / 2
+                    text: String(index).padStart(2, '0'); font.family: root.clockFontFamily; font.pixelSize: ring.numberSize; font.weight: Font.Bold
+                    color: root.numeralColor
+                    rotation: base; transformOrigin: Item.Center
+                    antialiasing: true
+                }
+            }
         }
     }
 }

@@ -3,8 +3,10 @@ import QtQuick.Window
 import Qt5Compat.GraphicalEffects as Gfx
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -18,9 +20,9 @@ Rectangle {
     color: "#3a6370"
 
     // Palette
-    readonly property color cAmber: "#e8a040"   // Amber
-    readonly property color cSteel: "#d8eef8"   // Steel
-    readonly property color cWhite: "#f0ede8"   // White
+    readonly property color cAmber: kit.color("accent", "#e8a040")
+    readonly property color cSteel: kit.color("colorSteel", "#d8eef8")
+    readonly property color cWhite: kit.color("text", "#f0ede8")
 
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex:    (typeof userModel    !== "undefined" && userModel.lastIndex    >= 0) ? userModel.lastIndex    : 0
@@ -28,20 +30,22 @@ Rectangle {
 
     FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader      { id: mainFont;   source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
+    readonly property string mainFontFamily: kit.font("text", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
+    readonly property string clockFontFamily: kit.font("clock", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
 
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 1; height: 1; delegate: Item { property string sName: model.name || "" } }
     ListView { id: userHelper;    model: typeof userModel    !== "undefined" ? userModel    : null; currentIndex: root.userIndex;    opacity: 0; width: 1; height: 1; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
 
     Timer { interval: 300; running: true; onTriggered: pwd.forceActiveFocus() }
     Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: 1400; easing.type: Easing.OutCubic }
+    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: kit.dur(1400); easing.type: kit.ease(Easing.OutCubic) }
 
     // Background
     Image {
-        anchors.fill: parent; source: "bg.png"
+        anchors.fill: parent; source: "bg.png"; visible: !userBg.active
         fillMode: Image.PreserveAspectCrop; asynchronous: true; opacity: root.ui
     }
+    Background { id: userBg; anchors.fill: parent; opacity: root.ui }
     Rectangle {
         anchors.fill: parent; visible: root.ui < 1.0
         opacity: 1.0 - root.ui; color: "#3a6370"; z: 100
@@ -57,7 +61,7 @@ Rectangle {
             id: clockText
             text: Qt.formatTime(new Date(), clockFmt)
             color: cWhite
-            font.family: mainFontFamily; font.pixelSize: 96 * s
+            font.family: clockFontFamily; font.pixelSize: 96 * s
             font.weight: Font.Light; font.letterSpacing: -1 * s
             layer.enabled: true
             layer.effect: Gfx.DropShadow { color: "#30000000"; radius: 16; samples: 25 }
@@ -94,7 +98,7 @@ Rectangle {
             horizontalAlignment: Text.AlignRight
             layer.enabled: true
             layer.effect: Gfx.DropShadow { color: "#25000000"; radius: 8; samples: 15 }
-            Behavior on color { ColorAnimation { duration: 250 } }
+            Behavior on color { ColorAnimation { duration: kit.dur(250) } }
             MouseArea {
                 id: userMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                 onClicked: { if (typeof userModel !== "undefined") root.userIndex = (root.userIndex + 1) % userModel.rowCount() }
@@ -112,8 +116,8 @@ Rectangle {
                 anchors { bottom: parent.bottom; right: parent.right }
                 width: parent.width; height: pwd.focus ? 2 * s : 1 * s
                 color: pwd.focus ? cAmber : "#35f0ede8"
-                Behavior on color  { ColorAnimation  { duration: 300 } }
-                Behavior on height { NumberAnimation { duration: 200 } }
+                Behavior on color  { ColorAnimation  { duration: kit.dur(300) } }
+                Behavior on height { NumberAnimation { duration: kit.dur(200) } }
             }
 
             TextInput {
@@ -136,7 +140,7 @@ Rectangle {
                     font.letterSpacing: 2 * s; font.weight: Font.Light
                     layer.enabled: true
                     layer.effect: Gfx.DropShadow { color: "#30000000"; radius: 6; samples: 11 }
-                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(200) } }
                 }
 
                 Rectangle {
@@ -145,9 +149,9 @@ Rectangle {
                     anchors { verticalCenter: parent.verticalCenter; right: parent.right }
                     visible: pwd.focus && pwd.text.length > 0
                     SequentialAnimation {
-                        loops: Animation.Infinite; running: cursor.visible
-                        NumberAnimation { target: cursor; property: "opacity"; from: 1.0; to: 0.1; duration: 450 }
-                        NumberAnimation { target: cursor; property: "opacity"; from: 0.1; to: 1.0; duration: 450 }
+                        loops: Animation.Infinite; running: (cursor.visible) && !kit.reduceMotion
+                        NumberAnimation { target: cursor; property: "opacity"; from: 1.0; to: 0.1; duration: kit.dur(450) }
+                        NumberAnimation { target: cursor; property: "opacity"; from: 0.1; to: 1.0; duration: kit.dur(450) }
                     }
                 }
             }
@@ -174,8 +178,8 @@ Rectangle {
                     opacity: pm.containsMouse ? 1.0 : 0.7
                     layer.enabled: true
                     layer.effect: Gfx.DropShadow { color: "#35000000"; radius: 6; samples: 11 }
-                    Behavior on opacity { NumberAnimation { duration: 200 } }
-                    Behavior on color   { ColorAnimation  { duration: 200 } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(200) } }
+                    Behavior on color   { ColorAnimation  { duration: kit.dur(200) } }
                     MouseArea {
                         id: pm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: {

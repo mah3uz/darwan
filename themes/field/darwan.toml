@@ -1,7 +1,17 @@
 name = "Field"
 author = "Darkkal44"
 background = "image"
+background_file = "bg.png"
 
 [supports]
 clock_format = true
 date_format = true
+background = true
+colors = true
+fonts = ["text", "clock"]
+motion = true
+
+[[color]]
+key = "colorSteel"
+label = "Date"
+material = "on_surface_variant"

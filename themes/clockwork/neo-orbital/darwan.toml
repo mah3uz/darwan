@@ -2,7 +2,24 @@ name = "Neo-Orbital"
 family = "Clockwork"
 author = "Darkkal44"
 background = "image"
+background_file = "bg.png"
 
 [supports]
 clock_format = true
 date_format = true
+background = true
+colors = true
+fonts = ["text", "clock"]
+motion = true
+variants = ["light", "dark"]
+default_variant = "light"
+
+[[color]]
+key = "colorGreen"
+label = "Date chip"
+material = "tertiary_container"
+
+[[color]]
+key = "colorLavender"
+label = "Day chip"
+material = "secondary_container"
