@@ -166,6 +166,15 @@ pub fn lint(theme: &Theme) -> Vec<String> {
     if (sup.material_palette || sup.generate_by_default) && !sup.colors {
         problems.push("material_palette and generate_by_default need supports.colors".into());
     }
+    // Without variants the theme's accent and text are fixed, so theme.conf states them for the form.
+    if sup.colors && sup.variants.is_empty() {
+        for key in ["colorAccent", "colorText"] {
+            match theme.defaults.get(key) {
+                Some(v) if crate::custom::is_hex_color(v) => {}
+                _ => problems.push(format!("supports.colors needs a hex {key} in theme.conf")),
+            }
+        }
+    }
     if !m.colors.is_empty() && !sup.colors {
         problems.push("[[color]] roles need supports.colors".into());
     }
@@ -324,7 +333,10 @@ mod tests {
     #[test]
     fn colour_roles_need_support_a_hex_default_and_a_real_material_role() {
         let roles = "[supports]\ncolors = true\n\n[[color]]\nkey = \"lamp\"\nlabel = \"Lamp\"\nmaterial = \"tertiary\"\n\n[[color]]\nkey = \"rain\"\nlabel = \"Rain\"\nmaterial = \"sparkle\"\n";
-        let (_root, cat) = theme_with(roles, "[General]\nlamp=#e6bb5c\nrain=blue\n");
+        let (_root, cat) = theme_with(
+            roles,
+            "[General]\ncolorAccent=#e6bb5c\ncolorText=#ffffff\nlamp=#e6bb5c\nrain=blue\n",
+        );
         let problems = lint(&cat.themes()[0]);
         assert!(
             problems.iter().any(|p| p.contains("\"sparkle\"")),

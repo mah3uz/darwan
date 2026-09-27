@@ -32,6 +32,9 @@ pub mod qobject {
         fn availability(self: &Backend) -> QString;
 
         #[qinvokable]
+        fn desktop_wallpaper(self: &Backend) -> QString;
+
+        #[qinvokable]
         fn report(self: &Backend, output: &QString) -> QString;
 
         #[qinvokable]
@@ -158,6 +161,18 @@ impl qobject::Backend {
 
     fn availability(&self) -> QString {
         json(model::availability(&self.rust().env))
+    }
+
+    // What "use my desktop wallpaper" would show, so the GUI can name it before it's chosen.
+    fn desktop_wallpaper(&self) -> QString {
+        use darwan_core::custom::Host;
+        let found = darwan_core::system::SystemHost::new().desktop_wallpaper(None);
+        json(match found {
+            Some(w) => {
+                serde_json::json!({ "path": w.path.display().to_string(), "source": w.source })
+            }
+            None => serde_json::Value::Null,
+        })
     }
 
     fn report(&self, output: &QString) -> QString {

@@ -402,10 +402,15 @@ fn draw_form(f: &mut Frame, app: &mut App, area: Rect) {
     let look = &app.look;
     let p = look.palette;
     let fields = form::fields(theme, &app.config);
-    let rows: Vec<Row> = fields
-        .iter()
-        .enumerate()
-        .map(|(n, field)| {
+    let mut rows: Vec<Row> = Vec::new();
+    for (n, field) in fields.iter().enumerate() {
+        if field.group.is_some() && (n == 0 || fields[n - 1].group != field.group) {
+            rows.push(Row::new(vec![Span::styled(
+                field.group.unwrap_or_default().to_uppercase(),
+                look.fg(p.accent).add_modifier(Modifier::BOLD),
+            )]));
+        }
+        rows.push({
             let value = match editing {
                 Some(buf) if n == selected => format!("{buf}▏"),
                 _ => display_value(field),
@@ -439,8 +444,8 @@ fn draw_form(f: &mut Frame, app: &mut App, area: Rect) {
             } else {
                 row
             }
-        })
-        .collect();
+        });
+    }
     let title = format!("Settings · {}", display_name(theme));
     let table = Table::new(
         rows,

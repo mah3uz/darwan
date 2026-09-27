@@ -33,6 +33,23 @@ pub fn step(field: &Field, forward: bool) -> Option<String> {
             };
             Some(next.clamp(*min, *max).to_string())
         }
+        // Arrows switch between the theme's own and the other quick choice; Enter types a value.
+        FieldKind::Color { generate: true } => Some(
+            if field.value == "generate" {
+                ""
+            } else {
+                "generate"
+            }
+            .into(),
+        ),
+        FieldKind::Media(_) => Some(
+            if field.value == "desktop" {
+                ""
+            } else {
+                "desktop"
+            }
+            .into(),
+        ),
         FieldKind::Range { min, max, step } => {
             let n: f64 = field.value.parse().unwrap_or(*min);
             let next = if forward { n + step } else { n - step };
@@ -141,5 +158,21 @@ mod tests {
             step: 0.25,
         };
         assert_eq!(step(&field(contrast, "0"), false).as_deref(), Some("-0.25"));
+    }
+
+    #[test]
+    fn colours_toggle_generated_and_backgrounds_toggle_the_desktop_wallpaper() {
+        let c = FieldKind::Color { generate: true };
+        assert_eq!(
+            step(&field(c.clone(), ""), true).as_deref(),
+            Some("generate")
+        );
+        assert_eq!(step(&field(c, "generate"), true).as_deref(), Some(""));
+        let m = FieldKind::Media(vec![]);
+        assert_eq!(
+            step(&field(m.clone(), "/w.png"), true).as_deref(),
+            Some("desktop")
+        );
+        assert_eq!(step(&field(m, "desktop"), false).as_deref(), Some(""));
     }
 }

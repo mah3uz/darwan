@@ -102,6 +102,7 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Value {
                 }
                 FieldKind::Color { generate } => {
                     v["generate"] = generate.into();
+                    v["swatches"] = swatches(theme).into();
                     "color"
                 }
                 FieldKind::File(filters) => {
@@ -119,6 +120,19 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Value {
             v
         })
         .collect()
+}
+
+// The theme's own colours, offered first in its colour pickers.
+fn swatches(theme: &Theme) -> Vec<String> {
+    let mut out: Vec<String> = theme
+        .defaults
+        .values()
+        .filter(|v| darwan_core::custom::is_hex_color(v))
+        .map(|v| v.to_lowercase())
+        .collect();
+    out.sort();
+    out.dedup();
+    out
 }
 
 // An empty string means available; anything else is the reason shown instead.
@@ -292,5 +306,42 @@ mod tests {
             r[0]["kind"], "text",
             "a failed command's error is shown as-is"
         );
+    }
+
+    #[test]
+    fn customisations_carry_their_heading_and_colours_offer_the_themes_own_as_swatches() {
+        let cat = catalog();
+        let rainy = cat.get("pixel-rainyroom").unwrap();
+        let rows = fields(rainy, &UserConfig::default());
+        let rows = rows.as_array().unwrap();
+        let accent = rows
+            .iter()
+            .find(|r| r["key"] == "pixel-rainyroom.accent")
+            .unwrap();
+        assert_eq!(
+            (accent["group"].as_str(), accent["kind"].as_str()),
+            (Some("Colours"), Some("color"))
+        );
+        assert_eq!(accent["generate"], true);
+        let swatches: Vec<&str> = accent["swatches"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(
+            swatches.contains(&"#e6bb5c") && swatches.contains(&"#2f9eff"),
+            "{swatches:?}"
+        );
+        let speed = rows
+            .iter()
+            .find(|r| r["key"] == "pixel-rainyroom.motion_speed")
+            .unwrap();
+        assert_eq!(
+            (speed["kind"].as_str(), speed["step"].as_f64()),
+            (Some("range"), Some(0.25))
+        );
+        let clock = rows.iter().find(|r| r["key"] == "clock.format").unwrap();
+        assert_eq!(clock["group"], "", "globals have no customisation heading");
     }
 }

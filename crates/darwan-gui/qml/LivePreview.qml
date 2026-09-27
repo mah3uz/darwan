@@ -156,6 +156,37 @@ Rectangle {
         }
     }
 
+    // Dropping an image or video on the preview makes it the theme's background.
+    DropArea {
+        id: drop
+        anchors.fill: parent
+        z: 2
+        readonly property var media: ["png", "jpg", "jpeg", "webp", "bmp", "gif", "mp4", "mkv", "webm", "mov"]
+        function pathOf(d) {
+            return d.hasUrls ? decodeURIComponent(d.urls[0].toString().replace(/^file:\/\//, "")) : ""
+        }
+        onEntered: d => d.accepted = media.includes(pathOf(d).split(".").pop().toLowerCase())
+        onDropped: d => {
+            const path = pathOf(d)
+            if (path !== "" && pane.themeId !== "")
+                pane.backend.setValue(pane.themeId + ".background", path)
+        }
+        Rectangle {
+            anchors.fill: parent
+            visible: drop.containsDrag
+            color: Qt.rgba(0, 0, 0, 0.55)
+            border.color: Style.accent
+            border.width: 2
+            radius: pane.radius
+            Label {
+                anchors.centerIn: parent
+                text: "Drop to use as the background"
+                color: "white"
+                font.pixelSize: 18
+            }
+        }
+    }
+
     Label {
         anchors.centerIn: parent
         visible: !pane.loaded

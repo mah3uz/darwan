@@ -389,7 +389,14 @@ impl App {
                 KeyCode::Enter => {
                     let value = std::mem::take(buf);
                     *editing = None;
-                    let empty_text = value.is_empty() && field.kind == FieldKind::Text;
+                    let empty_text = value.is_empty()
+                        && matches!(
+                            field.kind,
+                            FieldKind::Text
+                                | FieldKind::Media(_)
+                                | FieldKind::Font
+                                | FieldKind::Color { .. }
+                        );
                     self.change(&field.key, if empty_text { None } else { Some(&value) });
                 }
                 _ => {}
@@ -419,6 +426,15 @@ impl App {
                 if let Some(v) = step(&field, forward) {
                     self.change(&field.key, Some(&v));
                 }
+            }
+            // Colours, backgrounds and fonts are typed: a hex value, a path or a family.
+            KeyCode::Enter
+                if matches!(
+                    field.kind,
+                    FieldKind::Color { .. } | FieldKind::Media(_) | FieldKind::Font
+                ) =>
+            {
+                *editing = Some(field.value.clone())
             }
             KeyCode::Enter => match step(&field, true) {
                 Some(v) => self.change(&field.key, Some(&v)),
@@ -700,6 +716,21 @@ mod tests {
             Outcome::Run { args, pause } => assert!(pause && args == ["doctor"]),
             Outcome::Stay => panic!("doctor should run"),
         }
+    }
+
+    #[test]
+    fn settings_show_customisation_headings_and_unsupported_reasons() {
+        let mut a = app(no_sddm());
+        select(&mut a, "pixel-rainyroom");
+        press(&mut a, KeyCode::Right);
+        let s = screen(&mut a);
+        for heading in ["BACKGROUND", "APPEARANCE", "COLOURS"] {
+            assert!(s.contains(heading), "{heading} missing:\n{s}");
+        }
+        assert!(
+            s.contains("has one look"),
+            "Rainy Room has no light/dark variant:\n{s}"
+        );
     }
 
     #[test]

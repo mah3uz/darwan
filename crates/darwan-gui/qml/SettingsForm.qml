@@ -20,10 +20,14 @@ Rectangle {
     function commit(field, text) {
         if (text === field.value)
             return
-        if (text === "" && field.kind === "text")
+        if (text === "" && ["text", "media", "font", "color"].includes(field.kind))
             backend.resetValue(field.key)
         else
             backend.setValue(field.key, text)
+    }
+
+    function fileUrlToPath(url) {
+        return decodeURIComponent(url.toString().replace(/^file:\/\//, ""))
     }
 
     ColumnLayout {
@@ -39,7 +43,7 @@ Rectangle {
         }
         Label {
             Layout.fillWidth: true
-            text: form.themeName + " options first, then the global ones. Changes are saved at once."
+            text: form.themeName + " options first, then its customisations and the global settings. Changes are saved at once; drop an image or video on the preview to use it as the background."
             color: Style.muted
             wrapMode: Text.WordWrap
             font.pixelSize: 12
@@ -66,6 +70,16 @@ Rectangle {
                         readonly property bool off: field.disabled !== ""
                         Layout.fillWidth: true
                         spacing: 6
+
+                        Label {
+                            visible: row.field.group !== "" && (row.index === 0 || form.fields[row.index - 1].group !== row.field.group)
+                            Layout.topMargin: row.index === 0 ? 0 : 10
+                            text: row.field.group.toUpperCase()
+                            color: Style.accent
+                            font.bold: true
+                            font.pixelSize: 12
+                            font.letterSpacing: 1.5
+                        }
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -94,8 +108,11 @@ Rectangle {
                                 bool: boolEditor,
                                 choice: choiceEditor,
                                 int: intEditor,
-                                color: textEditor,
+                                range: rangeEditor,
+                                color: colorEditor,
                                 file: fileEditor,
+                                media: mediaEditor,
+                                font: fontEditor,
                                 text: textEditor,
                             })[row.field.kind] || textEditor
 
@@ -127,6 +144,176 @@ Rectangle {
                                     value: parseInt(row.field.value)
                                     editable: true
                                     onValueModified: form.commit(row.field, String(value))
+                                }
+                            }
+
+                            Component {
+                                id: rangeEditor
+                                RowLayout {
+                                    spacing: 10
+                                    Slider {
+                                        id: slider
+                                        Layout.fillWidth: true
+                                        from: row.field.min
+                                        to: row.field.max
+                                        stepSize: row.field.step
+                                        snapMode: Slider.SnapAlways
+                                        value: parseFloat(row.field.value)
+                                        // Saved on release, so dragging doesn't reload the preview at every step.
+                                        onPressedChanged: if (!pressed) form.commit(row.field, String(Math.round(value * 100) / 100))
+                                    }
+                                    Label {
+                                        text: (Math.round(slider.value * 100) / 100) + (row.field.key.endsWith(".motion_speed") ? "×" : "")
+                                        color: Style.text
+                                        Layout.preferredWidth: 44
+                                    }
+                                }
+                            }
+
+                            Component {
+                                id: colorEditor
+                                ColumnLayout {
+                                    id: colorBox
+                                    spacing: 6
+                                    readonly property bool generated: row.field.value === "generate"
+                                    RowLayout {
+                                        spacing: 8
+                                        Rectangle {
+                                            Layout.preferredWidth: 28
+                                            Layout.preferredHeight: 28
+                                            radius: 4
+                                            color: /^#[0-9a-fA-F]{3,8}$/.test(hex.text) ? hex.text : "transparent"
+                                            border.color: Style.border
+                                            TapHandler { onTapped: colorPicker.open() }
+                                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                        }
+                                        TextField {
+                                            id: hex
+                                            Layout.fillWidth: true
+                                            text: colorBox.generated ? "" : row.field.value
+                                            placeholderText: colorBox.generated ? "generated from an image" : "theme default"
+                                            onEditingFinished: if (text !== "") form.commit(row.field, text)
+                                        }
+                                        ActionButton {
+                                            visible: row.field.generate
+                                            text: colorBox.generated ? "Generated ✓" : "Generate"
+                                            onActivated: form.commit(row.field, colorBox.generated ? "" : "generate")
+                                        }
+                                    }
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+                                        visible: (row.field.swatches || []).length > 0
+                                        Repeater {
+                                            model: row.field.swatches || []
+                                            delegate: Rectangle {
+                                                required property string modelData
+                                                width: 20
+                                                height: 20
+                                                radius: 10
+                                                color: modelData
+                                                border.color: Style.border
+                                                ToolTip.visible: swatchHover.hovered
+                                                ToolTip.text: modelData
+                                                HoverHandler { id: swatchHover; cursorShape: Qt.PointingHandCursor }
+                                                TapHandler { onTapped: form.commit(row.field, modelData) }
+                                            }
+                                        }
+                                    }
+                                    ColorDialog {
+                                        id: colorPicker
+                                        selectedColor: hex.text !== "" ? hex.text : "#ffffff"
+                                        onAccepted: form.commit(row.field, selectedColor.toString())
+                                    }
+                                }
+                            }
+
+                            Component {
+                                id: mediaEditor
+                                ColumnLayout {
+                                    id: mediaBox
+                                    spacing: 6
+                                    readonly property var desktop: JSON.parse(form.backend.desktopWallpaper())
+                                    RowLayout {
+                                        spacing: 8
+                                        TextField {
+                                            Layout.fillWidth: true
+                                            text: row.field.value === "desktop" ? "" : row.field.value
+                                            placeholderText: row.field.value === "desktop" ? "the desktop wallpaper" : "the theme's own background"
+                                            onEditingFinished: if (text !== "") form.commit(row.field, text)
+                                        }
+                                        ActionButton {
+                                            text: "Browse…"
+                                            onActivated: mediaPicker.open()
+                                        }
+                                    }
+                                    RowLayout {
+                                        spacing: 8
+                                        ActionButton {
+                                            text: mediaBox.desktop ? "Desktop wallpaper (" + mediaBox.desktop.source + ")" : "No desktop wallpaper found"
+                                            enabled: mediaBox.desktop !== null
+                                            onActivated: form.commit(row.field, "desktop")
+                                        }
+                                        ActionButton {
+                                            text: "Colour…"
+                                            onActivated: backgroundColour.open()
+                                        }
+                                    }
+                                    FileDialog {
+                                        id: mediaPicker
+                                        nameFilters: ["Images and videos (" + row.field.filters.join(" ") + ")"]
+                                        onAccepted: form.commit(row.field, form.fileUrlToPath(selectedFile))
+                                    }
+                                    ColorDialog {
+                                        id: backgroundColour
+                                        onAccepted: form.commit(row.field, selectedColor.toString())
+                                    }
+                                }
+                            }
+
+                            Component {
+                                id: fontEditor
+                                ColumnLayout {
+                                    id: fontBox
+                                    spacing: 6
+                                    readonly property bool isFile: /\.(ttf|otf)$/i.test(row.field.value)
+                                    RowLayout {
+                                        spacing: 8
+                                        ComboBox {
+                                            id: family
+                                            Layout.fillWidth: true
+                                            editable: true
+                                            model: Qt.fontFamilies()
+                                            currentIndex: model.indexOf(row.field.value)
+                                            editText: fontBox.isFile ? "" : row.field.value
+                                            onAccepted: form.commit(row.field, editText)
+                                            onActivated: form.commit(row.field, currentText)
+                                        }
+                                        ActionButton {
+                                            text: "Font file…"
+                                            onActivated: fontPicker.open()
+                                        }
+                                    }
+                                    Label {
+                                        Layout.fillWidth: true
+                                        visible: row.field.value !== "" && !fontBox.isFile
+                                        text: "The quick brown fox · 12:34"
+                                        font.family: row.field.value
+                                        font.pixelSize: 16
+                                        color: Style.text
+                                    }
+                                    Label {
+                                        Layout.fillWidth: true
+                                        visible: fontBox.isFile
+                                        text: row.field.value.split("/").pop()
+                                        color: Style.muted
+                                        elide: Text.ElideMiddle
+                                    }
+                                    FileDialog {
+                                        id: fontPicker
+                                        nameFilters: ["Fonts (*.ttf *.otf)"]
+                                        onAccepted: form.commit(row.field, form.fileUrlToPath(selectedFile))
+                                    }
                                 }
                             }
 

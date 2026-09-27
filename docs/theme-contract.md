@@ -68,6 +68,8 @@ motion = true                     # animation speed, curve and reduce motion
 variants = ["light", "dark"]      # only for a designed second look; theme.conf sets colorScheme
 default_variant = "light"
 
+# theme.conf states colorAccent and colorText for themes without variants (the form shows them as the defaults)
+
 [[color]]                         # a colour beyond accent and text; its default lives in theme.conf
 key = "colorLamp"
 label = "Lamp"
