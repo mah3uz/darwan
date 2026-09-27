@@ -3,8 +3,10 @@ import Qt5Compat.GraphicalEffects
 import QtMultimedia
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Item {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -20,9 +22,9 @@ Item {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
 
     // Colors
-    readonly property color textPrimary:   "#ffffff"
-    readonly property color textSecondary: "#99aab5"
-    readonly property color accent:        "#cde4ef"
+    readonly property color textPrimary:   kit.color("text", "#ffffff")
+    readonly property color textSecondary: kit.color("colorMuted", "#99aab5")
+    readonly property color accent:        kit.color("accent", "#cde4ef")
 
     // State
     property int  userIndex:    (typeof userModel !== "undefined" && userModel.lastIndex >= 0) ? userModel.lastIndex : 0
@@ -34,7 +36,8 @@ Item {
 
     FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader      { id: mainFont;  source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
+    readonly property string mainFontFamily: kit.font("text", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
+    readonly property string clockFontFamily: kit.font("clock", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
 
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 1; height: 1; z: -100; delegate: Item { property string sName: model.name || "" } }
     ListView { id: userHelper;    model: typeof userModel !== "undefined" ? userModel : null;    currentIndex: root.userIndex;    opacity: 0; width: 1; height: 1; z: -100; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
@@ -60,12 +63,18 @@ Item {
 
     // Background
     Rectangle { anchors.fill: parent; color: "#05080c"; z: -1000 }
-    MediaPlayer {
-        id: player; source: "bg.mp4"
-        videoOutput: bgVideo; loops: MediaPlayer.Infinite
-        Component.onCompleted: player.play()
+    Loader {
+        anchors.fill: parent; z: -500; active: !userBg.active
+        sourceComponent: Item {
+            MediaPlayer {
+                id: player; source: "bg.mp4"
+                videoOutput: bgVideo; loops: MediaPlayer.Infinite
+                Component.onCompleted: player.play()
+            }
+            VideoOutput { id: bgVideo; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
+        }
     }
-    VideoOutput { id: bgVideo; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop; z: -500 }
+    Background { id: userBg; anchors.fill: parent; z: -500 }
 
     // Overlay
     Rectangle {
@@ -90,7 +99,7 @@ Item {
                 id: clockText
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Qt.formatTime(new Date(), clockFmt)
-                font.family: mainFontFamily
+                font.family: clockFontFamily
                 font.pixelSize: 180 * s
                 font.weight: Font.Thin
                 color: root.textPrimary
@@ -138,8 +147,8 @@ Item {
                                 text: (userHelper.currentItem && userHelper.currentItem.uName ? userHelper.currentItem.uName : "UNKNOWN").toUpperCase()
                                 font.family: mainFontFamily; font.pixelSize: 18 * s; font.letterSpacing: 3 * s; font.weight: Font.Bold; color: uClickMa.containsMouse ? root.accent : root.textPrimary; anchors.horizontalCenter: parent.horizontalCenter
                                 scale: uClickMa.containsMouse ? 1.08 : 1.0
-                                Behavior on color { ColorAnimation { duration: 200 } }
-                                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                Behavior on color { ColorAnimation { duration: kit.dur(200) } }
+                                Behavior on scale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
                             }
                         }
                     }
@@ -178,7 +187,7 @@ Item {
                             text: "PASSWORD"; font.family: mainFontFamily
                             font.pixelSize: 14 * s; font.letterSpacing: 6 * s
                             color: root.textSecondary; opacity: passInput.text.length === 0 ? 0.6 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
+                            Behavior on opacity { NumberAnimation { duration: kit.dur(400); easing.type: kit.ease(Easing.InOutSine) } }
                         }
                         Rectangle {
                             id: customCursor
@@ -188,9 +197,9 @@ Item {
                             x: passInput.cursorRectangle.x - (width / 2)
                             visible: passInput.focus && (passInput.text.length > 0 || passInput.wasClicked)
                             SequentialAnimation {
-                                loops: Animation.Infinite; running: customCursor.visible
-                                NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: 450 }
-                                NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: 450 }
+                                loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion
+                                NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: kit.dur(450) }
+                                NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: kit.dur(450) }
                             }
                         }
                         MouseArea {
@@ -203,11 +212,11 @@ Item {
 
                         SequentialAnimation {
                             id: errorShake
-                            NumberAnimation { target: passInput; property: "x"; to: -10 * s; duration: 50 }
-                            NumberAnimation { target: passInput; property: "x"; to:  10 * s; duration: 50 }
-                            NumberAnimation { target: passInput; property: "x"; to: -10 * s; duration: 50 }
-                            NumberAnimation { target: passInput; property: "x"; to:  10 * s; duration: 50 }
-                            NumberAnimation { target: passInput; property: "x"; to:  0;      duration: 50 }
+                            NumberAnimation { target: passInput; property: "x"; to: -10 * s; duration: kit.dur(50) }
+                            NumberAnimation { target: passInput; property: "x"; to:  10 * s; duration: kit.dur(50) }
+                            NumberAnimation { target: passInput; property: "x"; to: -10 * s; duration: kit.dur(50) }
+                            NumberAnimation { target: passInput; property: "x"; to:  10 * s; duration: kit.dur(50) }
+                            NumberAnimation { target: passInput; property: "x"; to:  0;      duration: kit.dur(50) }
                         }
                     }
 
@@ -217,9 +226,9 @@ Item {
                         height: 1; width: passInput.activeFocus ? parent.width : parent.width * 0.3
                         color: root.loginError ? "#ff4444" : root.textPrimary
                         opacity: passInput.activeFocus ? 0.8 : 0.2
-                        Behavior on width { NumberAnimation { duration: 350; easing.type: Easing.OutQuart } }
-                        Behavior on opacity { NumberAnimation { duration: 350 } }
-                        Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on width { NumberAnimation { duration: kit.dur(350); easing.type: kit.ease(Easing.OutQuart) } }
+                        Behavior on opacity { NumberAnimation { duration: kit.dur(350) } }
+                        Behavior on color { ColorAnimation { duration: kit.dur(200) } }
                     }
                 } // closes Password Input Item
 
@@ -256,8 +265,8 @@ Item {
                     font.family: mainFontFamily; font.pixelSize: 14 * s; font.weight: Font.Bold; font.letterSpacing: 1 * s; color: sessionMa.containsMouse ? root.textPrimary : root.accent
                     scale: sessionMa.containsMouse ? 1.08 : 1.0
                     anchors.verticalCenter: parent.verticalCenter
-                    Behavior on color { ColorAnimation { duration: 200 } }
-                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(200) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
                 }
             }
             MouseArea { id: sessionMa; visible: !root.isQuickshell; anchors.fill: sessionRow; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.sessionMenuOpen = !root.sessionMenuOpen }
@@ -269,15 +278,15 @@ Item {
                 Text {
                     text: "REBOOT"; font.family: mainFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: reboot2Ma.containsMouse ? root.textPrimary : root.textSecondary
                     scale: reboot2Ma.containsMouse ? 1.12 : 1.0
-                    Behavior on color { ColorAnimation { duration: 200 } }
-                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(200) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
                     MouseArea { id: reboot2Ma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (typeof sddm !== "undefined") sddm.reboot() } }
                 }
                 Text {
                     text: "SHUTDOWN"; font.family: mainFontFamily; font.pixelSize: 12 * s; font.letterSpacing: 2 * s; color: power2Ma.containsMouse ? "#ff6b6b" : root.textSecondary
                     scale: power2Ma.containsMouse ? 1.12 : 1.0
-                    Behavior on color { ColorAnimation { duration: 200 } }
-                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(200) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
                     MouseArea { id: power2Ma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (typeof sddm !== "undefined") sddm.powerOff() } }
                 }
             }
@@ -293,8 +302,8 @@ Item {
             scale: root.sessionMenuOpen && !root.isQuickshell ? 1.0 : 0.96
             transformOrigin: Item.BottomLeft
             visible: opacity > 0
-            Behavior on opacity { NumberAnimation { duration: 250 } }
-            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(250) } }
+            Behavior on scale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
 
             ListView {
                 anchors.fill: parent; anchors.margins: 10 * s

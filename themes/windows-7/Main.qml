@@ -3,8 +3,10 @@ import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -34,7 +36,8 @@ Rectangle {
     }
 
     FontLoader { id: customFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string customFontName: fontFolder.count > 0 ? customFont.name : "Segoe UI, Ubuntu, sans-serif"
+    readonly property string customFontName: kit.font("text", fontFolder.count > 0 ? customFont.name : "Segoe UI, Ubuntu, sans-serif")
+    readonly property string clockFontName: kit.font("clock", fontFolder.count > 0 ? customFont.name : "Segoe UI, Ubuntu, sans-serif")
 
     // Helpers
     ListView {
@@ -56,10 +59,11 @@ Rectangle {
 
     Timer { interval: 300; running: true; onTriggered: inputFocus.forceActiveFocus() }
 
-    NumberAnimation { id: bootAnim; target: root; property: "fadeIn"; from: 0; to: 1; duration: 700; easing.type: Easing.OutCubic }
+    NumberAnimation { id: bootAnim; target: root; property: "fadeIn"; from: 0; to: 1; duration: kit.dur(700); easing.type: kit.ease(Easing.OutCubic) }
 
     // Visuals
-    Image { id: bg; anchors.fill: parent; source: "background.png"; fillMode: Image.PreserveAspectCrop; opacity: root.fadeIn }
+    Image { id: bg; anchors.fill: parent; source: "background.png"; visible: !userBg.active; fillMode: Image.PreserveAspectCrop; opacity: root.fadeIn }
+    Background { id: userBg; anchors.fill: parent; opacity: root.fadeIn }
 
     RadialGradient {
         anchors.fill: parent; opacity: 0.35 * root.fadeIn
@@ -105,12 +109,12 @@ Rectangle {
             Rectangle {
                 id: inputBox; anchors.centerIn: parent; width: 240 * s; height: 28 * s; radius: 2 * s; color: "#f8fdff"; border.color: inputFocus.activeFocus ? "#3c7fb1" : "#40708898"; border.width: 1 * s
                 Rectangle { anchors.fill: parent; anchors.margins: 1 * s; radius: 1 * s; color: "transparent"; border.color: "#15000000"; border.width: 1 * s }
-                Text { anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 6 * s; text: "Password"; font.family: root.customFontName; font.pixelSize: 13 * s; color: "#80404050"; opacity: inputFocus.text.length === 0 ? 1 : 0; Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } } }
+                Text { anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 6 * s; text: "Password"; font.family: root.customFontName; font.pixelSize: 13 * s; color: "#80404050"; opacity: inputFocus.text.length === 0 ? 1 : 0; Behavior on opacity { NumberAnimation { duration: kit.dur(400); easing.type: kit.ease(Easing.InOutSine) } } }
                 Row {
                     id: dotRow; anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 6 * s; spacing: 4 * s
-                    Repeater { model: 32; Rectangle { width: 7 * s; height: 7 * s; radius: 3.5 * s; color: "#101820"; opacity: index < inputFocus.text.length ? 1 : 0; scale: index < inputFocus.text.length ? 1 : 0; onOpacityChanged: { if (opacity > 0 && index == inputFocus.text.length - 1) { scaleFixedAnim.start(); } } NumberAnimation on scale { id: scaleFixedAnim; from: 0; to: 1; duration: 150; easing.type: Easing.OutBack } Behavior on opacity { NumberAnimation { duration: 100 } } } }
+                    Repeater { model: 32; Rectangle { width: 7 * s; height: 7 * s; radius: 3.5 * s; color: "#101820"; opacity: index < inputFocus.text.length ? 1 : 0; scale: index < inputFocus.text.length ? 1 : 0; onOpacityChanged: { if (opacity > 0 && index == inputFocus.text.length - 1) { scaleFixedAnim.start(); } } NumberAnimation on scale { id: scaleFixedAnim; from: 0; to: 1; duration: kit.dur(150); easing.type: kit.ease(Easing.OutBack) } Behavior on opacity { NumberAnimation { duration: kit.dur(100) } } } }
                 }
-                Rectangle { id: customCursor; width: 1 * s; height: 16 * s; color: "#101820"; anchors.verticalCenter: parent.verticalCenter; x: 6 * s + (inputFocus.cursorPosition * (7 * s + 4 * s)); visible: inputFocus.activeFocus && (inputFocus.text.length > 0 || inputFocus.wasClicked); SequentialAnimation { loops: Animation.Infinite; running: customCursor.visible; NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: 450 } NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: 450 } } }
+                Rectangle { id: customCursor; width: 1 * s; height: 16 * s; color: "#101820"; anchors.verticalCenter: parent.verticalCenter; x: 6 * s + (inputFocus.cursorPosition * (7 * s + 4 * s)); visible: inputFocus.activeFocus && (inputFocus.text.length > 0 || inputFocus.wasClicked); SequentialAnimation { loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion; NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: kit.dur(450) } NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: kit.dur(450) } } }
                 TextInput {
                     id: inputFocus; anchors.fill: parent; anchors.leftMargin: 6 * s; anchors.rightMargin: 6 * s; verticalAlignment: TextInput.AlignVCenter; font.family: root.customFontName; font.pixelSize: 13 * s; color: "transparent"; echoMode: TextInput.Normal; focus: true; clip: true; selectionColor: "#3399ff"; cursorVisible: false; cursorDelegate: Item {}
                     property bool wasClicked: false
@@ -128,12 +132,12 @@ Rectangle {
                 Rectangle { anchors.top: parent.top; anchors.topMargin: 2 * s; anchors.horizontalCenter: parent.horizontalCenter; width: parent.width - 8 * s; height: 11 * s; radius: 7 * s; gradient: Gradient { GradientStop { position: 0.0; color: "#45ffffff" } GradientStop { position: 1.0; color: "transparent" } } z: 2 }
                 Canvas { anchors.fill: parent; anchors.margins: 6 * s; z: 5; onPaint: { var ctx = getContext("2d"); ctx.reset(); ctx.strokeStyle = "white"; ctx.lineWidth = 2.2 * s; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(2, height/2); ctx.lineTo(width-2, height/2); ctx.moveTo(width-6, height/2-4); ctx.lineTo(width-2, height/2); ctx.lineTo(width-6, height/2+4); ctx.stroke(); } }
                 MouseArea { id: arrowMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: doLogin() }
-                scale: arrowMouse.pressed ? 0.92 : (arrowMouse.containsMouse ? 1.08 : 1.0); Behavior on scale { NumberAnimation { duration: 100 } }
+                scale: arrowMouse.pressed ? 0.92 : (arrowMouse.containsMouse ? 1.08 : 1.0); Behavior on scale { NumberAnimation { duration: kit.dur(100) } }
             }
         }
 
         Item { width: 1 * s; height: 8 * s }
-        Text { id: errorMsg; anchors.horizontalCenter: parent.horizontalCenter; height: 15 * s; verticalAlignment: Text.AlignTop; text: ""; opacity: 0; Behavior on opacity { NumberAnimation { duration: 300 } } font.family: root.customFontName; font.pixelSize: 12 * s; color: "#ffddaa"; style: Text.Raised; styleColor: "#60000000"; wrapMode: Text.WordWrap; width: 318 * s; horizontalAlignment: Text.AlignHCenter }
+        Text { id: errorMsg; anchors.horizontalCenter: parent.horizontalCenter; height: 15 * s; verticalAlignment: Text.AlignTop; text: ""; opacity: 0; Behavior on opacity { NumberAnimation { duration: kit.dur(300) } } font.family: root.customFontName; font.pixelSize: 12 * s; color: "#ffddaa"; style: Text.Raised; styleColor: "#60000000"; wrapMode: Text.WordWrap; width: 318 * s; horizontalAlignment: Text.AlignHCenter }
         Item { width: 1 * s; height: 20 * s }
 
         Item {
@@ -171,7 +175,7 @@ Rectangle {
 
         Row {
             anchors.centerIn: parent; spacing: 12 * s
-            Text { id: timeLabel; font.family: root.customFontName; font.pixelSize: 18 * s; font.weight: Font.DemiBold; color: "white"; style: Text.Raised; styleColor: "#80000000"; anchors.verticalCenter: parent.verticalCenter }
+            Text { id: timeLabel; font.family: root.clockFontName; font.pixelSize: 18 * s; font.weight: Font.DemiBold; color: "white"; style: Text.Raised; styleColor: "#80000000"; anchors.verticalCenter: parent.verticalCenter }
             Item { width: 2 * s; height: 18 * s; anchors.verticalCenter: parent.verticalCenter; Rectangle { anchors.left: parent.left; width: 1 * s; height: parent.height; color: "#40000000" } Rectangle { anchors.right: parent.right; width: 1 * s; height: parent.height; color: "#40ffffff" } }
             Text { id: dateLabel; font.family: root.customFontName; font.pixelSize: 14 * s; color: "#e0f0ff"; style: Text.Raised; styleColor: "#80000000"; anchors.verticalCenter: parent.verticalCenter }
             Timer { interval: 1000; running: true; repeat: true; onTriggered: { var d = new Date(); timeLabel.text = Qt.formatTime(d, clockFmt); dateLabel.text = Qt.formatDate(d, config.dateFormat || "dddd, MMMM d") } Component.onCompleted: triggered() }
@@ -192,11 +196,11 @@ Rectangle {
 
     SequentialAnimation {
         id: shakeAnim
-        NumberAnimation { target: loginPanel; property: "anchors.verticalCenterOffset"; to: -20 * s; duration: 50 }
-        NumberAnimation { target: loginPanel; property: "anchors.verticalCenterOffset"; to: 0 * s; duration: 50 }
-        NumberAnimation { target: loginPanel; property: "anchors.verticalCenterOffset"; to: -15 * s; duration: 50 }
-        NumberAnimation { target: loginPanel; property: "anchors.verticalCenterOffset"; to: -5 * s; duration: 50 }
-        NumberAnimation { target: loginPanel; property: "anchors.verticalCenterOffset"; to: -10 * s; duration: 50 }
+        NumberAnimation { target: loginPanel; property: "anchors.verticalCenterOffset"; to: -20 * s; duration: kit.dur(50) }
+        NumberAnimation { target: loginPanel; property: "anchors.verticalCenterOffset"; to: 0 * s; duration: kit.dur(50) }
+        NumberAnimation { target: loginPanel; property: "anchors.verticalCenterOffset"; to: -15 * s; duration: kit.dur(50) }
+        NumberAnimation { target: loginPanel; property: "anchors.verticalCenterOffset"; to: -5 * s; duration: kit.dur(50) }
+        NumberAnimation { target: loginPanel; property: "anchors.verticalCenterOffset"; to: -10 * s; duration: kit.dur(50) }
     }
 
     component Win7PowerBtn: Item {

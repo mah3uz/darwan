@@ -4,8 +4,10 @@ import Qt5Compat.GraphicalEffects
 import QtMultimedia
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -19,14 +21,14 @@ Rectangle {
     readonly property real s: (Screen.height / 768) * 0.75
 
     // Colors
-    readonly property color wCyan:       "#9ecfdf"
-    readonly property color wCyanDim:    "#6a9fb5"
-    readonly property color wCyanGlow:   "#c8e8f0"
+    readonly property color wCyan:       kit.color("accent", "#9ecfdf")
+    readonly property color wCyanDim:    Qt.colorEqual(wCyan, "#9ecfdf") ? "#6a9fb5" : Qt.darker(wCyan, 1.4)
+    readonly property color wCyanGlow:   Qt.colorEqual(wCyan, "#9ecfdf") ? "#c8e8f0" : Qt.lighter(wCyan, 1.2)
     readonly property color wSilver:     "#d4dae0"
-    readonly property color wGhost:      "#8899aa"
+    readonly property color wGhost:      kit.color("colorMuted", "#8899aa")
     readonly property color wPanel:      "#1a2030"
     readonly property color wPanelLight: "#222e40"
-    readonly property color wWhite:      "#eaf0f6"
+    readonly property color wWhite:      kit.color("text", "#eaf0f6")
 
     // Quickshell
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
@@ -46,7 +48,8 @@ Rectangle {
     }
 
     FontLoader { id: mainFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
+    readonly property string mainFontFamily: kit.font("text", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
+    readonly property string clockFontFamily: kit.font("clock", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
 
     // Helpers
     ListView {
@@ -59,8 +62,14 @@ Rectangle {
     // Visuals
     Item {
         id: bgContainer; anchors.fill: parent; clip: true
-        MediaPlayer { id: bgVideoPlayer; source: "bg.mp4"; loops: MediaPlayer.Infinite; autoPlay: true; videoOutput: bgVideoOutput }
-        VideoOutput { id: bgVideoOutput; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
+        Loader {
+            anchors.fill: parent; active: !userBg.active
+            sourceComponent: Item {
+                MediaPlayer { id: bgVideoPlayer; source: "bg.mp4"; loops: MediaPlayer.Infinite; autoPlay: true; videoOutput: bgVideoOutput }
+                VideoOutput { id: bgVideoOutput; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
+            }
+        }
+        Background { id: userBg; anchors.fill: parent }
 
         Rectangle {
             anchors.fill: parent
@@ -96,8 +105,8 @@ Rectangle {
                 x: px; y: py
                 Rectangle {
                     width: sz; height: width; radius: width / 2; color: Math.random() > 0.4 ? root.wCyan : root.wWhite; opacity: 0
-                    SequentialAnimation on opacity { loops: Animation.Infinite; PauseAnimation { duration: Math.random() * 4000 } NumberAnimation { from: 0; to: 0.5; duration: 2500 } NumberAnimation { from: 0.5; to: 0; duration: 3000 } }
-                    NumberAnimation on y { from: 0; to: -180 * s; duration: 9000 + Math.random() * 7000; loops: Animation.Infinite }
+                    SequentialAnimation on opacity { loops: Animation.Infinite; running: !kit.reduceMotion; PauseAnimation { duration: Math.random() * 4000 } NumberAnimation { from: 0; to: 0.5; duration: kit.dur(2500) } NumberAnimation { from: 0.5; to: 0; duration: kit.dur(3000) } }
+                    NumberAnimation on y { from: 0; to: -180 * s; duration: 9000 + Math.random() * 7000; loops: Animation.Infinite; running: !kit.reduceMotion }
                 }
             }
         }
@@ -106,11 +115,11 @@ Rectangle {
     // Interface
     Item {
         id: mainUI; anchors.fill: parent; opacity: root.uiOpacity
-        NumberAnimation { running: true; target: root; property: "uiOpacity"; from: 0; to: 1; duration: 1400; easing.type: Easing.OutCubic }
+        NumberAnimation { running: true; target: root; property: "uiOpacity"; from: 0; to: 1; duration: kit.dur(1400); easing.type: kit.ease(Easing.OutCubic) }
 
         Image {
             source: "logo.png"; width: 200 * s; fillMode: Image.PreserveAspectFit; anchors.left: parent.left; anchors.leftMargin: 44 * s; anchors.top: parent.top; anchors.topMargin: 32 * s; opacity: 0.92
-            SequentialAnimation on opacity { loops: Animation.Infinite; NumberAnimation { from: 0.8; to: 0.96; duration: 4000 } NumberAnimation { from: 0.96; to: 0.8; duration: 4000 } }
+            SequentialAnimation on opacity { loops: Animation.Infinite; running: !kit.reduceMotion; NumberAnimation { from: 0.8; to: 0.96; duration: 4000 } NumberAnimation { from: 0.96; to: 0.8; duration: 4000 } }
         }
 
         Text {
@@ -125,7 +134,7 @@ Rectangle {
                 Rectangle { width: userRow.width + 32 * s; height: parent.height; anchors.left: parent.left; color: uMouse.containsMouse ? "#88000000" : "#66000000"; radius: 16 * s }
                 Row {
                     id: userRow; anchors.left: parent.left; anchors.leftMargin: 16 * s; anchors.verticalCenter: parent.verticalCenter; spacing: 12 * s
-                    Rectangle { width: 8 * s; height: 8 * s; rotation: 45; color: root.wCyan; anchors.verticalCenter: parent.verticalCenter; SequentialAnimation on rotation { loops: Animation.Infinite; NumberAnimation { from: 45; to: 90;  duration: 4000 } NumberAnimation { from: 90; to: 45;  duration: 4000 } } }
+                    Rectangle { width: 8 * s; height: 8 * s; rotation: 45; color: root.wCyan; anchors.verticalCenter: parent.verticalCenter; SequentialAnimation on rotation { loops: Animation.Infinite; running: !kit.reduceMotion; NumberAnimation { from: 45; to: 90;  duration: 4000 } NumberAnimation { from: 90; to: 45;  duration: 4000 } } }
                     Text {
                         id: userNameText
                         text: {
@@ -144,10 +153,10 @@ Rectangle {
 
             Item {
                 id: passInContainer; width: parent.width; height: 46 * s
-                Rectangle { id: passRect; anchors.fill: parent; color: "#88000000"; radius: 6 * s; border.color: passIn.activeFocus ? root.wCyan : "#44ffffff"; border.width: 1.5 * s; Behavior on border.color { ColorAnimation { duration: 250 } } }
+                Rectangle { id: passRect; anchors.fill: parent; color: "#88000000"; radius: 6 * s; border.color: passIn.activeFocus ? root.wCyan : "#44ffffff"; border.width: 1.5 * s; Behavior on border.color { ColorAnimation { duration: kit.dur(250) } } }
                 Rectangle {
                     id: passPulse; anchors.fill: parent; color: "transparent"; radius: 6 * s; border.color: root.wCyanGlow; border.width: 1.5 * s; opacity: passIn.activeFocus ? (jitterAnim.running ? 0.9 : 0.2) : 0
-                    SequentialAnimation { id: jitterAnim; NumberAnimation { target: passPulse; property: "opacity"; from: 0.2; to: 0.9; duration: 60 } NumberAnimation { target: passPulse; property: "opacity"; from: 0.9; to: 0.2; duration: 400 } }
+                    SequentialAnimation { id: jitterAnim; NumberAnimation { target: passPulse; property: "opacity"; from: 0.2; to: 0.9; duration: kit.dur(60) } NumberAnimation { target: passPulse; property: "opacity"; from: 0.9; to: 0.2; duration: kit.dur(400) } }
                 }
                 TextInput {
                     id: passIn; anchors.fill: parent; anchors.leftMargin: 16 * s; anchors.rightMargin: 16 * s; font.family: mainFontFamily; font.pixelSize: 15 * s; font.letterSpacing: 5 * s; color: root.wWhite; echoMode: TextInput.Password; passwordCharacter: "*"; horizontalAlignment: TextInput.AlignLeft; verticalAlignment: TextInput.AlignVCenter
@@ -155,7 +164,7 @@ Rectangle {
                     property bool wasClicked: false; cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                     selectionColor: root.wCyan; onAccepted: doLogin()
                     Text { text: "Enter password..."; font.family: mainFontFamily; font.pixelSize: 13 * s; font.letterSpacing: 1 * s; color: "#77ffffff"; anchors.verticalCenter: parent.verticalCenter; opacity: passIn.text.length === 0 ? 1.0 : 0 }
-                    Rectangle { id: customCursor; width: 2 * s; height: 20 * s; color: root.wCyan; anchors.verticalCenter: parent.verticalCenter; x: passIn.cursorRectangle.x; visible: passIn.focus && (passIn.text.length > 0 || passIn.wasClicked); SequentialAnimation { loops: Animation.Infinite; running: customCursor.visible; NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: 450 } NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: 450 } } }
+                    Rectangle { id: customCursor; width: 2 * s; height: 20 * s; color: root.wCyan; anchors.verticalCenter: parent.verticalCenter; x: passIn.cursorRectangle.x; visible: passIn.focus && (passIn.text.length > 0 || passIn.wasClicked); SequentialAnimation { loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion; NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: kit.dur(450) } NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: kit.dur(450) } } }
                     MouseArea { anchors.fill: parent; onClicked: { passIn.forceActiveFocus(); passIn.wasClicked = true } }
                 }
             }
@@ -207,7 +216,7 @@ Rectangle {
             anchors.right: parent.right; anchors.rightMargin: 44 * s; anchors.bottom: parent.bottom; anchors.bottomMargin: 26 * s; spacing: 12 * s
             Text { id: wuwaDate; font.family: mainFontFamily; font.pixelSize: 12 * s; color: root.wSilver; opacity: 0.6; font.letterSpacing: 1.5 * s; anchors.verticalCenter: parent.verticalCenter }
             Rectangle { width: 2 * s; height: 16 * s; color: root.wCyan; opacity: 0.5; anchors.verticalCenter: parent.verticalCenter }
-            Text { id: wuwaTime; font.family: mainFontFamily; font.pixelSize: 16 * s; color: root.wWhite; font.bold: true; font.letterSpacing: 1.5 * s; anchors.verticalCenter: parent.verticalCenter }
+            Text { id: wuwaTime; font.family: clockFontFamily; font.pixelSize: 16 * s; color: root.wWhite; font.bold: true; font.letterSpacing: 1.5 * s; anchors.verticalCenter: parent.verticalCenter }
             Timer { interval: 1000; running: true; repeat: true; onTriggered: { var d = new Date(); wuwaTime.text = Qt.formatTime(d, clockFmt); wuwaDate.text = Qt.formatDate(d, config.dateFormat || "yyyy / MM / dd") } Component.onCompleted: triggered() }
         }
 
@@ -228,14 +237,14 @@ Rectangle {
                     onPaint: { var ctx = getContext("2d"); ctx.clearRect(0, 0, width, height); var cx = width / 2, cy = height / 2; var outer = width * 0.48; var inner = width * 0.12; ctx.fillStyle = "#bbcccccc"; ctx.beginPath(); ctx.moveTo(cx, cy - outer); ctx.lineTo(cx + inner, cy - inner); ctx.lineTo(cx + outer, cy); ctx.lineTo(cx + inner, cy + inner); ctx.lineTo(cx, cy + outer); ctx.lineTo(cx - inner, cy + inner); ctx.lineTo(cx - outer, cy); ctx.lineTo(cx - inner, cy - inner); ctx.closePath(); ctx.fill(); }
                 }
             }
-            SequentialAnimation on opacity { loops: Animation.Infinite; NumberAnimation { from: 0.6; to: 1.0; duration: 2200 } NumberAnimation { from: 1.0; to: 0.6; duration: 2200 } }
+            SequentialAnimation on opacity { loops: Animation.Infinite; running: !kit.reduceMotion; NumberAnimation { from: 0.6; to: 1.0; duration: kit.dur(2200) } NumberAnimation { from: 1.0; to: 0.6; duration: kit.dur(2200) } }
             MouseArea { anchors.fill: parent; onClicked: passIn.forceActiveFocus() }
         }
     }
 
     Item {
         id: popupOverlay; anchors.fill: parent; visible: root.sessionPopupOpen
-        Rectangle { anchors.fill: parent; color: "#66000000"; opacity: root.sessionPopupOpen ? 1 : 0; Behavior on opacity { NumberAnimation { duration: 250 } } MouseArea { anchors.fill: parent; onClicked: root.sessionPopupOpen = false } }
+        Rectangle { anchors.fill: parent; color: "#66000000"; opacity: root.sessionPopupOpen ? 1 : 0; Behavior on opacity { NumberAnimation { duration: kit.dur(250) } } MouseArea { anchors.fill: parent; onClicked: root.sessionPopupOpen = false } }
         Item {
             id: sessionBlade; width: 300 * s; anchors.left: parent.left; anchors.leftMargin: 44 * s; anchors.bottom: parent.bottom; anchors.bottomMargin: 290 * s; property real bladeH: (typeof sessionModel !== "undefined") ? (Math.min(sessionModel.count, 5) * 52 * s + 56 * s) : 56 * s
             Rectangle {
@@ -265,13 +274,13 @@ Rectangle {
             }
             transform: Translate { y: root.sessionPopupOpen ? 0 : 30 * s }
             opacity: root.sessionPopupOpen ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 220 } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(220) } }
         }
     }
 
     Rectangle {
         anchors.fill: parent; color: "transparent"
-        Rectangle { width: parent.width; height: 1 * s; color: root.wCyan; opacity: 0.03; NumberAnimation on y { from: 0; to: root.height; duration: 9000; loops: Animation.Infinite } }
+        Rectangle { width: parent.width; height: 1 * s; color: root.wCyan; opacity: 0.03; NumberAnimation on y { from: 0; to: root.height; duration: 9000; loops: Animation.Infinite; running: !kit.reduceMotion } }
     }
 
     // Action
@@ -288,9 +297,9 @@ Rectangle {
 
     SequentialAnimation {
         id: passFailAnim
-        ColorAnimation { target: passRect; property: "border.color"; to: "#ff4466"; duration: 200 }
-        PauseAnimation { duration: 1000 }
-        ColorAnimation { target: passRect; property: "border.color"; to: "#44ffffff"; duration: 400 }
+        ColorAnimation { target: passRect; property: "border.color"; to: "#ff4466"; duration: kit.dur(200) }
+        PauseAnimation { duration: kit.dur(1000) }
+        ColorAnimation { target: passRect; property: "border.color"; to: "#44ffffff"; duration: kit.dur(400) }
     }
 
     Timer { interval: 300; running: true; onTriggered: passIn.forceActiveFocus() }

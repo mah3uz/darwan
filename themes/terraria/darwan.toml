@@ -30,3 +30,8 @@ choices = [
   { value = "5", label = "Snow" },
 ]
 enabled_when = { background_mode = "static" }
+
+[supports]
+colors = true
+fonts = ["text"]
+motion = true

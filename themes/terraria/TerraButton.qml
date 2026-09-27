@@ -25,7 +25,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             anchors.margins: 2 * s
-            color: btnMouse.containsMouse ? "#fff200" : "#3b4a8e"
+            color: btnMouse.containsMouse ? root.highlightInner : "#3b4a8e"
             radius: 10 * s
             
             // Background fill
@@ -41,7 +41,7 @@ Item {
                     anchors.centerIn: parent
                     font.family: mainFontFamily
                     font.pixelSize: btn.fontPixelSize
-                    color: btnMouse.containsMouse ? "#fff200" : "#ffffff"
+                    color: btnMouse.containsMouse ? root.highlightInner : root.txtColor
                     style: Text.Outline
                     styleColor: "#000000"
                 }
