@@ -11,6 +11,7 @@ pub mod qobject {
         #[qml_element]
         #[qproperty(i32, revision, READ, NOTIFY)]
         #[qproperty(bool, busy, READ, NOTIFY)]
+        #[qproperty(bool, dirty, READ, NOTIFY)]
         #[qproperty(QString, status, READ, NOTIFY)]
         #[qproperty(QString, runtime_dir, READ, CONSTANT)]
         #[qproperty(QString, overlay_path, READ, CONSTANT)]
@@ -44,6 +45,15 @@ pub mod qobject {
         fn reset_value(self: Pin<&mut Backend>, key: &QString);
 
         #[qinvokable]
+        fn set_value_now(self: Pin<&mut Backend>, key: &QString, value: &QString);
+
+        #[qinvokable]
+        fn save_changes(self: Pin<&mut Backend>) -> bool;
+
+        #[qinvokable]
+        fn discard_changes(self: Pin<&mut Backend>);
+
+        #[qinvokable]
         fn write_overlay(self: Pin<&mut Backend>, id: &QString) -> bool;
 
         #[qinvokable]
@@ -73,10 +83,13 @@ use crate::model;
 pub struct BackendRust {
     paths: Paths,
     catalog: Catalog,
+    // The draft the preview shows; `saved` is what is on disk, which the lock, SDDM and every command read.
     config: UserConfig,
+    saved: UserConfig,
     env: Environment,
     revision: i32,
     busy: bool,
+    dirty: bool,
     status: QString,
     runtime_dir: QString,
     overlay_path: QString,
@@ -97,9 +110,11 @@ impl Default for BackendRust {
             paths,
             catalog: Catalog::default(),
             config: UserConfig::default(),
+            saved: UserConfig::default(),
             env: environment(),
             revision: 0,
             busy: false,
+            dirty: false,
             status: QString::default(),
         };
         if let Err(e) = this.load() {
@@ -121,16 +136,16 @@ impl BackendRust {
             Catalog::load(&themes).map_err(|e| format!("{}: {e}", themes.display()))?;
         let path = paths::config_file();
         let config = UserConfig::load(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-        (self.catalog, self.config) = (catalog, config);
+        (self.catalog, self.saved, self.config) = (catalog, config.clone(), config);
         Ok(())
     }
+}
 
-    fn save(&self) -> Result<(), String> {
-        let path = paths::config_file();
-        self.config
-            .save(&path)
-            .map_err(|e| format!("{}: {e}", path.display()))
-    }
+fn write(config: &UserConfig) -> Result<(), String> {
+    let path = paths::config_file();
+    config
+        .save(&path)
+        .map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn json(v: serde_json::Value) -> QString {
@@ -191,19 +206,72 @@ impl qobject::Backend {
         let result = Key::parse(&key.to_string()).and_then(|key| {
             let mut r = self.as_mut().rust_mut();
             let r = &mut *r;
-            let msg = match value {
+            match value {
                 Some(v) => settings::set(&mut r.config, &r.catalog, &key, v)
-                    .map(|()| format!("{key} = {v}"))?,
+                    .map(|()| format!("{key} = {v} (not saved yet)")),
                 None if settings::unset(&mut r.config, &key) => {
-                    format!("{key} is back to its default")
+                    Ok(format!("{key} is back to its default (not saved yet)"))
                 }
-                None => format!("{key} was already the default"),
-            };
-            r.save().map(|()| format!("saved: {msg}"))
+                None => Ok(format!("{key} was already the default")),
+            }
         });
         let status = result.unwrap_or_else(|e| e);
         self.as_mut().set_status(QString::from(status));
+        self.as_mut().sync_dirty();
         self.bump();
+    }
+
+    // An action rather than a customisation: written at once, into the saved file and the draft alike.
+    fn set_value_now(mut self: Pin<&mut Self>, key: &QString, value: &QString) {
+        let value = value.to_string();
+        let result = Key::parse(&key.to_string()).and_then(|key| {
+            let mut r = self.as_mut().rust_mut();
+            let r = &mut *r;
+            settings::set(&mut r.saved, &r.catalog, &key, &value)?;
+            settings::set(&mut r.config, &r.catalog, &key, &value)?;
+            write(&r.saved).map(|()| format!("saved: {key} = {value}"))
+        });
+        let status = result.unwrap_or_else(|e| e);
+        self.as_mut().set_status(QString::from(status));
+        self.as_mut().sync_dirty();
+        self.bump();
+    }
+
+    fn save_changes(mut self: Pin<&mut Self>) -> bool {
+        let result = {
+            let mut r = self.as_mut().rust_mut();
+            let r = &mut *r;
+            write(&r.config).map(|()| r.saved = r.config.clone())
+        };
+        let ok = result.is_ok();
+        let status = result.map_or_else(|e| e, |()| "saved".to_string());
+        self.as_mut().set_status(QString::from(status));
+        self.as_mut().sync_dirty();
+        self.bump();
+        ok
+    }
+
+    fn discard_changes(mut self: Pin<&mut Self>) {
+        {
+            let mut r = self.as_mut().rust_mut();
+            let r = &mut *r;
+            r.config = r.saved.clone();
+        }
+        self.as_mut()
+            .set_status(QString::from("unsaved changes discarded"));
+        self.as_mut().sync_dirty();
+        self.bump();
+    }
+
+    fn sync_dirty(mut self: Pin<&mut Self>) {
+        let dirty = {
+            let r = self.rust();
+            r.config.to_string() != r.saved.to_string()
+        };
+        if dirty != self.rust().dirty {
+            self.as_mut().rust_mut().dirty = dirty;
+            self.dirty_changed();
+        }
     }
 
     fn bump(mut self: Pin<&mut Self>) {
@@ -294,6 +362,7 @@ impl qobject::Backend {
                     (Ok(()), false) => format!("failed: {command}"),
                 };
                 qobject.as_mut().set_status(QString::from(status));
+                qobject.as_mut().sync_dirty();
                 qobject.as_mut().set_busy(false);
                 qobject.as_mut().bump();
                 qobject

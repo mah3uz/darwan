@@ -12,7 +12,7 @@ ApplicationWindow {
     height: 900
     minimumWidth: 1100
     minimumHeight: 700
-    title: "Darwan"
+    title: backend.dirty ? "Darwan · unsaved changes" : "Darwan"
     color: Style.base
 
     palette {
@@ -60,17 +60,29 @@ ApplicationWindow {
     property string jobTitle: ""
     property bool jobReports: false
 
+    // Commands read the saved config, so the draft is saved or dropped before one runs.
+    function guard(action, proceed) {
+        if (backend.dirty)
+            unsavedDialog.ask(action, proceed)
+        else
+            proceed()
+    }
+
     function run(args, title) {
-        jobTitle = title
-        jobReports = false
-        backend.run(JSON.stringify(args))
+        guard("run \u201c" + title + "\u201d", () => {
+            jobTitle = title
+            jobReports = false
+            backend.run(JSON.stringify(args))
+        })
     }
 
     function runReport(args, title, runningText) {
-        jobTitle = title
-        jobReports = true
-        reportDialog.start(title, "darwan " + args.join(" "), runningText)
-        backend.run(JSON.stringify(args))
+        guard("run \u201c" + title + "\u201d", () => {
+            jobTitle = title
+            jobReports = true
+            reportDialog.start(title, "darwan " + args.join(" "), runningText)
+            backend.run(JSON.stringify(args))
+        })
     }
 
     Connections {
@@ -91,8 +103,12 @@ ApplicationWindow {
     }
 
     // A playing video must be unloaded before the window goes, or Qt's FFmpeg backend crashes.
+    // Hyprland's close keybind arrives here too, as a close request; only a forced kill skips it.
     onClosing: close => {
-        if (!quitting) {
+        if (backend.dirty && !quitting) {
+            close.accepted = false
+            guard("close Darwan", () => window.close())
+        } else if (!quitting) {
             quitting = true
             close.accepted = false
             preview.unload()
@@ -108,6 +124,10 @@ ApplicationWindow {
         sequence: "Ctrl+Q"
         onActivated: window.close()
     }
+    Shortcut {
+        sequence: "Ctrl+S"
+        onActivated: if (backend.dirty) backend.saveChanges()
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -116,6 +136,7 @@ ApplicationWindow {
         Gallery {
             id: gallery
             backend: backend
+            guard: window.guard
             Layout.preferredWidth: 320
             Layout.fillHeight: true
         }
@@ -214,7 +235,7 @@ ApplicationWindow {
                     text: window.details && window.details.isLock ? "Lock theme ✓" : "Use for lock"
                     primary: !(window.details && window.details.isLock)
                     reason: window.details && window.details.isLock ? "already the lock theme" : ""
-                    onActivated: backend.setValue("lock.theme", window.themeId)
+                    onActivated: backend.setValueNow("lock.theme", window.themeId)
                     onRefused: r => window.message = r
                 }
                 ActionButton {
@@ -306,7 +327,7 @@ ApplicationWindow {
             backend: backend
             themeId: window.themeId
             themeName: window.details ? window.details.name : ""
-            Layout.preferredWidth: 340
+            Layout.preferredWidth: 400
             Layout.fillHeight: true
         }
     }
@@ -345,6 +366,11 @@ ApplicationWindow {
 
     ReportDialog {
         id: reportDialog
+        backend: backend
+    }
+
+    UnsavedDialog {
+        id: unsavedDialog
         backend: backend
     }
 }

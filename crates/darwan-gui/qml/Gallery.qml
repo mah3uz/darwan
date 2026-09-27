@@ -8,6 +8,7 @@ Rectangle {
 
     required property Backend backend
     property string currentId: ""
+    property var guard: (action, proceed) => proceed()
     readonly property alias searchField: search
     readonly property alias list: list
 
@@ -34,7 +35,8 @@ Rectangle {
             rows.forEach((r, i) => rowModel.set(i, r))
         }
         const ids = rows.filter(r => r.kind === "theme").map(r => r.themeId)
-        if (ids.length > 0 && !ids.includes(currentId))
+        // A search that hides the theme being edited doesn't move away from its unsaved changes.
+        if (ids.length > 0 && !ids.includes(currentId) && !backend.dirty)
             currentId = ids[0]
         themeCount = ids.length
     }
@@ -42,14 +44,23 @@ Rectangle {
     property int themeCount: 0
     property int totalCount: 0
 
+    function select(id, index) {
+        if (id === currentId)
+            return
+        guard("switch to another theme", () => {
+            currentId = id
+            if (index >= 0)
+                list.positionViewAtIndex(index, ListView.Contain)
+        })
+    }
+
     function step(delta) {
         let i = -1
         for (let j = 0; j < rowModel.count; j++)
             if (rowModel.get(j).themeId === currentId) i = j
         for (let j = i + delta; j >= 0 && j < rowModel.count; j += delta) {
             if (rowModel.get(j).kind === "theme") {
-                currentId = rowModel.get(j).themeId
-                list.positionViewAtIndex(j, ListView.Contain)
+                select(rowModel.get(j).themeId, j)
                 return
             }
         }
@@ -149,7 +160,7 @@ Rectangle {
                         HoverHandler { id: hover }
                         TapHandler {
                             onTapped: {
-                                gallery.currentId = model.themeId
+                                gallery.select(model.themeId, -1)
                                 list.forceActiveFocus()
                             }
                         }

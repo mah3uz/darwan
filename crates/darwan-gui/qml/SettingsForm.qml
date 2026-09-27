@@ -43,7 +43,7 @@ Rectangle {
         }
         Label {
             Layout.fillWidth: true
-            text: form.themeName + " options first, then its customisations and the global settings. Changes are saved at once; drop an image or video on the preview to use it as the background."
+            text: form.themeName + " options first, then its customisations and the global settings. The preview shows changes at once; Save (Ctrl+S) keeps them. Drop an image or video on the preview to use it as the background."
             color: Style.muted
             wrapMode: Text.WordWrap
             font.pixelSize: 12
@@ -373,6 +373,28 @@ Rectangle {
                         }
                     }
                 }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Label {
+                Layout.fillWidth: true
+                text: form.backend.dirty ? "Unsaved changes" : "All changes saved"
+                color: form.backend.dirty ? Style.warn : Style.muted
+                font.pixelSize: 12
+            }
+            ActionButton {
+                text: "Discard"
+                reason: form.backend.dirty ? "" : "nothing to discard"
+                onActivated: form.backend.discardChanges()
+            }
+            ActionButton {
+                text: "Save"
+                primary: true
+                reason: form.backend.dirty ? "" : "nothing to save"
+                onActivated: form.backend.saveChanges()
             }
         }
     }

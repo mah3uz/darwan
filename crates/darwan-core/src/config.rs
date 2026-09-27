@@ -28,7 +28,7 @@ impl Target {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct UserConfig {
     doc: DocumentMut,
 }
