@@ -5,6 +5,7 @@ use darwan_core::host;
 use darwan_core::paths::Paths;
 
 use crate::session::WaylandSession;
+use crate::style;
 use crate::{overlay, qs};
 
 pub struct Options {
@@ -89,9 +90,16 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
     if let Some(shot) = &shot {
         println!("Saving {} once the theme has settled.", shot.display());
     } else if opts.pam {
-        println!("Unlock with your password, or press Ctrl+Q to close.");
+        println!(
+            "Unlock with your password, or press {} to close.",
+            style::bold("Ctrl+Q")
+        );
     } else {
-        println!("Unlock with the password \"test\", or press Ctrl+Q to close.");
+        println!(
+            "Unlock with the password {}, or press {} to close.",
+            style::value("test"),
+            style::bold("Ctrl+Q")
+        );
     }
     let status = cmd
         .status()

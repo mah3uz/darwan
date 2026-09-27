@@ -7,6 +7,7 @@ use darwan_core::catalog::{Catalog, Theme};
 use darwan_core::paths::Paths;
 
 use crate::qs;
+use crate::style;
 
 pub struct Options {
     pub ids: Vec<String>,
@@ -29,7 +30,12 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
     let (catalog, load_problems) = Catalog::load(&paths.themes()).map_err(|e| e.to_string())?;
     let mut failed = load_problems.len();
     for p in &load_problems {
-        println!("FAIL  {}  cannot load: {}", p.id, p.message);
+        println!(
+            "{} {}  cannot load: {}",
+            style::fail("FAIL "),
+            style::id(&p.id),
+            p.message
+        );
     }
 
     let themes: Vec<&Theme> = if opts.all {
@@ -108,16 +114,29 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
     results.sort_by(|a, b| a.id.cmp(&b.id));
     for r in &results {
         if r.verdict.is_empty() && r.problems.is_empty() {
-            println!("ok    {}", r.id);
+            println!("{} {}", style::ok("ok   "), style::id(&r.id));
             continue;
         }
         failed += 1;
-        println!("FAIL  {}  {}", r.id, r.verdict);
+        println!(
+            "{} {}  {}",
+            style::fail("FAIL "),
+            style::id(&r.id),
+            r.verdict
+        );
         for p in &r.problems {
-            println!("        {p}");
+            println!("        {}", style::dim(p));
         }
     }
-    println!("{} checked, {failed} failed", results.len());
+    let summary = format!("{} checked, {failed} failed", results.len());
+    println!(
+        "{}",
+        if failed == 0 {
+            style::ok(summary)
+        } else {
+            style::fail(summary)
+        }
+    );
     Ok(if failed == 0 {
         ExitCode::SUCCESS
     } else {
@@ -135,8 +154,11 @@ fn write_overlay(
     let resolved = darwan_core::resolve::resolve(theme, config, host);
     for issue in &resolved.issues {
         eprintln!(
-            "warning: {}: ignoring {}: {}",
-            theme.id, issue.key, issue.message
+            "{} {}: ignoring {}: {}",
+            style::warn_err("warning:"),
+            theme.id,
+            issue.key,
+            issue.message
         );
     }
     let path = work.join(format!("{}.conf", theme.id.replace('/', "_")));

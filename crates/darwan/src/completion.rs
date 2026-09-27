@@ -2,12 +2,12 @@ use std::ffi::{OsStr, OsString};
 use std::process::ExitCode;
 
 use clap::ValueEnum;
-use clap_complete::engine::CompletionCandidate;
+use clap_complete::engine::{CompletionCandidate, PathCompleter, ValueCompleter};
 use clap_complete::env::Shells;
 
 use darwan_core::catalog::{Catalog, Theme};
 use darwan_core::config::{Target, UserConfig};
-use darwan_core::manifest::OptionKind;
+use darwan_core::form::{self, Field, FieldKind};
 use darwan_core::paths::{self, Paths};
 use darwan_core::settings::{DATE_PRESETS, Key};
 
@@ -107,15 +107,68 @@ fn keys_in(catalog: &Catalog) -> Vec<CompletionCandidate> {
         candidate("clock.show_ampm", "Show AM/PM with the 12-hour clock"),
         candidate("date.format", "Date format, for themes that support it"),
     ];
+    // The same fields the GUI and `darwan show` list: the theme's own options and the customisations it supports.
     for t in catalog.themes() {
-        for opt in &t.manifest.options {
+        for field in theme_fields(t) {
             out.push(candidate(
-                format!("{}.{}", t.id, opt.key),
-                format!("{}: {}", t.manifest.name, opt.label),
+                field.key.to_string(),
+                format!("{}: {}", t.manifest.name, field.label),
             ));
         }
     }
     out
+}
+
+// Settings the theme doesn't support stay out, though the form shows them disabled to say why.
+fn theme_fields(theme: &Theme) -> Vec<Field> {
+    form::fields(theme, &UserConfig::default())
+        .into_iter()
+        .filter(|f| match &f.key {
+            Key::Option { key, .. } => darwan_core::custom::unsupported(theme, key).is_none(),
+            _ => false,
+        })
+        .collect()
+}
+
+fn installed_font_families() -> Vec<String> {
+    let Ok(out) = std::process::Command::new("fc-list")
+        .args([":", "family"])
+        .output()
+    else {
+        return Vec::new();
+    };
+    let mut families: Vec<String> = String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .filter_map(|l| l.split(',').next())
+        .map(|f| f.trim().to_string())
+        .filter(|f| !f.is_empty())
+        .collect();
+    families.sort();
+    families.dedup();
+    families
+}
+
+// Numbers to offer for a range: the default and a few round steps, all inside it.
+fn range_values(key: &str, min: f64, max: f64) -> Vec<CompletionCandidate> {
+    let steps: &[f64] = if key.ends_with(".motion_speed") {
+        &[0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
+    } else {
+        &[-1.0, -0.5, 0.0, 0.5, 1.0]
+    };
+    steps
+        .iter()
+        .filter(|v| (min..=max).contains(*v))
+        .map(|v| {
+            candidate(
+                v.to_string(),
+                if *v == 1.0 && key.ends_with(".motion_speed") {
+                    "the theme's own speed"
+                } else {
+                    ""
+                },
+            )
+        })
+        .collect()
 }
 
 pub fn sizes() -> Vec<CompletionCandidate> {
@@ -148,6 +201,7 @@ fn values_for(catalog: &Catalog, config: &UserConfig, key: &str) -> Vec<Completi
     let Ok(key) = Key::parse(key) else {
         return Vec::new();
     };
+    let wanted = key.to_string();
     match key {
         Key::Theme(_) => theme_candidates(catalog, config),
         Key::ClockFormat => vec![
@@ -162,21 +216,94 @@ fn values_for(catalog: &Catalog, config: &UserConfig, key: &str) -> Vec<Completi
             .iter()
             .map(|p| candidate(p.format, p.label))
             .collect(),
-        Key::Option { theme, key } => {
-            let Some(opt) = catalog.get(&theme).and_then(|t| t.manifest.option(&key)) else {
+        Key::Option { theme, .. } => {
+            let Some(t) = catalog.get(&theme) else {
                 return Vec::new();
             };
-            match opt.kind {
-                OptionKind::Enum => opt
-                    .choices
+            let Some(field) = theme_fields(t)
+                .into_iter()
+                .find(|f| f.key.to_string() == wanted)
+            else {
+                return Vec::new();
+            };
+            match field.kind {
+                FieldKind::Choice(choices) => choices
                     .iter()
-                    .map(|c| candidate(&c.value, &c.label))
+                    // An empty choice is the theme's default, which `darwan unset` restores.
+                    .filter(|(v, _)| !v.is_empty())
+                    .map(|(v, label)| candidate(v, label))
                     .collect(),
-                OptionKind::Bool => vec![candidate("true", "on"), candidate("false", "off")],
+                FieldKind::Bool => vec![candidate("true", "on"), candidate("false", "off")],
+                FieldKind::Int { min, max } if max - min <= 100 => (0..=4)
+                    .map(|i| min + (max - min) * i / 4)
+                    .map(|v| candidate(v.to_string(), ""))
+                    .collect(),
+                FieldKind::Range { min, max, .. } => range_values(&wanted, min, max),
+                FieldKind::Color { generate } => {
+                    let mut own: Vec<String> = t
+                        .defaults
+                        .values()
+                        .filter(|v| darwan_core::custom::is_hex_color(v))
+                        .map(|v| v.to_lowercase())
+                        .collect();
+                    own.sort();
+                    own.dedup();
+                    let mut out = Vec::new();
+                    if generate {
+                        out.push(candidate(
+                            "generate",
+                            "picked from the background, like Material You",
+                        ));
+                    }
+                    out.extend(
+                        own.iter()
+                            .map(|c| candidate(c, "one of the theme's own colours")),
+                    );
+                    out
+                }
+                FieldKind::Media(_) => vec![candidate("desktop", "your desktop wallpaper")],
+                FieldKind::Font => installed_font_families()
+                    .into_iter()
+                    .map(|f| candidate(f, "installed font"))
+                    .collect(),
                 _ => Vec::new(),
             }
         }
     }
+}
+
+// File extensions a key also takes a path for; the shell completes those as paths.
+fn path_extensions(catalog: &Catalog, key: &str) -> Option<Vec<String>> {
+    let Ok(Key::Option { theme, .. }) = Key::parse(key) else {
+        return None;
+    };
+    let field = theme_fields(catalog.get(&theme)?)
+        .into_iter()
+        .find(|f| f.key.to_string() == key)?;
+    match field.kind {
+        FieldKind::Media(exts) | FieldKind::File(exts) => Some(exts),
+        FieldKind::Font => Some(
+            darwan_core::custom::FONT_EXT
+                .iter()
+                .map(|e| format!(".{e}"))
+                .collect(),
+        ),
+        _ => None,
+    }
+}
+
+fn paths_with(current: &OsStr, extensions: Vec<String>) -> Vec<CompletionCandidate> {
+    let exts: Vec<String> = extensions
+        .iter()
+        .map(|e| e.trim_start_matches(['*', '.']).to_lowercase())
+        .collect();
+    PathCompleter::any()
+        .filter(move |p| {
+            p.is_dir()
+                || p.extension()
+                    .is_some_and(|e| exts.contains(&e.to_string_lossy().to_lowercase()))
+        })
+        .complete(current)
 }
 
 fn starting_with(values: Vec<CompletionCandidate>, current: &OsStr) -> Vec<CompletionCandidate> {
@@ -188,9 +315,18 @@ fn starting_with(values: Vec<CompletionCandidate>, current: &OsStr) -> Vec<Compl
 }
 
 pub fn setting_values(current: &OsStr) -> Vec<CompletionCandidate> {
-    let values =
-        word_after(&["set"]).map_or_else(Vec::new, |key| values_for(&catalog(), &config(), &key));
-    starting_with(values, current)
+    let Some(key) = word_after(&["set"]) else {
+        return Vec::new();
+    };
+    let catalog = catalog();
+    let mut values = starting_with(values_for(&catalog, &config(), &key), current);
+    // A path is only offered once one is being typed, so `desktop` and `generate` aren't buried under files.
+    let typing_path = current.to_string_lossy().contains('/')
+        || current.to_string_lossy().starts_with(['.', '~']);
+    if let Some(exts) = path_extensions(&catalog, &key).filter(|_| typing_path) {
+        values.extend(paths_with(current, exts));
+    }
+    values
 }
 
 pub fn font_names(current: &OsStr) -> Vec<CompletionCandidate> {

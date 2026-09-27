@@ -9,6 +9,7 @@ use darwan_core::paths::{self, HELPER, Paths};
 use darwan_core::{ini, resolve};
 
 use crate::session::WaylandSession;
+use crate::style;
 
 pub const INSTALLED_THEMES: &str = "/usr/share/darwan/themes";
 const SDDM_THEMES: &str = "/usr/share/sddm/themes";
@@ -71,9 +72,14 @@ pub fn apply(paths: &Paths, id: Option<&str>) -> Result<ExitCode, String> {
             theme.id
         ));
     }
-    println!("SDDM theme: {} ({})", theme.id, theme.manifest.name);
+    println!(
+        "{} {} {}",
+        style::bold("SDDM theme:"),
+        style::id(&theme.id),
+        style::dim(format!("({})", theme.manifest.name))
+    );
     for (k, v) in &overlay {
-        println!("  {k} = {v}");
+        println!("  {} = {}", style::id(k), style::value(v));
     }
     let (header, files) = request(&overlay)?;
     run_helper_streaming(&["sddm-apply", &theme.id], &header, &files)?;
@@ -182,8 +188,9 @@ pub fn preview(paths: &Paths, id: Option<&str>) -> Result<ExitCode, String> {
     std::fs::write(dir.join("theme.conf.user"), text).map_err(|e| e.to_string())?;
 
     println!(
-        "Previewing {} as SDDM shows it. Close the window to exit.",
-        theme.id
+        "Previewing {} as SDDM shows it. {}",
+        style::id(&theme.id),
+        style::dim("Close the window to exit.")
     );
     let mut cmd = Command::new("sddm-greeter-qt6");
     cmd.arg("--test-mode").arg("--theme").arg(&dir);
@@ -248,15 +255,28 @@ fn theme_current(text: &str) -> Option<String> {
 pub fn status() -> Result<ExitCode, String> {
     let eff = effective_theme();
     match &eff.current {
-        None => println!("SDDM theme: not set (SDDM's built-in default)"),
-        Some((name, file)) => println!("SDDM theme: {name} (set in {})", file.display()),
+        None => println!(
+            "{} {}",
+            style::bold("SDDM theme:"),
+            style::dim("not set (SDDM's built-in default)")
+        ),
+        Some((name, file)) => println!(
+            "{} {} {}",
+            style::bold("SDDM theme:"),
+            style::id(name),
+            style::dim(format!("(set in {})", file.display()))
+        ),
     }
     let link = Path::new(SDDM_THEMES).join("darwan");
     match std::fs::read_link(&link) {
         Ok(target) if !target.join("Main.qml").is_file() => {
             println!(
-                "darwan theme: BROKEN, the link points to {}, which no longer exists",
-                target.display()
+                "{} {}",
+                style::bold("darwan theme:"),
+                style::fail(format!(
+                    "BROKEN, the link points to {}, which no longer exists",
+                    target.display()
+                ))
             );
             println!(
                 "  SDDM falls back to its built-in theme; run `darwan sddm reset` or apply another theme"
@@ -267,14 +287,14 @@ pub fn status() -> Result<ExitCode, String> {
                 .strip_prefix(INSTALLED_THEMES)
                 .map(|p| p.display().to_string())
                 .unwrap_or_else(|_| target.display().to_string());
-            println!("darwan theme: {id}");
+            println!("{} {}", style::bold("darwan theme:"), style::id(&id));
             match std::fs::read_to_string(target.join("theme.conf.user")) {
                 Ok(text) => {
                     for (k, v) in ini::parse_general(&text) {
-                        println!("  {k} = {v}");
+                        println!("  {} = {}", style::id(k), style::value(v));
                     }
                 }
-                Err(_) => println!("  (theme defaults)"),
+                Err(_) => println!("  {}", style::dim("(theme defaults)")),
             }
             if eff
                 .current
@@ -282,11 +302,16 @@ pub fn status() -> Result<ExitCode, String> {
                 .is_some_and(|(name, _)| name != "darwan")
             {
                 println!(
-                    "warning: darwan is set up, but another config file overrides it (see `darwan doctor`)"
+                    "{} darwan is set up, but another config file overrides it (see `darwan doctor`)",
+                    style::warn("warning:")
                 );
             }
         }
-        Err(_) => println!("darwan theme: not applied"),
+        Err(_) => println!(
+            "{} {}",
+            style::bold("darwan theme:"),
+            style::dim("not applied")
+        ),
     }
     Ok(ExitCode::SUCCESS)
 }

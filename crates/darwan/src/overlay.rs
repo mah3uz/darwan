@@ -1,6 +1,7 @@
 use std::io::Write;
 use std::path::PathBuf;
 
+use crate::style;
 use darwan_core::catalog::{Catalog, Theme};
 use darwan_core::config::{Target, UserConfig};
 use darwan_core::paths::{self, Paths};
@@ -37,7 +38,12 @@ pub fn prepare(paths: &Paths, id: Option<&str>, file_name: &str) -> Result<Prepa
 
     let resolved = resolve::resolve(&theme, &config, &darwan_core::system::SystemHost::new());
     for issue in &resolved.issues {
-        eprintln!("warning: ignoring {}: {}", issue.key, issue.message);
+        eprintln!(
+            "{} ignoring {}: {}",
+            style::warn_err("warning:"),
+            issue.key,
+            issue.message
+        );
     }
     let text = ini::write_general(&resolved.overlay).map_err(|e| e.to_string())?;
 

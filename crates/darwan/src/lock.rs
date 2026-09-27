@@ -12,6 +12,7 @@ use rustix::io::{FdFlags, fcntl_setfd};
 use rustix::process::{Pid, Signal, kill_process, kill_process_group};
 
 use crate::session::WaylandSession;
+use crate::style;
 use crate::{overlay, qs};
 
 pub const SUPERVISOR_ARG: &str = "lock-supervisor";
@@ -44,7 +45,10 @@ pub fn run(
         let holder = read_pid(&mut pid_file);
         if !replace {
             let who = holder.map(|p| format!(" (pid {p})")).unwrap_or_default();
-            println!("Already locked{who}. Use --replace to take over a hung lock.");
+            println!(
+                "Already locked{who}. {}",
+                style::dim("Use --replace to take over a hung lock.")
+            );
             return Ok(ExitCode::SUCCESS);
         }
         take_over(&pid_file, holder)?;
@@ -105,10 +109,11 @@ pub fn run(
         ));
     }
     println!(
-        "Locked {} with {} (supervisor pid {}).",
+        "{} {} with {} {}",
+        style::ok("Locked"),
         wayland.display,
-        prepared.theme.id,
-        child.id()
+        style::id(&prepared.theme.id),
+        style::dim(format!("(supervisor pid {}).", child.id()))
     );
     if std::env::var_os("WAYLAND_DISPLAY").is_none() {
         println!("Switch back to your graphical session to unlock.");

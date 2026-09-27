@@ -7,6 +7,7 @@ use darwan_core::paths::Paths;
 
 use crate::sddm;
 use crate::session::WaylandSession;
+use crate::style;
 
 #[derive(Default)]
 struct Report {
@@ -15,14 +16,14 @@ struct Report {
 
 impl Report {
     fn ok(&mut self, msg: impl AsRef<str>) {
-        println!("ok    {}", msg.as_ref());
+        println!("{} {}", style::ok("ok   "), msg.as_ref());
     }
     fn warn(&mut self, msg: impl AsRef<str>) {
-        println!("warn  {}", msg.as_ref());
+        println!("{} {}", style::warn("warn "), msg.as_ref());
     }
     fn fail(&mut self, msg: impl AsRef<str>) {
         self.failed += 1;
-        println!("FAIL  {}", msg.as_ref());
+        println!("{} {}", style::fail("FAIL "), msg.as_ref());
     }
 }
 
@@ -34,7 +35,7 @@ fn on_path(program: &str) -> bool {
 pub fn run(paths: &Paths) -> Result<ExitCode, String> {
     let mut r = Report::default();
 
-    println!("Lockscreen");
+    println!("{}", style::heading("Lockscreen"));
     let wayland = match WaylandSession::discover() {
         Ok(w) => {
             r.ok(format!("Wayland session {}", w.display));
@@ -101,7 +102,7 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
         }
     }
 
-    println!("\nThemes");
+    println!("\n{}", style::heading("Themes"));
     let (catalog, problems) =
         Catalog::load(&paths.themes()).map_err(|e| format!("{}: {e}", paths.themes().display()))?;
     r.ok(format!(
@@ -148,7 +149,7 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
         r.warn("JetBrainsMono Nerd Font is not installed: clockwork/neo-orbital icons will show as boxes (ttf-jetbrains-mono-nerd)");
     }
 
-    println!("\nSDDM");
+    println!("\n{}", style::heading("SDDM"));
     if !on_path("sddm-greeter-qt6") {
         r.warn("SDDM (Qt 6) is not installed; SDDM actions are unavailable");
     } else {
@@ -202,10 +203,16 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
 
     println!();
     if r.failed == 0 {
-        println!("No problems that stop darwan from working.");
+        println!(
+            "{}",
+            style::ok("No problems that stop darwan from working.")
+        );
         Ok(ExitCode::SUCCESS)
     } else {
-        println!("{} problem(s) need fixing.", r.failed);
+        println!(
+            "{}",
+            style::fail(format!("{} problem(s) need fixing.", r.failed))
+        );
         Ok(ExitCode::FAILURE)
     }
 }

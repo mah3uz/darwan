@@ -9,6 +9,7 @@ mod qs;
 mod sddm;
 mod session;
 mod settings_cmd;
+mod style;
 mod supervise;
 mod tui;
 
@@ -24,7 +25,8 @@ use clap_complete::engine::{ArgValueCandidates, ArgValueCompleter};
 #[command(
     name = "darwan",
     version,
-    about = "Themes for the SDDM login screen and the Quickshell lockscreen"
+    about = "Themes for the SDDM login screen and the Quickshell lockscreen",
+    styles = style::clap_styles()
 )]
 struct Cli {
     #[command(subcommand)]
@@ -45,7 +47,7 @@ enum Cmd {
         #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
         key: Option<String>,
     },
-    /// Change a setting: lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format or <theme-id>.<option>
+    /// Change a setting: lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, or <theme-id>.<option> for a theme's options and customisations (background, accent, variant, motion_speed, …)
     Set {
         #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
         key: String,
@@ -177,7 +179,7 @@ fn main() -> ExitCode {
         Some(c) => c,
         None if std::io::stdin().is_terminal() && std::io::stdout().is_terminal() => {
             return tui::run(&paths).unwrap_or_else(|e| {
-                eprintln!("darwan: {e}");
+                eprintln!("{} {e}", style::fail_err("darwan:"));
                 ExitCode::FAILURE
             });
         }
@@ -250,7 +252,7 @@ fn main() -> ExitCode {
         ),
     };
     result.unwrap_or_else(|e| {
-        eprintln!("darwan: {e}");
+        eprintln!("{} {e}", style::fail_err("darwan:"));
         ExitCode::FAILURE
     })
 }
