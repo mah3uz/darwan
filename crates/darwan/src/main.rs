@@ -9,6 +9,7 @@ mod qs;
 mod sddm;
 mod session;
 mod settings_cmd;
+mod supervise;
 mod tui;
 
 use std::io::IsTerminal;
@@ -66,7 +67,13 @@ enum Cmd {
         /// Testing only (needs DARWAN_DATA_DIR): unlock by itself after SECONDS
         #[arg(long, value_name = "SECONDS")]
         unlock_after: Option<u32>,
+        /// Lock with a black screen and load the theme after wake (for before_sleep_cmd)
+        #[arg(long)]
+        for_sleep: bool,
     },
+    /// Internal: keeps the lock alive; started by `darwan lock`
+    #[command(name = "lock-supervisor", hide = true)]
+    LockSupervisor,
     /// Show a theme full screen without locking
     Preview {
         #[arg(add = ArgValueCandidates::new(completion::themes))]
@@ -186,7 +193,9 @@ fn main() -> ExitCode {
             id,
             replace,
             unlock_after,
-        } => lock::run(&paths, id.as_deref(), replace, unlock_after),
+            for_sleep,
+        } => lock::run(&paths, id.as_deref(), replace, unlock_after, for_sleep),
+        Cmd::LockSupervisor => return supervise::run(),
         Cmd::Preview {
             id,
             sddm,

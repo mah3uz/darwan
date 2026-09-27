@@ -68,6 +68,17 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
             None => r.warn("could not read Hyprland's misc:allow_session_lock_restore"),
         }
     }
+    let hypridle = darwan_core::paths::config_file()
+        .parent()
+        .and_then(Path::parent)
+        .map(|c| c.join("hypr/hypridle.conf"));
+    if let Some(text) = hypridle.and_then(|p| std::fs::read_to_string(p).ok()) {
+        match hypridle_advice(&text) {
+            Some(Ok(msg)) => r.ok(msg),
+            Some(Err(msg)) => r.warn(msg),
+            None => {}
+        }
+    }
 
     println!("\nThemes");
     let (catalog, problems) =
@@ -175,5 +186,53 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
     } else {
         println!("{} problem(s) need fixing.", r.failed);
         Ok(ExitCode::FAILURE)
+    }
+}
+
+// None when hypridle doesn't lock with darwan: another locker's setup is not ours to judge.
+fn hypridle_advice(conf: &str) -> Option<Result<String, String>> {
+    let mut lock_cmd = None;
+    let mut inhibit_sleep = None;
+    for line in conf.lines() {
+        let line = line.split('#').next().unwrap_or("").trim();
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        match key.trim() {
+            "lock_cmd" => lock_cmd = Some(value.trim().to_string()),
+            "inhibit_sleep" => inhibit_sleep = value.trim().parse::<u8>().ok(),
+            _ => {}
+        }
+    }
+    if !lock_cmd?.contains("darwan lock") {
+        return None;
+    }
+    // Mode 2, hypridle's default, waits for the lock only when the command names hyprlock.
+    Some(match inhibit_sleep {
+        Some(3) => Ok("hypridle locks with darwan and waits for the lock before sleep".into()),
+        _ => Err("hypridle locks with darwan but may sleep before the lock is up: set inhibit_sleep = 3 in hypridle.conf".into()),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hypridle_must_wait_for_darwans_lock_before_sleep() {
+        let good = "general {\n    lock_cmd = darwan lock\n    inhibit_sleep = 3 # wait\n}\n";
+        assert!(matches!(hypridle_advice(good), Some(Ok(_))));
+        let default_mode = "general {\n    lock_cmd = darwan lock\n}\n";
+        assert!(
+            matches!(hypridle_advice(default_mode), Some(Err(_))),
+            "mode 2 releases sleep at once for any locker but hyprlock"
+        );
+        let commented = "general {\n    lock_cmd = darwan lock\n    # inhibit_sleep = 3\n}\n";
+        assert!(matches!(hypridle_advice(commented), Some(Err(_))));
+        assert_eq!(
+            hypridle_advice("general {\n    lock_cmd = hyprlock\n}\n"),
+            None
+        );
+        assert_eq!(hypridle_advice("listener {\n    timeout = 300\n}\n"), None);
     }
 }

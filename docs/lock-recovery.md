@@ -1,8 +1,10 @@
 # Lock recovery
 
-If the lockscreen crashes or hangs while your session is locked, the compositor keeps the session locked; Hyprland shows
-a "lockscreen died" message. Nothing is lost: your session and open windows are still there. Work through these in
-order.
+If the lockscreen crashes while your session is locked, Darwan starts a new one by itself within a second or two, and it
+takes the lock back. It also checks the lock after the screens wake up and restarts it if it isn't drawing or doesn't
+take your keyboard. You only need this page if that recovery fails, or the lockscreen hangs instead of crashing: the
+compositor keeps the session locked and Hyprland shows a "lockscreen died" message. Nothing is lost: your session and
+open windows are still there. Work through these in order.
 
 ## 1. Start a new lockscreen
 
@@ -14,7 +16,8 @@ order.
    darwan lock --replace
    ```
 
-   It finds your Wayland session, stops the hung lockscreen if it's still running, and starts a new one.
+   It finds your Wayland session, stops the hung lockscreen (and the process watching it) if it's still running, and
+   starts a new one.
 3. Switch back to your session with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F2</kbd> (or whichever console it runs on) and
    unlock with your password.
 

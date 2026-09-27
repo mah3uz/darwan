@@ -300,8 +300,22 @@ misc {
 bind = SUPER, L, exec, darwan lock
 ```
 
-For hypridle, set `lock_cmd = darwan lock`. Pressing the keybind while already locked does nothing, because only one
-lockscreen runs at a time, and `darwan lock` refuses to lock while `allow_session_lock_restore` is off.
+For hypridle, lock with Darwan and let sleep wait until the lock is up:
+
+```ini
+general {
+    lock_cmd = darwan lock
+    before_sleep_cmd = loginctl lock-session
+    inhibit_sleep = 3
+}
+```
+
+`inhibit_sleep = 3` matters: hypridle's default waits for the lock only when the command is hyprlock, so without it the
+machine can go to sleep before Darwan's lock is on screen. `darwan doctor` checks this.
+
+Pressing the keybind while already locked does nothing, because only one lockscreen runs at a time, and `darwan lock`
+refuses to lock while `allow_session_lock_restore` is off. If the lockscreen crashes, for example when a monitor drops
+out during sleep, Darwan starts a new one by itself and it takes the lock back.
 
 <br>
 <p align="center">━━━━━━━ ❖ ━━━━━━━</p>
