@@ -33,3 +33,5 @@ enabled_when = { background_mode = "static" }
 [supports]
 clock_format = true
 date_format = true
+fonts = ["text", "clock"]
+motion = true

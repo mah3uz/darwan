@@ -3,8 +3,10 @@ import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -33,9 +35,9 @@ Rectangle {
     readonly property color mcBtnHover:     "#9090c0" 
     readonly property color mcBtnPress:     "#585858"
     
-    readonly property color mcTextWhite:    "#ffffff"
+    readonly property color mcTextWhite:    kit.color("text", "#ffffff")
     readonly property color mcTextShadow:   "#3f3f3f"
-    readonly property color mcTextYellow:   "#ffff55"
+    readonly property color mcTextYellow:   kit.color("accent", "#ffff55")
     readonly property color mcTextGray:     "#aaaaaa"
     readonly property color mcTextRed:      "#ff5555"
     readonly property color mcTextGreen:    "#55ff55"
@@ -46,18 +48,19 @@ Rectangle {
     // Fonts
     FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader { id: mcFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string mcFontFamily: mcFont.status === FontLoader.Ready ? mcFont.name : "sans-serif"
+    readonly property string mcFontFamily: kit.font("text", mcFont.status === FontLoader.Ready ? mcFont.name : "sans-serif")
     TextConstants { id: textConstants }
 
     // Background
     Item {
         anchors.fill: parent; z: 0
         Image {
-            anchors.fill: parent
+            anchors.fill: parent; visible: !userBg.active
             source: "background.png"; fillMode: Image.PreserveAspectCrop
             horizontalAlignment: Image.AlignHCenter; verticalAlignment: Image.AlignVCenter
             scale: 2.0; transformOrigin: Item.Center
         }
+        Background { id: userBg; anchors.fill: parent }
     }
 
     // Effect
@@ -115,8 +118,9 @@ Rectangle {
                 color: root.mcTextYellow; rotation: -20; style: Text.Outline; styleColor: "black"
                 SequentialAnimation on scale {
                     loops: Animation.Infinite
-                    NumberAnimation { from: 1.0; to: 1.18; duration: 600; easing.type: Easing.InOutQuad }
-                    NumberAnimation { from: 1.18; to: 1.0; duration: 600; easing.type: Easing.InOutQuad }
+                    running: !kit.reduceMotion
+                    NumberAnimation { from: 1.0; to: 1.18; duration: kit.dur(600); easing.type: kit.ease(Easing.InOutQuad) }
+                    NumberAnimation { from: 1.18; to: 1.0; duration: kit.dur(600); easing.type: kit.ease(Easing.InOutQuad) }
                 }
                 Component.onCompleted: {
                     var splashes = ["I use Arch btw", "|||RTFM!|||", "sudo rm -rf /", "Kernel Panic!", "Btw I use NixOS!", "Pacman -Syu", "chmod 777", "Segmentation Fault"];
@@ -169,7 +173,7 @@ Rectangle {
                         anchors.fill: parent; verticalAlignment: Text.AlignVCenter; anchors.leftMargin: 2 * s
                         text: "Enter password..."; color: "#555555"; font.family: mcFontFamily; font.pixelSize: 14 * s
                         opacity: passInput.text.length === 0 ? 1.0 : 0
-                        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
+                        Behavior on opacity { NumberAnimation { duration: kit.dur(400); easing.type: kit.ease(Easing.InOutSine) } }
                     }
                     Rectangle {
                         id: customCursor
@@ -179,9 +183,9 @@ Rectangle {
                         x: passInput.cursorRectangle.x
                         visible: passInput.focus && (passInput.text.length > 0 || passInput.wasClicked)
                         SequentialAnimation {
-                            loops: Animation.Infinite; running: customCursor.visible
-                            NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: 450 }
-                            NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: 450 }
+                            loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion
+                            NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: kit.dur(450) }
+                            NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: kit.dur(450) }
                         }
                     }
                     MouseArea {
@@ -240,8 +244,8 @@ Rectangle {
             anchors.centerIn: parent; width: 440 * s; spacing: 16 * s
             opacity: sessionOverlay.visible ? 1 : 0
             scale: sessionOverlay.visible ? 1 : 0.9
-            Behavior on opacity { NumberAnimation { duration: 200 } }
-            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(200) } }
+            Behavior on scale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
             
             McText {
                 label: "SELECT SESSION"; pixelSize: 26 * s; textColor: root.mcTextYellow
@@ -295,7 +299,7 @@ Rectangle {
     }
 
     // Boot
-    NumberAnimation { id: fadeIn; target: root; property: "uiOpacity"; to: 1; duration: 1000; easing.type: Easing.OutCubic }
+    NumberAnimation { id: fadeIn; target: root; property: "uiOpacity"; to: 1; duration: kit.dur(1000); easing.type: kit.ease(Easing.OutCubic) }
     Component.onCompleted: { fadeIn.start(); keyboard.numLock = true }
 
     function doLogin() { 

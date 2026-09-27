@@ -3,8 +3,10 @@ import Qt5Compat.GraphicalEffects
 import QtMultimedia
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Item {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -21,10 +23,10 @@ Item {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
 
     // Colors
-    readonly property color textPrimary:   "#f8f1e5"
-    readonly property color textSecondary: "#8b949e"
-    readonly property color accent:        "#ffb7c5"
-    readonly property color accentGlow:    Qt.rgba(1, 0.72, 0.77, 0.4)
+    readonly property color textPrimary:   kit.color("text", "#f8f1e5")
+    readonly property color textSecondary: kit.color("colorMuted", "#8b949e")
+    readonly property color accent:        kit.color("accent", "#ffb7c5")
+    readonly property color accentGlow:    Qt.rgba(accent.r, accent.g, accent.b, 0.4)
     readonly property color glassBg:       Qt.rgba(0.04, 0.05, 0.06, 0.8)
 
     // State
@@ -45,7 +47,8 @@ Item {
         id: mainFont
         source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" 
     }
-    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
+    readonly property string mainFontFamily: kit.font("text", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
+    readonly property string clockFontFamily: kit.font("clock", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
 
     // Models
     ListView {
@@ -118,19 +121,26 @@ Item {
         color: "#0d1117"
         z: -2000
     }
-    MediaPlayer {
-        id: player
-        source: "bg.mp4"
-        videoOutput: bgVideo
-        loops: MediaPlayer.Infinite
-        Component.onCompleted: player.play() 
-    }
-    VideoOutput {
-        id: bgVideo
+    Loader {
         anchors.fill: parent
-        fillMode: VideoOutput.PreserveAspectCrop
         z: -1000
+        active: !userBg.active
+        sourceComponent: Item {
+            MediaPlayer {
+                id: player
+                source: "bg.mp4"
+                videoOutput: bgVideo
+                loops: MediaPlayer.Infinite
+                Component.onCompleted: player.play()
+            }
+            VideoOutput {
+                id: bgVideo
+                anchors.fill: parent
+                fillMode: VideoOutput.PreserveAspectCrop
+            }
+        }
     }
+    Background { id: userBg; anchors.fill: parent; z: -1000 }
 
     // Overlay
     Rectangle {
@@ -162,17 +172,17 @@ Item {
             opacity: root.isLoaded ? 1 : 0
             transform: Translate { y: root.isLoaded ? 0 : -30 * s }
             Behavior on opacity {
-                NumberAnimation { duration: 1000; easing.type: Easing.OutQuart }
+                NumberAnimation { duration: kit.dur(1000); easing.type: kit.ease(Easing.OutQuart) }
             }
             Behavior on y {
-                NumberAnimation { duration: 1000; easing.type: Easing.OutQuart }
+                NumberAnimation { duration: kit.dur(1000); easing.type: kit.ease(Easing.OutQuart) }
             }
             
             Text {
                 id: clockText
                 text: Qt.formatTime(new Date(), clockFmt)
                 font {
-                    family: mainFontFamily
+                    family: clockFontFamily
                     pixelSize: 102 * s
                     weight: Font.ExtraLight
                     letterSpacing: 6 * s
@@ -219,17 +229,17 @@ Item {
             opacity: root.isLoaded ? 1 : 0
             transform: Translate { x: root.isLoaded ? 0 : -40 * s }
             Behavior on opacity {
-                NumberAnimation { duration: 800; easing.type: Easing.OutQuart }
+                NumberAnimation { duration: kit.dur(800); easing.type: kit.ease(Easing.OutQuart) }
             }
             Behavior on x {
-                NumberAnimation { duration: 800; easing.type: Easing.OutQuart }
+                NumberAnimation { duration: kit.dur(800); easing.type: kit.ease(Easing.OutQuart) }
             }
 
             SequentialAnimation {
                 id: errorShake
-                NumberAnimation { target: loginWrapper; property: "anchors.leftMargin"; to: uiContainer.sideMargin - 15 * s; duration: 50; easing.type: Easing.InOutSine }
-                NumberAnimation { target: loginWrapper; property: "anchors.leftMargin"; to: uiContainer.sideMargin + 15 * s; duration: 50; easing.type: Easing.InOutSine }
-                NumberAnimation { target: loginWrapper; property: "anchors.leftMargin"; to: uiContainer.sideMargin; duration: 50; easing.type: Easing.InOutSine }
+                NumberAnimation { target: loginWrapper; property: "anchors.leftMargin"; to: uiContainer.sideMargin - 15 * s; duration: kit.dur(50); easing.type: kit.ease(Easing.InOutSine) }
+                NumberAnimation { target: loginWrapper; property: "anchors.leftMargin"; to: uiContainer.sideMargin + 15 * s; duration: kit.dur(50); easing.type: kit.ease(Easing.InOutSine) }
+                NumberAnimation { target: loginWrapper; property: "anchors.leftMargin"; to: uiContainer.sideMargin; duration: kit.dur(50); easing.type: kit.ease(Easing.InOutSine) }
                 onStopped: root.loginError = false
             }
 
@@ -297,8 +307,8 @@ Item {
                             SequentialAnimation {
                                 id: userTransition
                                 ParallelAnimation {
-                                    NumberAnimation { target: userNameDisplay; property: "opacity"; to: 0; duration: 200 }
-                                    NumberAnimation { target: userTrans; property: "x"; to: -15 * s; duration: 200 }
+                                    NumberAnimation { target: userNameDisplay; property: "opacity"; to: 0; duration: kit.dur(200) }
+                                    NumberAnimation { target: userTrans; property: "x"; to: -15 * s; duration: kit.dur(200) }
                                 }
                                 ScriptAction {
                                     script: {
@@ -311,8 +321,8 @@ Item {
                                     }
                                 }
                                 ParallelAnimation {
-                                    NumberAnimation { target: userNameDisplay; property: "opacity"; to: 1; duration: 300 }
-                                    NumberAnimation { target: userTrans; property: "x"; from: 15 * s; to: 0; duration: 300 }
+                                    NumberAnimation { target: userNameDisplay; property: "opacity"; to: 1; duration: kit.dur(300) }
+                                    NumberAnimation { target: userTrans; property: "x"; from: 15 * s; to: 0; duration: kit.dur(300) }
                                 }
                             }
                         }
@@ -327,7 +337,7 @@ Item {
                                 opacity: uMa.containsMouse ? 0.2 : 0.06
                                 border.color: root.accent; border.width: 1 
                                 Behavior on opacity {
-                                    NumberAnimation { duration: 250 }
+                                    NumberAnimation { duration: kit.dur(250) }
                                 }
                             }
                             Text {
@@ -392,10 +402,10 @@ Item {
                                 color: root.loginError ? "#ff4444" : root.textSecondary
                                 opacity: (passInput.text.length === 0 && !passInput.wasClicked) ? 0.8 : 0.0
                                 Behavior on opacity {
-                                    NumberAnimation { duration: 300 }
+                                    NumberAnimation { duration: kit.dur(300) }
                                 } 
                                 Behavior on color {
-                                    ColorAnimation { duration: 200 }
+                                    ColorAnimation { duration: kit.dur(200) }
                                 }
                             }
                             Rectangle {
@@ -408,10 +418,11 @@ Item {
                                 visible: passInput.focus && passInput.wasClicked
                                 SequentialAnimation on opacity {
                                     loops: Animation.Infinite
-                                    NumberAnimation { from: 1; to: 0; duration: 600 }
+                                    running: !kit.reduceMotion
+                                    NumberAnimation { from: 1; to: 0; duration: kit.dur(600) }
                                 }
                                 Behavior on color {
-                                    ColorAnimation { duration: 200 }
+                                    ColorAnimation { duration: kit.dur(200) }
                                 }
                             }
                         }
@@ -431,10 +442,10 @@ Item {
                             opacity: passInput.text.length > 0 ? 1 : 0
                             scale: passInput.text.length > 0 ? 1 : 0.85
                             Behavior on opacity {
-                                NumberAnimation { duration: 300 }
+                                NumberAnimation { duration: kit.dur(300) }
                             }
                             Behavior on scale {
-                                NumberAnimation { duration: 450; easing.type: Easing.OutBack }
+                                NumberAnimation { duration: kit.dur(450); easing.type: kit.ease(Easing.OutBack) }
                             }
                             MouseArea {
                                 anchors.fill: parent
@@ -473,7 +484,7 @@ Item {
                 Behavior on opacity {
                     NumberAnimation { 
                         duration: root.userMenuOpen ? 300 : 250
-                        easing.type: Easing.OutCubic 
+                        easing.type: kit.ease(Easing.OutCubic) 
                     }
                 }
 
@@ -539,7 +550,7 @@ Item {
                                     color: root.accent
                                     opacity: (itemMa.containsMouse || index === root.userIndex) ? 0.1 : 0.02
                                     Behavior on opacity {
-                                        NumberAnimation { duration: 300 }
+                                        NumberAnimation { duration: kit.dur(300) }
                                     }
                                 }
                                 Text {
@@ -553,7 +564,7 @@ Item {
                                     color: index === root.userIndex ? root.accent : (itemMa.containsMouse ? root.textPrimary : root.textSecondary)
                                     anchors.centerIn: parent
                                     Behavior on color {
-                                        ColorAnimation { duration: 250 }
+                                        ColorAnimation { duration: kit.dur(250) }
                                     }
                                 }
                                 MouseArea {
@@ -585,10 +596,10 @@ Item {
             opacity: root.isLoaded ? 1 : 0
             transform: Translate { y: root.isLoaded ? 0 : 30 * s }
             Behavior on opacity {
-                NumberAnimation { duration: 1000; easing.type: Easing.OutQuart }
+                NumberAnimation { duration: kit.dur(1000); easing.type: kit.ease(Easing.OutQuart) }
             }
             Behavior on y {
-                NumberAnimation { duration: 1000; easing.type: Easing.OutQuart }
+                NumberAnimation { duration: kit.dur(1000); easing.type: kit.ease(Easing.OutQuart) }
             }
 
             Row {
@@ -607,7 +618,7 @@ Item {
                         }
                         color: pMa.containsMouse ? root.accent : root.textSecondary
                         Behavior on color {
-                            ColorAnimation { duration: 250 }
+                            ColorAnimation { duration: kit.dur(250) }
                         }
                         MouseArea {
                             id: pMa
@@ -647,12 +658,13 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.verticalCenterOffset: 1 * s
                         Behavior on color {
-                            ColorAnimation { duration: 200 }
+                            ColorAnimation { duration: kit.dur(200) }
                         }
                         SequentialAnimation on opacity {
                             loops: Animation.Infinite
-                            NumberAnimation { to: 0.2; duration: 1500 }
-                            NumberAnimation { to: 0.8; duration: 1500 } 
+                            running: !kit.reduceMotion
+                            NumberAnimation { to: 0.2; duration: kit.dur(1500) }
+                            NumberAnimation { to: 0.8; duration: kit.dur(1500) } 
                         }
                     }
                     Text {
@@ -667,7 +679,7 @@ Item {
                         color: sMa.containsMouse ? root.textPrimary : root.textSecondary
                         anchors.verticalCenter: parent.verticalCenter
                         Behavior on color {
-                            ColorAnimation { duration: 200 }
+                            ColorAnimation { duration: kit.dur(200) }
                         }
                         transform: Translate { id: sessTrans; x: 0 }
                     }
@@ -682,15 +694,15 @@ Item {
                 SequentialAnimation {
                     id: toggleAnim
                     ParallelAnimation {
-                        NumberAnimation { target: sessText; property: "opacity"; to: 0; duration: 150 }
-                        NumberAnimation { target: sessTrans; property: "x"; to: 12 * s; duration: 150 }
+                        NumberAnimation { target: sessText; property: "opacity"; to: 0; duration: kit.dur(150) }
+                        NumberAnimation { target: sessTrans; property: "x"; to: 12 * s; duration: kit.dur(150) }
                     }
                     ScriptAction {
                         script: { if (typeof sessionModel !== "undefined" && sessionModel.rowCount() > 0) root.sessionIndex = (root.sessionIndex + 1) % sessionModel.rowCount() }
                     }
                     ParallelAnimation {
-                        NumberAnimation { target: sessText; property: "opacity"; to: 1; duration: 200 }
-                        NumberAnimation { target: sessTrans; property: "x"; to: 0; duration: 200 }
+                        NumberAnimation { target: sessText; property: "opacity"; to: 1; duration: kit.dur(200) }
+                        NumberAnimation { target: sessTrans; property: "x"; to: 0; duration: kit.dur(200) }
                     }
                 }
             }

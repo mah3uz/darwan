@@ -4,8 +4,10 @@ import Qt5Compat.GraphicalEffects
 import QtMultimedia
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     id: root
     readonly property real s: (Screen.height / 768) * 0.75
@@ -88,7 +90,8 @@ Rectangle {
     }
 
     FontLoader { id: mainFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "Noto Sans CJK SC"
+    readonly property string mainFontFamily: kit.font("text", mainFont.status === FontLoader.Ready ? mainFont.name : "Noto Sans CJK SC")
+    readonly property string clockFontFamily: kit.font("clock", mainFont.status === FontLoader.Ready ? mainFont.name : "Noto Sans CJK SC")
 
     // Auto-focus
     Timer { interval: 300; running: true; onTriggered: passIn.forceActiveFocus() }
@@ -148,11 +151,12 @@ Rectangle {
                     opacity: 0
                     SequentialAnimation on opacity {
                         loops: Animation.Infinite
-                        NumberAnimation { from: 0; to: root.isDarkTheme ? 0.5 : 0.3; duration: 3000 }
-                        NumberAnimation { from: root.isDarkTheme ? 0.5 : 0.3; to: 0; duration: 3000 }
+                        running: !kit.reduceMotion
+                        NumberAnimation { from: 0; to: root.isDarkTheme ? 0.5 : 0.3; duration: kit.dur(3000) }
+                        NumberAnimation { from: root.isDarkTheme ? 0.5 : 0.3; to: 0; duration: kit.dur(3000) }
                         PauseAnimation { duration: Math.random() * 4000 }
                     }
-                    NumberAnimation on y { from: 0; to: -100 * s; duration: 15000; loops: Animation.Infinite }
+                    NumberAnimation on y { from: 0; to: -100 * s; duration: 15000; loops: Animation.Infinite; running: !kit.reduceMotion }
                 }
             }
         }
@@ -163,7 +167,7 @@ Rectangle {
         id: mainUI
         anchors.fill: parent
         opacity: root.uiOpacity
-        NumberAnimation { running: true; target: root; property: "uiOpacity"; from: 0; to: 1; duration: 1200; easing.type: Easing.OutCubic }
+        NumberAnimation { running: true; target: root; property: "uiOpacity"; from: 0; to: 1; duration: kit.dur(1200); easing.type: kit.ease(Easing.OutCubic) }
 
         // Username
         Row {
@@ -204,7 +208,7 @@ Rectangle {
             Text {
                 id: genshinTime
                 anchors.right: parent.right
-                font.family: mainFontFamily
+                font.family: clockFontFamily
                 font.pixelSize: 52 * s
                 font.letterSpacing: 2 * s
                 color: root.gTextMain
@@ -255,7 +259,7 @@ Rectangle {
             opacity: root.loginFormVisible ? 0 : 0.95
             layer.enabled: true
             layer.effect: DropShadow { radius: 15; color: "#aa000000"; samples: 24 }
-            Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.InOutQuad } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(600); easing.type: kit.ease(Easing.InOutQuad) } }
             visible: opacity > 0
         }
 
@@ -274,7 +278,7 @@ Rectangle {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 10 * s
                 opacity: root.loginFormVisible ? 0.3 : 0.8
-                Behavior on opacity { NumberAnimation { duration: 500 } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(500) } }
                 
                 Rectangle {
                     width: parent.width; height: 1 * s
@@ -312,7 +316,7 @@ Rectangle {
                 anchors.bottomMargin: 30 * s
                 visible: root.loginFormVisible
                 opacity: visible ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutExpo } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(500); easing.type: kit.ease(Easing.OutExpo) } }
                 
                 Column {
                     id: loginFields
@@ -326,7 +330,7 @@ Rectangle {
                             anchors.fill: parent; color: "#aa1a243d"; radius: 6 * s
                             border.color: passIn.activeFocus ? root.gGold : "#55ffffff"
                             border.width: 1.5 * s
-                            Behavior on border.color { ColorAnimation { duration: 250 } }
+                            Behavior on border.color { ColorAnimation { duration: kit.dur(250) } }
                         }
                         
                         TextInput {
@@ -343,7 +347,7 @@ Rectangle {
                             Text {
                                 text: "ENTER PASSWORD"
                                 opacity: passIn.text.length === 0 ? 0.6 : 0
-                                Behavior on opacity { NumberAnimation { duration: 300 } }
+                                Behavior on opacity { NumberAnimation { duration: kit.dur(300) } }
                                 font: parent.font; color: root.gTextDim; anchors.centerIn: parent
                             }
                             
@@ -354,9 +358,9 @@ Rectangle {
                                 x: passIn.cursorRectangle.x
                                 visible: passIn.focus && (passIn.text.length > 0 || passIn.wasClicked)
                                 SequentialAnimation {
-                                    loops: Animation.Infinite; running: customCursor.visible
-                                    NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.1; duration: 400 }
-                                    NumberAnimation { target: customCursor; property: "opacity"; from: 0.1; to: 1; duration: 400 }
+                                    loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion
+                                    NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.1; duration: kit.dur(400) }
+                                    NumberAnimation { target: customCursor; property: "opacity"; from: 0.1; to: 1; duration: kit.dur(400) }
                                 }
                             }
                             MouseArea { anchors.fill: parent; onClicked: { passIn.forceActiveFocus(); passIn.wasClicked = true } }
@@ -464,8 +468,9 @@ Rectangle {
                 opacity: 0.9
                 SequentialAnimation on opacity {
                     loops: Animation.Infinite
-                    NumberAnimation { from: 0.4; to: 1.0; duration: 1800; easing.type: Easing.InOutSine }
-                    NumberAnimation { from: 1.0; to: 0.4; duration: 1800; easing.type: Easing.InOutSine }
+                    running: !kit.reduceMotion
+                    NumberAnimation { from: 0.4; to: 1.0; duration: kit.dur(1800); easing.type: kit.ease(Easing.InOutSine) }
+                    NumberAnimation { from: 1.0; to: 0.4; duration: kit.dur(1800); easing.type: kit.ease(Easing.InOutSine) }
                 }
             }
 
@@ -551,7 +556,7 @@ Rectangle {
         Rectangle { 
             anchors.fill: parent; color: "#cc000000"
             opacity: root.sessionPopupOpen ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 300 } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(300) } }
         }
         MouseArea { anchors.fill: parent; onClicked: root.sessionPopupOpen = false }
 
@@ -562,8 +567,8 @@ Rectangle {
             
             opacity: root.sessionPopupOpen ? 1 : 0
             scale: root.sessionPopupOpen ? 1 : 0.8
-            Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
-            Behavior on scale { NumberAnimation { duration: 350; easing.type: Easing.OutBack } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(350); easing.type: kit.ease(Easing.OutCubic) } }
+            Behavior on scale { NumberAnimation { duration: kit.dur(350); easing.type: kit.ease(Easing.OutBack) } }
 
             Column {
                 anchors.fill: parent; anchors.margins: 25 * s; spacing: 20 * s
@@ -581,7 +586,7 @@ Rectangle {
                             color: (index === root.sessionIndex) ? "#3b4a6b" : (sM.containsMouse ? "#2a3554" : "transparent")
                             border.color: (index === root.sessionIndex) ? "#d3bc8e" : "transparent"
                             border.width: 1.5 * s
-                            Behavior on color { ColorAnimation { duration: 200 } }
+                            Behavior on color { ColorAnimation { duration: kit.dur(200) } }
 
                             Text {
                                 text: model.name.toUpperCase(); anchors.centerIn: parent

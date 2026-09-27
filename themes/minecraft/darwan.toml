@@ -1,7 +1,12 @@
 name = "Minecraft"
 author = "Darkkal44"
 background = "image"
+background_file = "background.png"
 
 [supports]
 clock_format = true
 date_format = true
+background = true
+colors = true
+fonts = ["text"]
+motion = true

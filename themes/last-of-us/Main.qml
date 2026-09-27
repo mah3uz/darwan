@@ -3,8 +3,10 @@ import Qt5Compat.GraphicalEffects
 import QtMultimedia
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Item {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -21,9 +23,9 @@ Item {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
 
     // Colors
-    readonly property color textPrimary:   "#fffdf5"
-    readonly property color textSecondary: "#a89e8d"
-    readonly property color accent:        "#f7c594"
+    readonly property color textPrimary:   kit.color("text", "#fffdf5")
+    readonly property color textSecondary: kit.color("colorMuted", "#a89e8d")
+    readonly property color accent:        kit.color("accent", "#f7c594")
     readonly property color glassBg:       Qt.rgba(1, 1, 1, 0.035)
 
     // State
@@ -35,7 +37,8 @@ Item {
     // Fonts
     FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader      { id: mainFont;  source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
+    readonly property string mainFontFamily: kit.font("text", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
+    readonly property string clockFontFamily: kit.font("clock", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
 
     // Helpers
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 1; height: 1; z: -100; delegate: Item { property string sName: model.name || "" } }
@@ -66,8 +69,14 @@ Item {
 
     // Environment
     Rectangle { anchors.fill: parent; color: "#0a0a09"; z: -2000 }
-    MediaPlayer { id: player; source: "bg.mp4"; videoOutput: bgVideo; loops: MediaPlayer.Infinite; Component.onCompleted: player.play() }
-    VideoOutput { id: bgVideo; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop; z: -1000 }
+    Loader {
+        anchors.fill: parent; z: -1000; active: !userBg.active
+        sourceComponent: Item {
+            MediaPlayer { id: player; source: "bg.mp4"; videoOutput: bgVideo; loops: MediaPlayer.Infinite; Component.onCompleted: player.play() }
+            VideoOutput { id: bgVideo; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
+        }
+    }
+    Background { id: userBg; anchors.fill: parent; z: -1000 }
 
     Rectangle {
         anchors.fill: parent
@@ -75,7 +84,7 @@ Item {
         opacity: 0.18
         gradient: Gradient {
             GradientStop { position: 0; color: "transparent" }
-            GradientStop { position: 1; color: "#33f7c594" }
+            GradientStop { position: 1; color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.2) }
         }
     }
 
@@ -102,11 +111,11 @@ Item {
                 opacity: 0.12 
             }
             SequentialAnimation {
-                running: true
+                running: !kit.reduceMotion
                 loops: Animation.Infinite
                 ParallelAnimation {
-                    NumberAnimation { target: mote; property: "y"; to: mote.sy - 100; duration: mote.dur; easing.type: Easing.InOutSine }
-                    NumberAnimation { target: mote; property: "x"; to: mote.sx + mote.dr; duration: mote.dur; easing.type: Easing.InOutSine }
+                    NumberAnimation { target: mote; property: "y"; to: mote.sy - 100; duration: mote.dur; easing.type: kit.ease(Easing.InOutSine) }
+                    NumberAnimation { target: mote; property: "x"; to: mote.sx + mote.dr; duration: mote.dur; easing.type: kit.ease(Easing.InOutSine) }
                     SequentialAnimation { 
                         NumberAnimation { target: mote; property: "opacity"; to: 0.4; duration: mote.dur * 0.4 }
                         NumberAnimation { target: mote; property: "opacity"; to: 0; duration: mote.dur * 0.6 } 
@@ -133,7 +142,7 @@ Item {
             Text {
                 id: clockText
                 text: Qt.formatTime(new Date(), clockFmt)
-                font.family: mainFontFamily
+                font.family: clockFontFamily
                 font.pixelSize: 104 * s
                 font.weight: Font.DemiBold
                 color: root.textPrimary
@@ -148,8 +157,9 @@ Item {
                 }
                 SequentialAnimation on opacity {
                     loops: Animation.Infinite
-                    NumberAnimation { to: 0.88; duration: 5000; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 0.95; duration: 5000; easing.type: Easing.InOutSine }
+                    running: !kit.reduceMotion
+                    NumberAnimation { to: 0.88; duration: 5000; easing.type: kit.ease(Easing.InOutSine) }
+                    NumberAnimation { to: 0.95; duration: 5000; easing.type: kit.ease(Easing.InOutSine) }
                 }
             }
             Text {
@@ -190,7 +200,7 @@ Item {
                         font.weight: Font.Bold
                         font.letterSpacing: 1 * s
                         color: uMa.containsMouse ? root.accent : root.textPrimary
-                        Behavior on color { ColorAnimation { duration: 300 } }
+                        Behavior on color { ColorAnimation { duration: kit.dur(300) } }
                         MouseArea { 
                             id: uMa
                             anchors.fill: parent
@@ -240,7 +250,7 @@ Item {
                             font.letterSpacing: 4 * s
                             color: root.textSecondary
                             opacity: (passInput.text.length === 0 && !passInput.wasClicked) ? 0.35 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 300 } } 
+                            Behavior on opacity { NumberAnimation { duration: kit.dur(300) } } 
                         }
                         
                         Rectangle {
@@ -256,9 +266,9 @@ Item {
                             layer.effect: DropShadow { color: root.accent; radius: 8; samples: 16 }
                             SequentialAnimation { 
                                 loops: Animation.Infinite
-                                running: cur.visible
-                                NumberAnimation { target: cur; property: "opacity"; from: 1; to: 0.15; duration: 700; easing.type: Easing.InOutSine }
-                                NumberAnimation { target: cur; property: "opacity"; from: 0.15; to: 1; duration: 700; easing.type: Easing.InOutSine } 
+                                running: cur.visible && !kit.reduceMotion
+                                NumberAnimation { target: cur; property: "opacity"; from: 1; to: 0.15; duration: kit.dur(700); easing.type: kit.ease(Easing.InOutSine) }
+                                NumberAnimation { target: cur; property: "opacity"; from: 0.15; to: 1; duration: kit.dur(700); easing.type: kit.ease(Easing.InOutSine) } 
                             }
                         }
                     }
@@ -270,8 +280,8 @@ Item {
                         color: eMa.containsMouse ? root.accent : root.textPrimary
                         opacity: passInput.text.length > 0 ? 0.8 : 0.0
                         scale: passInput.text.length > 0 ? 1.0 : 0.8
-                        Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutQuart } }
-                        Behavior on scale { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                        Behavior on opacity { NumberAnimation { duration: kit.dur(350); easing.type: kit.ease(Easing.OutQuart) } }
+                        Behavior on scale { NumberAnimation { duration: kit.dur(450); easing.type: kit.ease(Easing.OutBack) } }
                         MouseArea { id: eMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.login() }
                     }
 
@@ -298,11 +308,11 @@ Item {
             SequentialAnimation {
                 id: errorShake
                 property real base: uiContainer.leftPadding
-                NumberAnimation { target: loginWrapper; property: "x"; to: errorShake.base + 15 * s; duration: 45 }
-                NumberAnimation { target: loginWrapper; property: "x"; to: errorShake.base - 15 * s; duration: 45 }
-                NumberAnimation { target: loginWrapper; property: "x"; to: errorShake.base + 10 * s; duration: 45 }
-                NumberAnimation { target: loginWrapper; property: "x"; to: errorShake.base - 10 * s; duration: 45 }
-                NumberAnimation { target: loginWrapper; property: "x"; to: errorShake.base; duration: 45 }
+                NumberAnimation { target: loginWrapper; property: "x"; to: errorShake.base + 15 * s; duration: kit.dur(45) }
+                NumberAnimation { target: loginWrapper; property: "x"; to: errorShake.base - 15 * s; duration: kit.dur(45) }
+                NumberAnimation { target: loginWrapper; property: "x"; to: errorShake.base + 10 * s; duration: kit.dur(45) }
+                NumberAnimation { target: loginWrapper; property: "x"; to: errorShake.base - 10 * s; duration: kit.dur(45) }
+                NumberAnimation { target: loginWrapper; property: "x"; to: errorShake.base; duration: kit.dur(45) }
                 onStopped: root.loginError = false
             }
 
@@ -320,9 +330,9 @@ Item {
                 scale: root.userMenuOpen ? 1 : 0.98
                 transform: Translate { y: root.userMenuOpen ? 0 : 15 * s }
                 
-                Behavior on opacity { NumberAnimation { duration: 450; easing.type: Easing.OutQuart } }
-                Behavior on scale { NumberAnimation { duration: 600; easing.type: Easing.OutBack } }
-                Behavior on y { NumberAnimation { duration: 600; easing.type: Easing.OutBack } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(450); easing.type: kit.ease(Easing.OutQuart) } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(600); easing.type: kit.ease(Easing.OutBack) } }
+                Behavior on y { NumberAnimation { duration: kit.dur(600); easing.type: kit.ease(Easing.OutBack) } }
 
                 Rectangle {
                     anchors.fill: parent
@@ -376,7 +386,7 @@ Item {
                                     color: root.accent
                                     opacity: (itemMa.containsMouse || index === root.userIndex) ? 0.08 : 0.02
                                     border.color: (itemMa.containsMouse || index === root.userIndex) ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
-                                    Behavior on opacity { NumberAnimation { duration: 250 } }
+                                    Behavior on opacity { NumberAnimation { duration: kit.dur(250) } }
                                 }
 
                                 Row {
@@ -392,7 +402,7 @@ Item {
                                             height: width; radius: width/2
                                             color: (index === root.userIndex) ? root.accent : root.textSecondary
                                             opacity: (index === root.userIndex) ? 1.0 : 0.4
-                                            Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                                            Behavior on width { NumberAnimation { duration: kit.dur(300); easing.type: kit.ease(Easing.OutBack) } }
                                         }
                                     }
 
@@ -401,7 +411,7 @@ Item {
                                         font.family: mainFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s
                                         color: (index === root.userIndex) ? root.accent : (itemMa.containsMouse ? root.textPrimary : root.textSecondary)
                                         anchors.verticalCenter: parent.verticalCenter
-                                        Behavior on color { ColorAnimation { duration: 250 } }
+                                        Behavior on color { ColorAnimation { duration: kit.dur(250) } }
                                     }
                                 }
 
@@ -436,7 +446,7 @@ Item {
                         font.letterSpacing: 2 * s
                         anchors.verticalCenter: parent.verticalCenter
                         color: pMa.containsMouse ? root.accent : root.textSecondary
-                        Behavior on color { ColorAnimation { duration: 250 } }
+                        Behavior on color { ColorAnimation { duration: kit.dur(250) } }
                         MouseArea { 
                             id: pMa
                             anchors.fill: parent
@@ -464,8 +474,9 @@ Item {
                         width: 6 * s; height: 6 * s; radius: 3 * s; color: root.accent; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -2 * s; opacity: 0.8 
                         SequentialAnimation on opacity { 
                             loops: Animation.Infinite
-                            NumberAnimation { to: 0.3; duration: 1500 }
-                            NumberAnimation { to: 0.8; duration: 1500 } 
+                            running: !kit.reduceMotion
+                            NumberAnimation { to: 0.3; duration: kit.dur(1500) }
+                            NumberAnimation { to: 0.8; duration: kit.dur(1500) } 
                         }
                     }
                     Text {
@@ -476,7 +487,7 @@ Item {
                         font.letterSpacing: 2 * s
                         anchors.verticalCenter: parent.verticalCenter
                         color: sMa.containsMouse ? root.accent : root.textSecondary
-                        Behavior on color { ColorAnimation { duration: 250 } }
+                        Behavior on color { ColorAnimation { duration: kit.dur(250) } }
                         transform: Translate { id: sessTrans; x: 0 }
                     }
                 }
@@ -490,13 +501,13 @@ Item {
                 SequentialAnimation {
                     id: toggleAnim
                     ParallelAnimation { 
-                        NumberAnimation { target: sessText; property: "opacity"; to: 0; duration: 150 }
-                        NumberAnimation { target: sessTrans; property: "x"; to: 10 * s; duration: 150 } 
+                        NumberAnimation { target: sessText; property: "opacity"; to: 0; duration: kit.dur(150) }
+                        NumberAnimation { target: sessTrans; property: "x"; to: 10 * s; duration: kit.dur(150) } 
                     }
                     ScriptAction { script: { root.sessionIndex = (root.sessionIndex + 1) % sessionModel.rowCount() } }
                     ParallelAnimation { 
-                        NumberAnimation { target: sessText; property: "opacity"; to: 1; duration: 200 }
-                        NumberAnimation { target: sessTrans; property: "x"; to: 0; duration: 200 } 
+                        NumberAnimation { target: sessText; property: "opacity"; to: 1; duration: kit.dur(200) }
+                        NumberAnimation { target: sessTrans; property: "x"; to: 0; duration: kit.dur(200) } 
                     }
                 }
             }

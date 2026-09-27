@@ -3,8 +3,10 @@ import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -28,9 +30,9 @@ Rectangle {
     property string displayUserName: ""
 
     // Colors
-    readonly property color sakuraPink:    "#d4849e"
-    readonly property color sakuraLight:   "#f0c4d4"
-    readonly property color mistWhite:     "#e8eef2"
+    readonly property color sakuraPink:    kit.color("accent", "#d4849e")
+    readonly property color sakuraLight:   Qt.colorEqual(sakuraPink, "#d4849e") ? "#f0c4d4" : Qt.lighter(sakuraPink, 1.3)
+    readonly property color mistWhite:     kit.color("text", "#e8eef2")
     readonly property color slateDeep:     "#1a1f2e"
     readonly property color accentGlow:    "#c8608080"
 
@@ -44,7 +46,8 @@ Rectangle {
     }
 
     FontLoader { id: orbitron; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string orbitronFamily: orbitron.status === FontLoader.Ready ? orbitron.name : "sans-serif"
+    readonly property string orbitronFamily: kit.font("text", orbitron.status === FontLoader.Ready ? orbitron.name : "sans-serif")
+    readonly property string clockFamily: kit.font("clock", orbitron.status === FontLoader.Ready ? orbitron.name : "sans-serif")
 
     // Models
     ListView {
@@ -81,8 +84,8 @@ Rectangle {
     NumberAnimation {
         id: fadeAnim
         target: root; property: "ui"
-        from: 0; to: 1; duration: 1600
-        easing.type: Easing.OutCubic
+        from: 0; to: 1; duration: kit.dur(1600)
+        easing.type: kit.ease(Easing.OutCubic)
     }
 
     // Base
@@ -98,8 +101,10 @@ Rectangle {
     // Video
     Loader {
         anchors.fill: parent
+        active: !userBg.active
         source: "BackgroundVideo.qml"
     }
+    Background { id: userBg; anchors.fill: parent }
 
     // Vignette
     RadialGradient {
@@ -160,23 +165,23 @@ Rectangle {
             }
 
             SequentialAnimation {
-                running: true; loops: Animation.Infinite
+                running: !kit.reduceMotion; loops: Animation.Infinite
                 PauseAnimation { duration: petal.delayMs }
                 ParallelAnimation {
                     NumberAnimation {
                         target: petal; property: "y"
                         from: -20; to: root.height + 20
-                        duration: petal.dur; easing.type: Easing.InOutSine
+                        duration: petal.dur; easing.type: kit.ease(Easing.InOutSine)
                     }
                     NumberAnimation {
                         target: petal; property: "x"
                         from: petal.startX; to: petal.startX + petal.drift
-                        duration: petal.dur; easing.type: Easing.InOutSine
+                        duration: petal.dur; easing.type: kit.ease(Easing.InOutSine)
                     }
                     SequentialAnimation {
-                        NumberAnimation { target: petal; property: "opacity"; to: 0.75; duration: 800 }
+                        NumberAnimation { target: petal; property: "opacity"; to: 0.75; duration: kit.dur(800) }
                         PauseAnimation { duration: petal.dur - 1600 }
-                        NumberAnimation { target: petal; property: "opacity"; to: 0; duration: 800 }
+                        NumberAnimation { target: petal; property: "opacity"; to: 0; duration: kit.dur(800) }
                     }
                     NumberAnimation {
                         target: petal; property: "rotation"
@@ -201,7 +206,7 @@ Rectangle {
             id: clockText
             text: Qt.formatTime(new Date(), clockFmt)
             color: root.mistWhite
-            font.family: orbitronFamily
+            font.family: clockFamily
             font.pixelSize: 80 * s
             font.weight: Font.Light
             style: Text.Normal
@@ -219,8 +224,9 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 SequentialAnimation on opacity {
                     loops: Animation.Infinite
-                    NumberAnimation { to: 0.3; duration: 1800; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1.0; duration: 1800; easing.type: Easing.InOutSine }
+                    running: !kit.reduceMotion
+                    NumberAnimation { to: 0.3; duration: kit.dur(1800); easing.type: kit.ease(Easing.InOutSine) }
+                    NumberAnimation { to: 1.0; duration: kit.dur(1800); easing.type: kit.ease(Easing.InOutSine) }
                 }
             }
             Text {
@@ -257,7 +263,7 @@ Rectangle {
             font.letterSpacing: 4 * s
             
             scale: uMa.containsMouse ? 1.05 : 1.0
-            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+            Behavior on scale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
 
             transform: Translate { id: uTrans; x: 0 }
 
@@ -275,8 +281,8 @@ Rectangle {
             SequentialAnimation {
                 id: uToggleAnim
                 ParallelAnimation {
-                    NumberAnimation { target: userNameText; property: "opacity"; to: 0; duration: 120; easing.type: Easing.InQuad }
-                    NumberAnimation { target: uTrans; property: "x"; to: 15 * s; duration: 120; easing.type: Easing.InQuad }
+                    NumberAnimation { target: userNameText; property: "opacity"; to: 0; duration: kit.dur(120); easing.type: kit.ease(Easing.InQuad) }
+                    NumberAnimation { target: uTrans; property: "x"; to: 15 * s; duration: kit.dur(120); easing.type: kit.ease(Easing.InQuad) }
                 }
                 ScriptAction { 
                     script: {
@@ -290,8 +296,8 @@ Rectangle {
                     } 
                 }
                 ParallelAnimation {
-                    NumberAnimation { target: userNameText; property: "opacity"; to: 1; duration: 180; easing.type: Easing.OutQuad }
-                    NumberAnimation { target: uTrans; property: "x"; to: 0; duration: 180; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: userNameText; property: "opacity"; to: 1; duration: kit.dur(180); easing.type: kit.ease(Easing.OutQuad) }
+                    NumberAnimation { target: uTrans; property: "x"; to: 0; duration: kit.dur(180); easing.type: kit.ease(Easing.OutQuad) }
                 }
             }
         }
@@ -324,8 +330,8 @@ Rectangle {
                               : Qt.rgba(1, 1, 1, 0.10)
                 border.width: 1 * s
 
-                Behavior on border.color { ColorAnimation { duration: 300 } }
-                Behavior on color      { ColorAnimation { duration: 300 } }
+                Behavior on border.color { ColorAnimation { duration: kit.dur(300) } }
+                Behavior on color      { ColorAnimation { duration: kit.dur(300) } }
             }
 
             Rectangle {
@@ -335,7 +341,7 @@ Rectangle {
                 width: 6 * s; height: 6 * s; radius: 3 * s
                 color: root.sakuraPink
                 opacity: passwordField.activeFocus ? 1.0 : 0.2
-                Behavior on opacity { NumberAnimation { duration: 300 } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(300) } }
             }
 
             TextInput {
@@ -383,9 +389,9 @@ Rectangle {
                         layer.effect: DropShadow { color: root.sakuraPink; radius: 8; samples: 16 }
 
                         SequentialAnimation {
-                            loops: Animation.Infinite; running: customCursor.visible
-                            NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.2; duration: 600; easing.type: Easing.InOutSine }
-                            NumberAnimation { target: customCursor; property: "opacity"; from: 0.2; to: 1; duration: 600; easing.type: Easing.InOutSine }
+                            loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion
+                            NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.2; duration: kit.dur(600); easing.type: kit.ease(Easing.InOutSine) }
+                            NumberAnimation { target: customCursor; property: "opacity"; from: 0.2; to: 1; duration: kit.dur(600); easing.type: kit.ease(Easing.InOutSine) }
                         }
                     }
                 }
@@ -395,7 +401,7 @@ Rectangle {
                     text: "password"
                     color: "white"
                     opacity: (passwordField.text.length === 0 && !passwordField.wasClicked) ? 0.2 : 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(400); easing.type: kit.ease(Easing.InOutSine) } }
                     font.family: orbitronFamily; font.pixelSize: 13 * s; font.letterSpacing: 2 * s
                 }
 
@@ -424,7 +430,7 @@ Rectangle {
                            : Qt.rgba(0.84, 0.52, 0.62, 0.15)
                     border.color: Qt.rgba(0.84, 0.52, 0.62, 0.45)
                     border.width: 1 * s
-                    Behavior on color { ColorAnimation { duration: 200 } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(200) } }
                 }
 
                 Text {
@@ -434,7 +440,7 @@ Rectangle {
                     font.family: orbitronFamily
                     font.pixelSize: 20 * s
                     opacity: passwordField.text.length > 0 ? 1.0 : 0.4
-                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(200) } }
                 }
 
                 MouseArea {
@@ -446,7 +452,7 @@ Rectangle {
                 }
 
                 scale: submitMouse.containsMouse ? 1.08 : 1.0
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(150); easing.type: kit.ease(Easing.OutQuad) } }
             }
         }
 
@@ -471,11 +477,11 @@ Rectangle {
     // Animation
     SequentialAnimation {
         id: shakeAnim
-        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x + 10; duration: 50 }
-        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x - 9;  duration: 50 }
-        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x + 7;  duration: 50 }
-        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x - 5;  duration: 50 }
-        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x;      duration: 50 }
+        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x + 10; duration: kit.dur(50) }
+        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x - 9;  duration: kit.dur(50) }
+        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x + 7;  duration: kit.dur(50) }
+        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x - 5;  duration: kit.dur(50) }
+        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x;      duration: kit.dur(50) }
     }
 
     // UI
@@ -510,8 +516,8 @@ Rectangle {
                 
                 opacity: sMa.containsMouse ? 1.0 : 0.85
                 scale: sMa.containsMouse ? 1.05 : 1.0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-                Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(200) } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(200); easing.type: kit.ease(Easing.OutBack) } }
                 transform: Translate { id: sTrans; x: 0 }
 
                 Text {
@@ -543,13 +549,13 @@ Rectangle {
             SequentialAnimation {
                 id: sToggleAnim
                 ParallelAnimation {
-                    NumberAnimation { target: sessionLabel; property: "opacity"; to: 0; duration: 120; easing.type: Easing.InQuad }
-                    NumberAnimation { target: sTrans; property: "x"; to: 10 * s; duration: 120; easing.type: Easing.InQuad }
+                    NumberAnimation { target: sessionLabel; property: "opacity"; to: 0; duration: kit.dur(120); easing.type: kit.ease(Easing.InQuad) }
+                    NumberAnimation { target: sTrans; property: "x"; to: 10 * s; duration: kit.dur(120); easing.type: kit.ease(Easing.InQuad) }
                 }
                 ScriptAction { script: root.sessionIndex = (root.sessionIndex + 1) % sessionModel.rowCount() }
                 ParallelAnimation {
-                    NumberAnimation { target: sessionLabel; property: "opacity"; to: 0.6; duration: 180; easing.type: Easing.OutQuad }
-                    NumberAnimation { target: sTrans; property: "x"; to: 0; duration: 180; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: sessionLabel; property: "opacity"; to: 0.6; duration: kit.dur(180); easing.type: kit.ease(Easing.OutQuad) }
+                    NumberAnimation { target: sTrans; property: "x"; to: 0; duration: kit.dur(180); easing.type: kit.ease(Easing.OutQuad) }
                 }
             }
         }
@@ -571,9 +577,9 @@ Rectangle {
                     color: "white"; opacity: 0.4
                     font.family: orbitronFamily; font.pixelSize: 11 * s; font.letterSpacing: 1 * s
 
-                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(150) } }
                     scale: pm.containsMouse ? 1.1 : 1.0
-                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(200); easing.type: kit.ease(Easing.OutBack) } }
 
                     MouseArea {
                         id: pm

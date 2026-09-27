@@ -1,3 +1,10 @@
 name = "Nine Sols"
 author = "Darkkal44"
 background = "image"
+background_file = "bg.png"
+
+[supports]
+background = true
+colors = true
+fonts = ["text"]
+motion = true

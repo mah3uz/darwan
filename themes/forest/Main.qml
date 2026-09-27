@@ -6,8 +6,10 @@ import Qt5Compat.GraphicalEffects
 import QtMultimedia
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Item {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -23,8 +25,8 @@ Item {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
 
     // Colors
-    readonly property color fgColor: "#ffffff"
-    readonly property color accentColor: "#d3eaad" 
+    readonly property color fgColor: kit.color("text", "#ffffff")
+    readonly property color accentColor: kit.color("accent", "#d3eaad")
     
     // State
     property int userIndex: (typeof userModel !== "undefined" && userModel.lastIndex >= 0) ? userModel.lastIndex : 0
@@ -39,7 +41,8 @@ Item {
     // Fonts
     FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader { id: mainFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
+    readonly property string mainFontFamily: kit.font("text", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
+    readonly property string clockFontFamily: kit.font("clock", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
 
     function capitalize(str) { if (!str) return ""; return str.charAt(0).toUpperCase() + str.slice(1); }
     
@@ -63,17 +66,27 @@ Item {
     // Background
     Rectangle { anchors.fill: parent; color: "#010801"; z: -1000 }
     
-    MediaPlayer {
-        id: player; source: "bg.mp4"
-        videoOutput: bgVideo; loops: MediaPlayer.Infinite
-        Component.onCompleted: player.play()
+    Item {
+        id: backdrop; anchors.fill: parent; z: -500
+        Loader {
+            anchors.fill: parent; active: !userBg.active
+            sourceComponent: Item {
+                MediaPlayer {
+                    id: player; source: "bg.mp4"
+                    videoOutput: bgVideo; loops: MediaPlayer.Infinite
+                    Component.onCompleted: player.play()
+                }
+                VideoOutput { id: bgVideo; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
+            }
+        }
+        Background { id: userBg; anchors.fill: parent }
     }
-    VideoOutput { id: bgVideo; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop; z: -500 }
 
 
     // Glass
-    ShaderEffectSource { id: baseVideoSource; sourceItem: bgVideo; visible: false; live: true; recursive: false }
-    FastBlur { id: globalGlassBlur; anchors.fill: parent; source: baseVideoSource; radius: 96; z: -1000; visible: true }
+    ShaderEffectSource { id: baseVideoSource; sourceItem: backdrop; visible: false; live: true; recursive: false }
+    // Only the glass panels sample this; drawing it too would cost a full-screen pass hidden under the video.
+    FastBlur { id: globalGlassBlur; anchors.fill: parent; source: baseVideoSource; radius: 96; z: -1000; visible: false }
 
     component LiquidGlass: Item {
         id: lg
@@ -83,7 +96,7 @@ Item {
         property real blurBrightness: -0.10
         property color topRimColor: "#ccffffff"
         
-        Behavior on blurBrightness { NumberAnimation { duration: 300 } }
+        Behavior on blurBrightness { NumberAnimation { duration: kit.dur(300) } }
         anchors.fill: parent
         
         Rectangle { id: maskRect; anchors.fill: parent; radius: lg.glassRadius; visible: false }
@@ -163,7 +176,7 @@ Item {
             anchors.centerIn: parent; anchors.verticalCenterOffset: -8 * s; spacing: 5 * s
             Text {
                 id: clockText; text: Qt.formatTime(new Date(), clockFmt)
-                font.family: mainFontFamily; font.pixelSize: 90 * s; font.weight: Font.Medium; color: "white"; font.letterSpacing: -2 * s; opacity: 0.95; anchors.horizontalCenter: parent.horizontalCenter
+                font.family: clockFontFamily; font.pixelSize: 90 * s; font.weight: Font.Medium; color: root.fgColor; font.letterSpacing: -2 * s; opacity: 0.95; anchors.horizontalCenter: parent.horizontalCenter
                 Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), clockFmt) }
             }
             Text {
@@ -184,9 +197,9 @@ Item {
         Item {
             id: userMorpher; width: parent.width; height: root.userPopupOpen ? 325 * s : 75 * s; y: 0
             opacity: root.sessionPopupOpen ? 0.0 : 1.0; z: root.userPopupOpen ? 100 : 1
-            Behavior on opacity { NumberAnimation { duration: 400 } }
-            Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutQuart } }
-            Behavior on height { NumberAnimation { duration: 500; easing.type: Easing.OutQuart } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(400) } }
+            Behavior on y { NumberAnimation { duration: kit.dur(500); easing.type: kit.ease(Easing.OutQuart) } }
+            Behavior on height { NumberAnimation { duration: kit.dur(500); easing.type: kit.ease(Easing.OutQuart) } }
             layer.enabled: true; layer.effect: DropShadow { transparentBorder: true; color: "#35000000"; radius: root.userPopupOpen ? 45*s : 30*s; verticalOffset: 10 * s }
             
             LiquidGlass { 
@@ -195,7 +208,7 @@ Item {
                 topRimColor: (userMouse.containsMouse || root.userPopupOpen) ? "#ffffffff" : "#ccffffff"
             }
 
-            property real morphRatio: root.userPopupOpen ? 1.0 : 0.0; Behavior on morphRatio { NumberAnimation { duration: 500; easing.type: Easing.OutQuart } }
+            property real morphRatio: root.userPopupOpen ? 1.0 : 0.0; Behavior on morphRatio { NumberAnimation { duration: kit.dur(500); easing.type: kit.ease(Easing.OutQuart) } }
 
             Row {
                 id: compactUserContent
@@ -207,8 +220,8 @@ Item {
                 }
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
-                    Text { text: "WELCOME BACK"; font.family: mainFontFamily; font.pixelSize: 12 * s; color: "white"; opacity: 0.5; font.letterSpacing: 2 * s }
-                    Text { text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (typeof userModel !== "undefined" && userModel.lastUser ? userModel.lastUser : "USER")).toUpperCase(); font.family: mainFontFamily; font.pixelSize: 22 * s; font.weight: Font.Bold; color: "white"; font.letterSpacing: 1 * s }
+                    Text { text: "WELCOME BACK"; font.family: mainFontFamily; font.pixelSize: 12 * s; color: root.fgColor; opacity: 0.5; font.letterSpacing: 2 * s }
+                    Text { text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (typeof userModel !== "undefined" && userModel.lastUser ? userModel.lastUser : "USER")).toUpperCase(); font.family: mainFontFamily; font.pixelSize: 22 * s; font.weight: Font.Bold; color: root.fgColor; font.letterSpacing: 1 * s }
                 }
             }
             Column {
@@ -226,10 +239,10 @@ Item {
                         MouseArea { id: innerUserMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { root.userIndex = index; root.userPopupOpen = false } }
                     }
                 }
-                Text { text: "ESCAPE"; font.family: mainFontFamily; font.pixelSize: 9 * s; color: "white"; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 3 * s; opacity: 0.4; MouseArea { anchors.fill: parent; onClicked: root.userPopupOpen = false; cursorShape: Qt.PointingHandCursor } }
+                Text { text: "ESCAPE"; font.family: mainFontFamily; font.pixelSize: 9 * s; color: root.fgColor; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 3 * s; opacity: 0.4; MouseArea { anchors.fill: parent; onClicked: root.userPopupOpen = false; cursorShape: Qt.PointingHandCursor } }
             }
             MouseArea { id: userMouse; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true; visible: !root.userPopupOpen; onClicked: root.userPopupOpen = true; onPressed: userMorpher.scale = 0.98; onReleased: userMorpher.scale = 1.0 }
-            Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+            Behavior on scale { NumberAnimation { duration: kit.dur(300); easing.type: kit.ease(Easing.OutBack) } }
         }
 
         // Target
@@ -237,7 +250,7 @@ Item {
             id: passwordCard; width: parent.width; height: 75 * s; y: 95 * s
             opacity: (root.sessionPopupOpen || root.userPopupOpen) ? 0.0 : 1.0
             layer.enabled: true; layer.effect: DropShadow { transparentBorder: true; color: passInput.activeFocus ? "#33d3eaad" : "#35000000"; radius: 30*s; verticalOffset: 8 * s }
-            Behavior on opacity { NumberAnimation { duration: 400 } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(400) } }
             LiquidGlass {
                 glassRadius: 22 * s
                 blurBrightness: passInput.activeFocus ? -0.05 : -0.10
@@ -255,9 +268,9 @@ Item {
                 onActiveFocusChanged: if (!activeFocus && text.length === 0) wasClicked = false
                 cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                 Text { 
-                    text: "Enter Passcode"; anchors.fill: parent; verticalAlignment: Text.AlignVCenter; color: "white"; font.italic: true; font.pixelSize: 18 * s
+                    text: "Enter Passcode"; anchors.fill: parent; verticalAlignment: Text.AlignVCenter; color: root.fgColor; font.italic: true; font.pixelSize: 18 * s
                     opacity: (passInput.text.length === 0 && errText.text === "") ? 0.3 : 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(400); easing.type: kit.ease(Easing.InOutSine) } }
                 }
                 Text {
                     id: errText
@@ -277,9 +290,9 @@ Item {
                     x: passInput.cursorRectangle.x - width/2 + 2 * s
                     visible: passInput.focus && (passInput.text.length > 0 || passInput.wasClicked)
                     SequentialAnimation {
-                        loops: Animation.Infinite; running: customCursor.visible
-                        NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: 450 }
-                        NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: 450 }
+                        loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion
+                        NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: kit.dur(450) }
+                        NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: kit.dur(450) }
                     }
                 }
                 MouseArea {
@@ -297,13 +310,13 @@ Item {
             anchors.right: parent.right; anchors.rightMargin: 15 * s; y: 95 * s + 15 * s
             width: 44 * s; height: 1.0 * width; z: 50
             opacity: (root.sessionPopupOpen || root.userPopupOpen) ? 0.0 : (passInput.text.length > 0 ? 1.0 : 0.0)
-            scale: innerLoginMouse.containsMouse ? 1.15 : 1.0; Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            Behavior on opacity { NumberAnimation { duration: 300 } }
+            scale: innerLoginMouse.containsMouse ? 1.15 : 1.0; Behavior on scale { NumberAnimation { duration: kit.dur(300); easing.type: kit.ease(Easing.OutBack) } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(300) } }
             
             layer.enabled: true; layer.effect: DropShadow { transparentBorder: true; color: "#45000000"; radius: 20*s; verticalOffset: 5 * s }
 
             LiquidGlass { glassRadius: width/2; blurBrightness: innerLoginMouse.containsMouse ? -0.05 : -0.10; topRimColor: innerLoginMouse.containsMouse ? root.accentColor : "#ccffffff" }
-            Text { anchors.centerIn: parent; text: "→"; font.pixelSize: 22 * s; color: "white"; opacity: innerLoginMouse.containsMouse ? 1.0 : 0.7 }
+            Text { anchors.centerIn: parent; text: "→"; font.pixelSize: 22 * s; color: root.fgColor; opacity: innerLoginMouse.containsMouse ? 1.0 : 0.7 }
             MouseArea { id: innerLoginMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.login(); cursorShape: Qt.PointingHandCursor }
         }
 
@@ -313,14 +326,14 @@ Item {
             visible: !root.isQuickshell
             width: parent.width; height: root.sessionPopupOpen ? 335 * s : 75 * s; y: root.sessionPopupOpen ? 0 : 190 * s
             opacity: root.userPopupOpen ? 0.0 : 1.0; z: root.sessionPopupOpen ? 100 : 1
-            Behavior on opacity { NumberAnimation { duration: 400 } }
-            Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutQuart } }
-            Behavior on height { NumberAnimation { duration: 500; easing.type: Easing.OutQuart } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(400) } }
+            Behavior on y { NumberAnimation { duration: kit.dur(500); easing.type: kit.ease(Easing.OutQuart) } }
+            Behavior on height { NumberAnimation { duration: kit.dur(500); easing.type: kit.ease(Easing.OutQuart) } }
             layer.enabled: true; layer.effect: DropShadow { transparentBorder: true; color: "#35000000"; radius: root.sessionPopupOpen ? 45*s : 30*s; verticalOffset: 10 * s }
             
             LiquidGlass { glassRadius: 22 * s; blurBrightness: root.sessionPopupOpen ? -0.25 : (sessMouse.containsMouse ? -0.05 : -0.10); topRimColor: (sessMouse.containsMouse || root.sessionPopupOpen) ? "#ffffffff" : "#ccffffff" }
 
-            property real morphRatio: root.sessionPopupOpen ? 1.0 : 0.0; Behavior on morphRatio { NumberAnimation { duration: 500; easing.type: Easing.OutQuart } }
+            property real morphRatio: root.sessionPopupOpen ? 1.0 : 0.0; Behavior on morphRatio { NumberAnimation { duration: kit.dur(500); easing.type: kit.ease(Easing.OutQuart) } }
 
             Text { 
                 anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter; anchors.topMargin: 27 * s
@@ -340,28 +353,28 @@ Item {
                         MouseArea { id: innerSessMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { root.sessionIndex = index; root.sessionPopupOpen = false } }
                     }
                 }
-                Text { text: "ESCAPE"; font.family: mainFontFamily; font.pixelSize: 9 * s; color: "white"; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 4 * s; opacity: 0.4; MouseArea { anchors.fill: parent; onClicked: root.sessionPopupOpen = false; cursorShape: Qt.PointingHandCursor } }
+                Text { text: "ESCAPE"; font.family: mainFontFamily; font.pixelSize: 9 * s; color: root.fgColor; anchors.horizontalCenter: parent.horizontalCenter; font.letterSpacing: 4 * s; opacity: 0.4; MouseArea { anchors.fill: parent; onClicked: root.sessionPopupOpen = false; cursorShape: Qt.PointingHandCursor } }
             }
             MouseArea { id: sessMouse; anchors.fill: parent; hoverEnabled: true; visible: !root.sessionPopupOpen; onClicked: root.sessionPopupOpen = true; cursorShape: Qt.PointingHandCursor; onPressed: sessionMorpher.scale = 0.98; onReleased: sessionMorpher.scale = 1.0 }
-            Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+            Behavior on scale { NumberAnimation { duration: kit.dur(300); easing.type: kit.ease(Easing.OutBack) } }
         }
 
         // Actions
         Row {
             width: parent.width; height: 50 * s; y: 285 * s; spacing: 20 * s
             opacity: (root.sessionPopupOpen || root.userPopupOpen) ? 0.0 : 1.0
-            Behavior on opacity { NumberAnimation { duration: 400 } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(400) } }
             Item { id: rebootBtn; x:0; y:0; width: (parent.width / 2) - 10 * s; height: 50 * s; layer.enabled: true; layer.effect: DropShadow { transparentBorder: true; color: "#35000000"; radius: 25*s; verticalOffset: 8 * s }
                 LiquidGlass { glassRadius: 18 * s; blurBrightness: restMouse.containsMouse ? 0.20 : 0.10; glassTint: "#30101a10"; topRimColor: "#ccffffff" }
-                Text { anchors.centerIn: parent; text: "REBOOT"; font.family: mainFontFamily; font.pixelSize: 15 * s; font.weight: Font.DemiBold; color: "white"; opacity: restMouse.containsMouse ? 1.0 : 0.8 }
+                Text { anchors.centerIn: parent; text: "REBOOT"; font.family: mainFontFamily; font.pixelSize: 15 * s; font.weight: Font.DemiBold; color: root.fgColor; opacity: restMouse.containsMouse ? 1.0 : 0.8 }
                 MouseArea { id: restMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof sddm !== "undefined") sddm.reboot() } cursorShape: Qt.PointingHandCursor; onPressed: rebootBtn.scale = 0.98; onReleased: rebootBtn.scale = 1.0 }
-                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(300); easing.type: kit.ease(Easing.OutBack) } }
             }
             Item { id: powerBtn; x:0; y:0; width: (parent.width / 2) - 10 * s; height: 50 * s; layer.enabled: true; layer.effect: DropShadow { transparentBorder: true; color: "#35000000"; radius: 25*s; verticalOffset: 8 * s }
                 LiquidGlass { glassRadius: 18 * s; blurBrightness: shutMouse.containsMouse ? 0.20 : 0.10; glassTint: "#30101a10"; topRimColor: "#ccffffff" }
-                Text { anchors.centerIn: parent; text: "POWER"; font.family: mainFontFamily; font.pixelSize: 15 * s; font.weight: Font.DemiBold; color: "white"; opacity: shutMouse.containsMouse ? 1.0 : 0.8 }
+                Text { anchors.centerIn: parent; text: "POWER"; font.family: mainFontFamily; font.pixelSize: 15 * s; font.weight: Font.DemiBold; color: root.fgColor; opacity: shutMouse.containsMouse ? 1.0 : 0.8 }
                 MouseArea { id: shutMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof sddm !== "undefined") sddm.powerOff() } cursorShape: Qt.PointingHandCursor; onPressed: powerBtn.scale = 0.98; onReleased: powerBtn.scale = 1.0 }
-                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(300); easing.type: kit.ease(Easing.OutBack) } }
             }
         }
     }
@@ -371,6 +384,6 @@ Item {
     ListView { id: userHelper; model: typeof userModel !== "undefined" ? userModel : null; currentIndex: root.userIndex; opacity: 0; width: 1; height: 1; z: -100; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
     
     // Boot
-    NumberAnimation { id: fadeIn; target: root; property: "uiOpacity"; to: 1; duration: 2500; easing.type: Easing.OutCubic }
+    NumberAnimation { id: fadeIn; target: root; property: "uiOpacity"; to: 1; duration: kit.dur(2500); easing.type: kit.ease(Easing.OutCubic) }
     Component.onCompleted: { fadeIn.start(); keyboard.numLock = true }
 }

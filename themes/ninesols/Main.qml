@@ -4,9 +4,11 @@ import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 // Root setup
 Rectangle {
+    Custom { id: kit }
     id: root
     width: Screen.width; height: Screen.height
     readonly property real s: height / 768
@@ -58,14 +60,14 @@ Rectangle {
     readonly property bool isShutdownActive: root.activeMenuIndex === 5
 
     // Theme colors
-    readonly property color goldActive: "#dfd59c"
-    readonly property color goldDim: "#6a6245"
+    readonly property color goldActive: kit.color("accent", "#dfd59c")
+    readonly property color goldDim: kit.color("text", "#6a6245")
     readonly property color barDim: "#3a3525"
 
     // Load assets
     FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader { id: mainFont; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
+    readonly property string mainFontFamily: kit.font("text", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
     TextConstants { id: textConstants }
 
     // Hidden helpers
@@ -74,16 +76,18 @@ Rectangle {
 
     // Entry animation
     Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: 1500; easing.type: Easing.OutCubic }
+    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: kit.dur(1500); easing.type: kit.ease(Easing.OutCubic) }
 
     // Backdrop image
     Image {
         anchors.fill: parent
         source: "bg.png"
+        visible: !userBg.active
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         opacity: root.ui
     }
+    Background { id: userBg; anchors.fill: parent; opacity: root.ui }
 
     // Side vignette
     Rectangle {
@@ -132,11 +136,11 @@ Rectangle {
                 x: root.isStartActive ? (loginMouse.pressed ? -6 * s : 0) : 24 * s
                 scale: loginMouse.pressed ? 0.96 : 1.0
 
-                Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
+                Behavior on x { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(100); easing.type: kit.ease(Easing.OutQuad) } }
 
-                Text { text: "|"; color: root.isStartActive ? root.goldActive : root.barDim; opacity: root.isStartActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } } }
-                Text { text: "Start Game"; color: root.isStartActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } }
+                Text { text: "|"; color: root.isStartActive ? root.goldActive : root.barDim; opacity: root.isStartActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } Behavior on opacity { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } } }
+                Text { text: "Start Game"; color: root.isStartActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } }
             }
             MouseArea {
                 id: loginMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -154,16 +158,16 @@ Rectangle {
                 x: root.isPwdActive ? (pwdMouse.pressed ? -6 * s : 0) : 24 * s
                 scale: pwdMouse.pressed ? 0.96 : 1.0
 
-                Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
+                Behavior on x { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(100); easing.type: kit.ease(Easing.OutQuad) } }
 
-                Text { text: "|"; color: root.isPwdActive ? root.goldActive : root.barDim; opacity: root.isPwdActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } } }
-                Text { text: (pwd.text.length === 0 && !root.isPwdActive) ? "Enter Password" : ""; color: root.isPwdActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } }
+                Text { text: "|"; color: root.isPwdActive ? root.goldActive : root.barDim; opacity: root.isPwdActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } Behavior on opacity { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } } }
+                Text { text: (pwd.text.length === 0 && !root.isPwdActive) ? "Enter Password" : ""; color: root.isPwdActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } }
             }
             TextInput {
                 id: pwd; anchors.fill: parent
                 leftPadding: root.isPwdActive ? 24 * s : 48 * s
-                Behavior on leftPadding { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                Behavior on leftPadding { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } }
 
                 color: root.goldActive; font.family: mainFontFamily; font.pixelSize: 18 * s
                 echoMode: TextInput.Password; passwordCharacter: "•"; cursorVisible: false; focus: false
@@ -193,9 +197,9 @@ Rectangle {
                     visible: pwd.focus && pwd.text.length > 0
 
                     SequentialAnimation {
-                        loops: Animation.Infinite; running: customCursor.visible
-                        NumberAnimation { target: customCursor; property: "opacity"; from: 1.0; to: 0.1; duration: 450 }
-                        NumberAnimation { target: customCursor; property: "opacity"; from: 0.1; to: 1.0; duration: 450 }
+                        loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion
+                        NumberAnimation { target: customCursor; property: "opacity"; from: 1.0; to: 0.1; duration: kit.dur(450) }
+                        NumberAnimation { target: customCursor; property: "opacity"; from: 0.1; to: 1.0; duration: kit.dur(450) }
                     }
                 }
             }
@@ -215,11 +219,11 @@ Rectangle {
                 x: root.isUserActive ? (userMouse.pressed ? -6 * s : 0) : 24 * s
                 scale: userMouse.pressed ? 0.96 : 1.0
 
-                Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
+                Behavior on x { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(100); easing.type: kit.ease(Easing.OutQuad) } }
 
-                Text { text: "|"; color: root.isUserActive ? root.goldActive : root.barDim; opacity: root.isUserActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } } }
-                Text { text: "Select User: " + ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : ((typeof userModel !== "undefined" && userModel) ? userModel.lastUser : "User")); color: root.isUserActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } }
+                Text { text: "|"; color: root.isUserActive ? root.goldActive : root.barDim; opacity: root.isUserActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } Behavior on opacity { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } } }
+                Text { text: "Select User: " + ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : ((typeof userModel !== "undefined" && userModel) ? userModel.lastUser : "User")); color: root.isUserActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } }
             }
             MouseArea {
                 id: userMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -237,11 +241,11 @@ Rectangle {
                 x: root.isSessionActive ? (sessionMouse.pressed ? -6 * s : 0) : 24 * s
                 scale: sessionMouse.pressed ? 0.96 : 1.0
 
-                Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
+                Behavior on x { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(100); easing.type: kit.ease(Easing.OutQuad) } }
 
-                Text { text: "|"; color: root.isSessionActive ? root.goldActive : root.barDim; opacity: root.isSessionActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } } }
-                Text { text: "Options: " + ((sessionHelper.currentItem && sessionHelper.currentItem.sName) ? sessionHelper.currentItem.sName : "Session"); color: root.isSessionActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } }
+                Text { text: "|"; color: root.isSessionActive ? root.goldActive : root.barDim; opacity: root.isSessionActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } Behavior on opacity { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } } }
+                Text { text: "Options: " + ((sessionHelper.currentItem && sessionHelper.currentItem.sName) ? sessionHelper.currentItem.sName : "Session"); color: root.isSessionActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } }
             }
             MouseArea {
                 id: sessionMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -259,11 +263,11 @@ Rectangle {
                 x: root.isRestartActive ? (restartMouse.pressed ? -6 * s : 0) : 24 * s
                 scale: restartMouse.pressed ? 0.96 : 1.0
 
-                Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
+                Behavior on x { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(100); easing.type: kit.ease(Easing.OutQuad) } }
 
-                Text { text: "|"; color: root.isRestartActive ? root.goldActive : root.barDim; opacity: root.isRestartActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } } }
-                Text { text: "Restart System"; color: root.isRestartActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } }
+                Text { text: "|"; color: root.isRestartActive ? root.goldActive : root.barDim; opacity: root.isRestartActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } Behavior on opacity { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } } }
+                Text { text: "Restart System"; color: root.isRestartActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } }
             }
             MouseArea {
                 id: restartMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -281,11 +285,11 @@ Rectangle {
                 x: root.isShutdownActive ? (shutdownMouse.pressed ? -6 * s : 0) : 24 * s
                 scale: shutdownMouse.pressed ? 0.96 : 1.0
 
-                Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
+                Behavior on x { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(100); easing.type: kit.ease(Easing.OutQuad) } }
 
-                Text { text: "|"; color: root.isShutdownActive ? root.goldActive : root.barDim; opacity: root.isShutdownActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } } }
-                Text { text: "Exit Game"; color: root.isShutdownActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: 200 } } }
+                Text { text: "|"; color: root.isShutdownActive ? root.goldActive : root.barDim; opacity: root.isShutdownActive ? 1.0 : 0.45; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } Behavior on opacity { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutCubic) } } }
+                Text { text: "Exit Game"; color: root.isShutdownActive ? root.goldActive : root.goldDim; font.family: mainFontFamily; font.pixelSize: 18 * s; Behavior on color { ColorAnimation { duration: kit.dur(200) } } }
             }
             MouseArea {
                 id: shutdownMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -301,7 +305,7 @@ Rectangle {
         anchors.top: menuCol.bottom; anchors.left: menuCol.left; anchors.topMargin: 20 * s
         text: ""; color: "#df5050"; font.family: mainFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s
         opacity: text.length > 0 ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 200 } }
+        Behavior on opacity { NumberAnimation { duration: kit.dur(200) } }
     }
 
     // Button prompts
