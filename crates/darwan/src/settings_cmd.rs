@@ -42,7 +42,7 @@ pub fn show(paths: &Paths, id: &str) -> Result<ExitCode, String> {
     let (catalog, config) = load(paths)?;
     let t = catalog
         .get(id)
-        .ok_or_else(|| format!("unknown theme {id:?}"))?;
+        .ok_or_else(|| darwan_core::catalog::unknown_theme(id))?;
     let m = &t.manifest;
     println!(
         "{}{}",

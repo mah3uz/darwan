@@ -16,6 +16,7 @@ pub struct Options {
     pub shots: Option<PathBuf>,
     pub jobs: usize,
     pub timeout: Duration,
+    pub with_config: bool,
 }
 
 struct Outcome {
@@ -41,7 +42,7 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
             .map(|id| {
                 catalog
                     .get(id)
-                    .ok_or_else(|| format!("unknown theme {id:?}"))
+                    .ok_or_else(|| darwan_core::catalog::unknown_theme(id))
             })
             .collect::<Result<_, _>>()?
     };
@@ -58,6 +59,17 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
 
+    let config = if opts.with_config {
+        let path = darwan_core::paths::config_file();
+        Some(
+            darwan_core::config::UserConfig::load(&path)
+                .map_err(|e| format!("{}: {e}", path.display()))?,
+        )
+    } else {
+        None
+    };
+    let host = darwan_core::system::SystemHost::new();
+
     let queue = Mutex::new(themes.into_iter());
     let results = Mutex::new(Vec::new());
     std::thread::scope(|scope| {
@@ -67,7 +79,25 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
                     let Some(theme) = queue.lock().unwrap().next() else {
                         break;
                     };
-                    let outcome = check_one(paths, theme, &opts, work.path(), &screen);
+                    let overlay = config
+                        .as_ref()
+                        .map(|c| write_overlay(theme, c, &host, work.path()))
+                        .transpose();
+                    let outcome = match overlay {
+                        Ok(overlay) => check_one(
+                            paths,
+                            theme,
+                            &opts,
+                            work.path(),
+                            &screen,
+                            overlay.as_deref(),
+                        ),
+                        Err(e) => Outcome {
+                            id: theme.id.clone(),
+                            verdict: e,
+                            problems: Vec::new(),
+                        },
+                    };
                     results.lock().unwrap().push(outcome);
                 }
             });
@@ -95,7 +125,34 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
     })
 }
 
-fn check_one(paths: &Paths, theme: &Theme, opts: &Options, work: &Path, screen: &Path) -> Outcome {
+// The user's settings for this theme, resolved as the lock resolves them; setting issues are only reported.
+fn write_overlay(
+    theme: &Theme,
+    config: &darwan_core::config::UserConfig,
+    host: &darwan_core::system::SystemHost,
+    work: &Path,
+) -> Result<PathBuf, String> {
+    let resolved = darwan_core::resolve::resolve(theme, config, host);
+    for issue in &resolved.issues {
+        eprintln!(
+            "warning: {}: ignoring {}: {}",
+            theme.id, issue.key, issue.message
+        );
+    }
+    let path = work.join(format!("{}.conf", theme.id.replace('/', "_")));
+    let text = darwan_core::ini::write_general(&resolved.overlay).map_err(|e| e.to_string())?;
+    std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(path)
+}
+
+fn check_one(
+    paths: &Paths,
+    theme: &Theme,
+    opts: &Options,
+    work: &Path,
+    screen: &Path,
+    overlay: Option<&Path>,
+) -> Outcome {
     let slug = theme.id.replace('/', "_");
     let fail = |verdict: String| Outcome {
         id: theme.id.clone(),
@@ -118,7 +175,7 @@ fn check_one(paths: &Paths, theme: &Theme, opts: &Options, work: &Path, screen: 
         Err(e) => return fail(e.to_string()),
     };
     let mut cmd = qs::command(paths, "check_shell.qml", &[]);
-    qs::theme_env(&mut cmd, theme, &theme_dir, None);
+    qs::theme_env(&mut cmd, theme, &theme_dir, overlay);
     cmd.env_remove("WAYLAND_DISPLAY")
         .env(
             "QT_QPA_PLATFORM",

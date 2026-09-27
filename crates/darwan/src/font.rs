@@ -16,7 +16,7 @@ pub fn import(
     let (catalog, _) = Catalog::load(&paths.themes()).map_err(|e| e.to_string())?;
     let theme = catalog
         .get(id)
-        .ok_or_else(|| format!("unknown theme {id:?}"))?;
+        .ok_or_else(|| darwan_core::catalog::unknown_theme(id))?;
     let needed: Vec<&str> = theme
         .manifest
         .fonts

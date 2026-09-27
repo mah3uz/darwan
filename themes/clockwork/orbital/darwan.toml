@@ -4,15 +4,6 @@ author = "Darkkal44"
 background = "color"
 
 [[option]]
-key = "themeMode"
-label = "Appearance"
-type = "enum"
-choices = [
-  { value = "dark", label = "Dark" },
-  { value = "light", label = "Light" },
-]
-
-[[option]]
 key = "enableWindup"
 label = "Windup animation on unlock"
 type = "bool"
@@ -20,3 +11,9 @@ type = "bool"
 [supports]
 clock_format = true
 date_format = true
+background = true
+colors = true
+fonts = ["text", "clock"]
+motion = true
+variants = ["dark", "light"]
+default_variant = "dark"

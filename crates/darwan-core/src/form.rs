@@ -341,9 +341,12 @@ fn standard_fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
         }
     }
     // Generation settings only matter once a colour is generated.
-    let generating = out.iter().any(|f| {
-        matches!(f.kind, FieldKind::Color { generate: true }) && f.value == custom::GENERATE
-    });
+    let colour_fields = || {
+        out.iter()
+            .filter(|f| matches!(f.kind, FieldKind::Color { generate: true }))
+    };
+    let generating = colour_fields().any(|f| f.value == custom::GENERATE)
+        || (sup.generate_by_default && !colour_fields().any(|f| f.is_set));
     for f in &mut out {
         if let Key::Option { key, .. } = &f.key {
             if matches!(

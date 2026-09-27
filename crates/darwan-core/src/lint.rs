@@ -81,7 +81,7 @@ pub fn lint(theme: &Theme) -> Vec<String> {
             }
         }
         if !own_qml.contains("Custom {") {
-            problems.push("customisations need a `Custom { id: … }` from the theme kit".into());
+            problems.push("customisations need a `Custom { id: kit }` from the theme kit".into());
         }
     }
     for (flag, call, what) in [
@@ -159,6 +159,12 @@ pub fn lint(theme: &Theme) -> Vec<String> {
                 c.key
             )),
         }
+    }
+    if sup.material_palette && !own_qml.contains("material_") {
+        problems.push("supports.material_palette but no QML reads a material_ key".into());
+    }
+    if (sup.material_palette || sup.generate_by_default) && !sup.colors {
+        problems.push("material_palette and generate_by_default need supports.colors".into());
     }
     if !m.colors.is_empty() && !sup.colors {
         problems.push("[[color]] roles need supports.colors".into());

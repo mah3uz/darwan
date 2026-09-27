@@ -1,7 +1,17 @@
 name = "Material You"
-author = "Darkkal44"
+author = "Darkkal44 & Kaonaci"
 background = "image"
+background_file = "bg.png"
+background_file_dark = "bg-dark.png"
 
 [supports]
 clock_format = true
 date_format = true
+background = true
+colors = true
+fonts = ["text", "clock"]
+motion = true
+variants = ["light", "dark"]
+default_variant = "light"
+material_palette = true
+generate_by_default = false

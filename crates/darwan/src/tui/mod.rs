@@ -711,7 +711,7 @@ mod tests {
         }
         assert_eq!(a.selected().map(|t| t.id.as_str()), Some("clockwork/tape"));
         press(&mut a, KeyCode::Enter);
-        assert!(screen(&mut a).contains("1 of 41"));
+        assert!(screen(&mut a).contains("1 of 40"));
         press(&mut a, KeyCode::Esc);
         assert!(a.query.is_empty(), "Esc clears the search");
         press(&mut a, KeyCode::Esc);

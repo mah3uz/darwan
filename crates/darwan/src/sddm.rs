@@ -38,7 +38,7 @@ fn plan(paths: &Paths, id: Option<&str>) -> Result<Planned, String> {
         .into_themes()
         .into_iter()
         .find(|t| t.id == id)
-        .ok_or_else(|| format!("unknown theme {id:?}"))?;
+        .ok_or_else(|| darwan_core::catalog::unknown_theme(&id))?;
     let resolved = resolve::resolve(&theme, &config, &darwan_core::system::SystemHost::new());
     if !resolved.issues.is_empty() {
         let list: Vec<String> = resolved

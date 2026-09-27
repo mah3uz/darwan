@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
     readonly property bool clock12: config.clockFormat === "12h"
@@ -10,12 +11,51 @@ Rectangle {
     id: root
     width: Screen.width
     height: Screen.height
+    color: root.isDark ? "#131218" : "white"
+
+    // One palette per variant, exactly as designed; generated Material colours replace it role by role.
+    readonly property bool isDark: config.colorScheme === "dark"
+    Custom { id: kit }
+    QtObject {
+        id: pal
+        function pick(lightRole, darkRole, light, dark) {
+            const generated = config["material_" + (root.isDark ? darkRole : lightRole)]
+            return generated ? generated : (root.isDark ? dark : light)
+        }
+        readonly property color ink: kit.color("text", pick("on_secondary_container", "on_surface", "#0f3c2c", "#e6e1e5"))
+        readonly property color inkSoft: pick("on_surface_variant", "on_surface_variant", "#1e4f3e", "#cbc2db")
+        readonly property color chip: pick("primary_container", "surface_variant", "#bee8c7", "#3a3247")
+        readonly property color outline: pick("outline", "outline", "#8ca090", "#958da5")
+        readonly property color tilePressed: pick("on_primary_container", "surface_container_low", "#0a281d", "#1c1924")
+        readonly property color tileHover: pick("on_secondary_container", "surface_variant", "#0f3c2c", "#322a3e")
+        readonly property color tile: pick("surface_container", "surface_container", "#e9f3eb", "#25232a")
+        readonly property color tileIconHover: pick("primary_container", "on_surface", "#bee8c7", "#e6e1e5")
+        readonly property color tileIcon: pick("on_secondary_container", "on_surface_variant", "#0f3c2c", "#cbc2db")
+        readonly property color tileSubHover: pick("surface_container", "on_surface_variant", "#e9f3eb", "#cbc2db")
+        readonly property color tileSub: pick("on_surface_variant", "outline", "#1e4f3e", "#958da5")
+        readonly property color card: pick("surface_container", "surface_container_low", "#e9f3eb", "#1c1b20")
+        readonly property color field: pick("surface_container_high", "surface_container_high", "#d0eadb", "#2b2930")
+        readonly property color error: pick("error", "error", "#ea1821", "#ffb4ab")
+        readonly property color focus: kit.color("accent", pick("on_secondary_container", "primary", "#0f3c2c", "#d0bcff"))
+        readonly property color fieldText: kit.color("text", pick("on_surface", "on_surface", "#1d3c34", "#e6e1e5"))
+        readonly property color selection: pick("secondary_container", "secondary_container", "#c2ebd4", "#4f4461")
+        readonly property color cursor: kit.color("accent", pick("on_surface", "primary", "#1d3c34", "#d0bcff"))
+        readonly property color userPressed: pick("surface_container_highest", "surface_container", "#cbe8cc", "#201e25")
+        readonly property color userHover: pick("surface_container_high", "surface_container_highest", "#d2ebd4", "#36343b")
+        readonly property color user: pick("surface_container_low", "surface_container_high", "#eef6f0", "#2b2930")
+        readonly property color userText: kit.color("text", pick("on_surface", "on_surface_variant", "#1d3c34", "#cbc2db"))
+        readonly property color loginPressed: pick("on_primary_container", "surface_container_high", "#0a281d", "#2b2238")
+        readonly property color loginHover: pick("on_surface_variant", "secondary_container", "#1e4f3e", "#4f4461")
+        readonly property color login: pick("on_secondary_container", "surface_variant", "#0f3c2c", "#3a3247")
+    }
 
     // Background
+    Background { id: userBg; anchors.fill: parent }
     Image {
         anchors.fill: parent
-        source: "bg.png"
+        source: root.isDark ? "bg-dark.png" : "bg.png"
         fillMode: Image.PreserveAspectCrop
+        visible: !userBg.active
     }
 
     readonly property real s: Screen.height / 768
@@ -34,7 +74,8 @@ Rectangle {
         source: "font/GoogleSans-VariableFont_GRAD,opsz,wght.ttf"
     }
     
-    readonly property string sansFont: customFont.name !== "" ? customFont.name : "Roboto, Inter, sans-serif"
+    readonly property string sansFont: kit.font("text", customFont.name !== "" ? customFont.name : "Roboto, Inter, sans-serif")
+    readonly property string clockFont: kit.font("clock", customFont.name !== "" ? customFont.name : "Roboto, Inter, sans-serif")
 
     ListView {
         id: sessionHelper
@@ -93,20 +134,20 @@ Rectangle {
 
     SequentialAnimation {
         id: fadeAnim
-        PauseAnimation { duration: 500 }
+        PauseAnimation { duration: kit.dur(500) }
         ParallelAnimation {
-            NumberAnimation { target: root; property: "ui1"; from: 0; to: 1; duration: 900; easing.type: Easing.OutCubic }
-            NumberAnimation { target: root; property: "ui2"; from: 0; to: 1; duration: 900; easing.type: Easing.OutCubic }
+            NumberAnimation { target: root; property: "ui1"; from: 0; to: 1; duration: kit.dur(900); easing.type: kit.ease(Easing.OutCubic) }
+            NumberAnimation { target: root; property: "ui2"; from: 0; to: 1; duration: kit.dur(900); easing.type: kit.ease(Easing.OutCubic) }
         }
     }
 
     SequentialAnimation {
         id: shakeAnim
-        NumberAnimation { target: shakeTranslate; property: "x"; to: 15*s; duration: 50 }
-        NumberAnimation { target: shakeTranslate; property: "x"; to: -15*s; duration: 50 }
-        NumberAnimation { target: shakeTranslate; property: "x"; to: 15*s; duration: 50 }
-        NumberAnimation { target: shakeTranslate; property: "x"; to: -15*s; duration: 50 }
-        NumberAnimation { target: shakeTranslate; property: "x"; to: 0; duration: 50 }
+        NumberAnimation { target: shakeTranslate; property: "x"; to: 15*s; duration: kit.dur(50) }
+        NumberAnimation { target: shakeTranslate; property: "x"; to: -15*s; duration: kit.dur(50) }
+        NumberAnimation { target: shakeTranslate; property: "x"; to: 15*s; duration: kit.dur(50) }
+        NumberAnimation { target: shakeTranslate; property: "x"; to: -15*s; duration: kit.dur(50) }
+        NumberAnimation { target: shakeTranslate; property: "x"; to: 0; duration: kit.dur(50) }
     }
 
     MouseArea {
@@ -149,19 +190,19 @@ Rectangle {
                 Text {
                     id: hText
                     text: clockHour(new Date())
-                    font.family: root.sansFont
+                    font.family: root.clockFont
                     font.pixelSize: 140 * s
                     font.weight: Font.Bold
-                    color: "#0F3C2C"
+                    color: pal.ink
                 }
                 
                 Text {
                     id: mText
                     text: Qt.formatTime(new Date(), "mm")
-                    font.family: root.sansFont
+                    font.family: root.clockFont
                     font.pixelSize: 140 * s
                     font.weight: Font.Bold
-                    color: "#1E4F3E"
+                    color: pal.inkSoft
                 }
             }
 
@@ -170,7 +211,7 @@ Rectangle {
                 width: dateChipText.implicitWidth + 32 * s
                 height: 44 * s
                 radius: 22 * s
-                color: "#BEE8C7"
+                color: pal.chip
                 
                 Text {
                     id: dateChipText
@@ -180,7 +221,7 @@ Rectangle {
                     font.pixelSize: 11 * s
                     font.bold: true
                     font.letterSpacing: 1 * s
-                    color: "#0F3C2C"
+                    color: pal.ink
                 }
             }
         }
@@ -197,7 +238,7 @@ Rectangle {
                 font.pixelSize: 11 * s
                 font.bold: true
                 font.letterSpacing: 1.5 * s
-                color: "#8ca090"
+                color: pal.outline
             }
 
             // Settings Grid
@@ -209,10 +250,10 @@ Rectangle {
                 Rectangle {
                     id: powerTile
                     width: 180 * s; height: 76 * s; radius: 38 * s
-                    color: powerMouse.pressed ? "#0A281D" : (powerMouse.containsMouse ? "#0F3C2C" : "#E9F3EB")
+                    color: powerMouse.pressed ? pal.tilePressed : (powerMouse.containsMouse ? pal.tileHover : pal.tile)
                     scale: powerMouse.pressed ? 0.95 : (powerMouse.containsMouse ? 1.03 : 1.0)
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(200); easing.type: kit.ease(Easing.OutBack) } }
                     
                     Row {
                         anchors.fill: parent
@@ -222,7 +263,7 @@ Rectangle {
                         
                         Rectangle {
                             width: 48 * s; height: 48 * s; radius: 24 * s
-                            color: "#BEE8C7"
+                            color: pal.chip
                             anchors.verticalCenter: parent.verticalCenter
                             
                             Image {
@@ -238,7 +279,7 @@ Rectangle {
                             ColorOverlay {
                                 anchors.fill: powerIcon
                                 source: powerIcon
-                                color: "#0F3C2C"
+                                color: pal.ink
                             }
                         }
                         
@@ -251,15 +292,15 @@ Rectangle {
                                 font.family: root.sansFont
                                 font.pixelSize: 12 * s
                                 font.bold: true
-                                color: powerMouse.containsMouse ? "#BEE8C7" : "#0F3C2C"
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                color: powerMouse.containsMouse ? pal.tileIconHover : pal.tileIcon
+                                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                             }
                             Text {
                                 text: "SHUT DOWN"
                                 font.family: root.sansFont
                                 font.pixelSize: 9 * s
-                                color: powerMouse.containsMouse ? "#E9F3EB" : "#1E4F3E"
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                color: powerMouse.containsMouse ? pal.tileSubHover : pal.tileSub
+                                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                             }
                         }
                     }
@@ -277,10 +318,10 @@ Rectangle {
                 Rectangle {
                     id: sessionTile
                     width: 180 * s; height: 76 * s; radius: 38 * s
-                    color: sessionMouse.pressed ? "#0A281D" : (sessionMouse.containsMouse ? "#0F3C2C" : "#E9F3EB")
+                    color: sessionMouse.pressed ? pal.tilePressed : (sessionMouse.containsMouse ? pal.tileHover : pal.tile)
                     scale: sessionMouse.pressed ? 0.95 : (sessionMouse.containsMouse ? 1.03 : 1.0)
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(200); easing.type: kit.ease(Easing.OutBack) } }
                     
                     Row {
                         anchors.fill: parent
@@ -290,7 +331,7 @@ Rectangle {
                         
                         Rectangle {
                             width: 48 * s; height: 48 * s; radius: 24 * s
-                            color: "#BEE8C7"
+                            color: pal.chip
                             anchors.verticalCenter: parent.verticalCenter
                             
                             Image {
@@ -306,7 +347,7 @@ Rectangle {
                             ColorOverlay {
                                 anchors.fill: sessionIcon
                                 source: sessionIcon
-                                color: "#0F3C2C"
+                                color: pal.ink
                             }
                         }
                         
@@ -319,15 +360,15 @@ Rectangle {
                                 font.family: root.sansFont
                                 font.pixelSize: 12 * s
                                 font.bold: true
-                                color: sessionMouse.containsMouse ? "#BEE8C7" : "#0F3C2C"
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                color: sessionMouse.containsMouse ? pal.tileIconHover : pal.tileIcon
+                                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                             }
                             Text {
                                 text: ((sessionHelper.currentItem && sessionHelper.currentItem.sName) ? sessionHelper.currentItem.sName : "PLASMA").toUpperCase()
                                 font.family: root.sansFont
                                 font.pixelSize: 9 * s
-                                color: sessionMouse.containsMouse ? "#E9F3EB" : "#1E4F3E"
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                color: sessionMouse.containsMouse ? pal.tileSubHover : pal.tileSub
+                                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                                 elide: Text.ElideRight
                                 width: 90 * s
                             }
@@ -351,10 +392,10 @@ Rectangle {
                 Rectangle {
                     id: rebootTile
                     width: 180 * s; height: 76 * s; radius: 38 * s
-                    color: rebootMouse.pressed ? "#0A281D" : (rebootMouse.containsMouse ? "#0F3C2C" : "#E9F3EB")
+                    color: rebootMouse.pressed ? pal.tilePressed : (rebootMouse.containsMouse ? pal.tileHover : pal.tile)
                     scale: rebootMouse.pressed ? 0.95 : (rebootMouse.containsMouse ? 1.03 : 1.0)
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(200); easing.type: kit.ease(Easing.OutBack) } }
                     
                     Row {
                         anchors.fill: parent
@@ -364,7 +405,7 @@ Rectangle {
                         
                         Rectangle {
                             width: 48 * s; height: 48 * s; radius: 24 * s
-                            color: "#BEE8C7"
+                            color: pal.chip
                             anchors.verticalCenter: parent.verticalCenter
                             
                             Image {
@@ -380,7 +421,7 @@ Rectangle {
                             ColorOverlay {
                                 anchors.fill: rebootIcon
                                 source: rebootIcon
-                                color: "#0F3C2C"
+                                color: pal.ink
                             }
                         }
                         
@@ -393,15 +434,15 @@ Rectangle {
                                 font.family: root.sansFont
                                 font.pixelSize: 12 * s
                                 font.bold: true
-                                color: rebootMouse.containsMouse ? "#BEE8C7" : "#0F3C2C"
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                color: rebootMouse.containsMouse ? pal.tileIconHover : pal.tileIcon
+                                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                             }
                             Text {
                                 text: "RESTART"
                                 font.family: root.sansFont
                                 font.pixelSize: 9 * s
-                                color: rebootMouse.containsMouse ? "#E9F3EB" : "#1E4F3E"
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                color: rebootMouse.containsMouse ? pal.tileSubHover : pal.tileSub
+                                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                             }
                         }
                     }
@@ -419,10 +460,10 @@ Rectangle {
                 Rectangle {
                     id: suspendTile
                     width: 180 * s; height: 76 * s; radius: 38 * s
-                    color: suspendMouse.pressed ? "#0A281D" : (suspendMouse.containsMouse ? "#0F3C2C" : "#E9F3EB")
+                    color: suspendMouse.pressed ? pal.tilePressed : (suspendMouse.containsMouse ? pal.tileHover : pal.tile)
                     scale: suspendMouse.pressed ? 0.95 : (suspendMouse.containsMouse ? 1.03 : 1.0)
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                    Behavior on scale { NumberAnimation { duration: kit.dur(200); easing.type: kit.ease(Easing.OutBack) } }
                     
                     Row {
                         anchors.fill: parent
@@ -432,7 +473,7 @@ Rectangle {
                         
                         Rectangle {
                             width: 48 * s; height: 48 * s; radius: 24 * s
-                            color: "#BEE8C7"
+                            color: pal.chip
                             anchors.verticalCenter: parent.verticalCenter
                             
                             Image {
@@ -448,7 +489,7 @@ Rectangle {
                             ColorOverlay {
                                 anchors.fill: suspendIcon
                                 source: suspendIcon
-                                color: "#0F3C2C"
+                                color: pal.ink
                             }
                         }
                         
@@ -461,15 +502,15 @@ Rectangle {
                                 font.family: root.sansFont
                                 font.pixelSize: 12 * s
                                 font.bold: true
-                                color: suspendMouse.containsMouse ? "#BEE8C7" : "#0F3C2C"
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                color: suspendMouse.containsMouse ? pal.tileIconHover : pal.tileIcon
+                                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                             }
                             Text {
                                 text: "SUSPEND"
                                 font.family: root.sansFont
                                 font.pixelSize: 9 * s
-                                color: suspendMouse.containsMouse ? "#E9F3EB" : "#1E4F3E"
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                color: suspendMouse.containsMouse ? pal.tileSubHover : pal.tileSub
+                                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                             }
                         }
                     }
@@ -490,7 +531,7 @@ Rectangle {
                 width: 376 * s
                 height: 180 * s
                 radius: 32 * s
-                color: "#E9F3EB"
+                color: pal.card
                 transform: Translate { id: shakeTranslate }
                 
                 Column {
@@ -518,7 +559,7 @@ Rectangle {
                             ColorOverlay {
                                 anchors.fill: lockIcon
                                 source: lockIcon
-                                color: "#8ca090"
+                                color: pal.outline
                             }
                         }
                         Text {
@@ -527,14 +568,14 @@ Rectangle {
                             font.pixelSize: 10 * s
                             font.bold: true
                             font.letterSpacing: 1 * s
-                            color: "#8ca090"
+                            color: pal.outline
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
                             text: "•  now"
                             font.family: root.sansFont
                             font.pixelSize: 10 * s
-                            color: "#8ca090"
+                            color: pal.outline
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -544,10 +585,10 @@ Rectangle {
                         width: parent.width
                         height: 52 * s
                         radius: 26 * s
-                        color: "#D0EADB"
-                        border.color: root.errorMessage !== "" ? "#ea1821" : (pwd.activeFocus ? "#0F3C2C" : "transparent")
+                        color: pal.field
+                        border.color: root.errorMessage !== "" ? pal.error : (pwd.activeFocus ? pal.focus : "transparent")
                         border.width: pwd.activeFocus ? 2 * s : 0
-                        Behavior on border.color { ColorAnimation { duration: 150 } }
+                        Behavior on border.color { ColorAnimation { duration: kit.dur(150) } }
                         
                         TextInput {
                             id: pwd
@@ -557,7 +598,7 @@ Rectangle {
                             font.family: root.sansFont
                             font.pixelSize: 18 * s
                             font.letterSpacing: 6 * s
-                            color: "#1d3c34"
+                            color: pal.fieldText
                             echoMode: TextInput.Password
                             passwordCharacter: "•"
                             horizontalAlignment: TextInput.AlignHCenter
@@ -566,7 +607,7 @@ Rectangle {
                             
                             cursorVisible: false
                             cursorDelegate: Item { width: 0; height: 0 }
-                            selectionColor: "#c2ebd4"
+                            selectionColor: pal.selection
                             
                             property bool wasClicked: false
                             onActiveFocusChanged: if (!activeFocus && text.length === 0) wasClicked = false
@@ -578,9 +619,9 @@ Rectangle {
                                 font.pixelSize: 11 * s
                                 font.bold: true
                                 font.letterSpacing: 1.5 * s
-                                color: root.errorMessage !== "" ? "#ea1821" : "#8ca090"
+                                color: root.errorMessage !== "" ? pal.error : pal.outline
                                 opacity: pwd.text === "" && (!pwd.activeFocus || (!pwd.wasClicked && pwd.text.length === 0)) ? 1 : 0
-                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                Behavior on opacity { NumberAnimation { duration: kit.dur(150) } }
                             }
                             
                             // Cursor
@@ -588,16 +629,16 @@ Rectangle {
                                 id: customCursor
                                 width: 2 * s
                                 height: 18 * s
-                                color: "#1d3c34"
+                                color: pal.cursor
                                 anchors.verticalCenter: parent.verticalCenter
                                 x: pwd.cursorRectangle.x
                                 visible: pwd.activeFocus && (pwd.text.length > 0 || pwd.wasClicked) && root.errorMessage === ""
                                 
                                 SequentialAnimation {
                                     loops: Animation.Infinite
-                                    running: customCursor.visible
-                                    NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0; duration: 400; easing.type: Easing.InOutQuad }
-                                    NumberAnimation { target: customCursor; property: "opacity"; from: 0; to: 1; duration: 400; easing.type: Easing.InOutQuad }
+                                    running: customCursor.visible && !kit.reduceMotion
+                                    NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0; duration: kit.dur(400); easing.type: kit.ease(Easing.InOutQuad) }
+                                    NumberAnimation { target: customCursor; property: "opacity"; from: 0; to: 1; duration: kit.dur(400); easing.type: kit.ease(Easing.InOutQuad) }
                                 }
                             }
                             
@@ -629,10 +670,10 @@ Rectangle {
                             width: userText.implicitWidth + 32 * s
                             height: 38 * s
                             radius: 19 * s
-                            color: userMouse.pressed ? "#cbe8cc" : (userMouse.containsMouse ? "#d2ebd4" : "#eef6f0")
+                            color: userMouse.pressed ? pal.userPressed : (userMouse.containsMouse ? pal.userHover : pal.user)
                             scale: userMouse.pressed ? 0.95 : (userMouse.containsMouse ? 1.02 : 1.0)
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                            Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                            Behavior on scale { NumberAnimation { duration: kit.dur(150); easing.type: kit.ease(Easing.OutBack) } }
                             
                             Text {
                                 id: userText
@@ -642,7 +683,7 @@ Rectangle {
                                 font.pixelSize: 10 * s
                                 font.bold: true
                                 font.letterSpacing: 1 * s
-                                color: "#1d3c34"
+                                color: pal.userText
                             }
                             
                             MouseArea {
@@ -668,10 +709,10 @@ Rectangle {
                                 width: parent.width
                                 height: 38 * s
                                 radius: 19 * s
-                                color: loginMouse.pressed ? "#0A281D" : (loginMouse.containsMouse ? "#1E4F3E" : "#0F3C2C")
+                                color: loginMouse.pressed ? pal.loginPressed : (loginMouse.containsMouse ? pal.loginHover : pal.login)
                                 scale: loginMouse.pressed ? 0.95 : (loginMouse.containsMouse ? 1.02 : 1.0)
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                                Behavior on scale { NumberAnimation { duration: kit.dur(150); easing.type: kit.ease(Easing.OutBack) } }
                                 
                                 Row {
                                     anchors.centerIn: parent
@@ -683,18 +724,18 @@ Rectangle {
                                         font.pixelSize: 10 * s
                                         font.bold: true
                                         font.letterSpacing: 1.5 * s
-                                        color: "#BEE8C7"
+                                        color: pal.tileIconHover
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
                                     Text {
                                         text: "➔"
                                         font.family: root.sansFont
                                         font.pixelSize: 11 * s
-                                        color: "#BEE8C7"
+                                        color: pal.tileIconHover
                                         anchors.verticalCenter: parent.verticalCenter
                                         transform: Translate {
                                             x: loginMouse.containsMouse ? 3 * s : 0
-                                            Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+                                            Behavior on x { NumberAnimation { duration: kit.dur(150); easing.type: kit.ease(Easing.OutQuad) } }
                                         }
                                     }
                                 }

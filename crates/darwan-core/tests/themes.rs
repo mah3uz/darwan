@@ -20,7 +20,7 @@ fn every_shipped_theme_loads_and_passes_lint() {
     // A discovery bug that finds no themes would make the lint pass vacuously.
     assert_eq!(
         catalog.themes().len(),
-        41,
+        40,
         "update this count when adding or removing a theme"
     );
     let failures: Vec<String> = catalog

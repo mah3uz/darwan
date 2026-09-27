@@ -1,7 +1,0 @@
-name = "Material You Dark"
-author = "Darkkal44 & Kaonaci"
-background = "image"
-
-[supports]
-clock_format = true
-date_format = true

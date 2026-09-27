@@ -120,7 +120,7 @@ The package installs:
 | `/usr/bin/darwan-gui`                           | GUI, also in your app launcher as *Darwan*                |
 | `/usr/lib/darwan/darwan-helper`                 | privileged SDDM helper, run through `pkexec`              |
 | `/usr/share/darwan/runtime/`                    | the QML runtime shared by the lockscreen and the previews |
-| `/usr/share/darwan/themes/`                     | all 41 themes                                             |
+| `/usr/share/darwan/themes/`                     | all 40 themes                                             |
 | `/usr/share/polkit-1/actions/org.darwan.policy` | lets the helper ask for your password once per session    |
 | `/usr/share/applications/darwan.desktop`        | the *Darwan* launcher entry                               |
 | `/usr/share/icons/hicolor/*/apps/darwan.*`      | its icon, as SVG and as PNGs from 16 to 512 px            |
@@ -695,8 +695,8 @@ still works fine on Plasma.
     </tr>
     <tr>
       <td align="center" width="50%">
-        <b>Material You Dark</b><br><br>
-        <img src="https://raw.githubusercontent.com/mah3uz/darwan-assets/main/assets/material-you-dark.webp" alt="Material You Dark" width="100%" />
+        <b>Material You · dark variant</b><br><br>
+        <img src="https://raw.githubusercontent.com/mah3uz/darwan-assets/main/assets/material-you-dark.webp" alt="Material You, dark variant" width="100%" />
       </td>
       <td align="center" width="50%">
         <b>Minecraft</b><br><br>

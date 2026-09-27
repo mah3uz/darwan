@@ -9,8 +9,9 @@ pub struct Manifest {
     pub family: Option<String>,
     pub author: String,
     pub background: Background,
-    // The theme's own background image, for generating colours from it.
+    // The theme's own background image, for generating colours from it; the dark variant's when it has its own.
     pub background_file: Option<String>,
+    pub background_file_dark: Option<String>,
     #[serde(default, rename = "font")]
     pub fonts: Vec<FontRequirement>,
     #[serde(default)]
@@ -71,6 +72,12 @@ pub struct Supports {
     #[serde(default)]
     pub variants: Vec<String>,
     pub default_variant: Option<String>,
+    // The whole generated Material palette reaches the theme as material_<role> keys.
+    #[serde(default)]
+    pub material_palette: bool,
+    // Colours are generated unless the user picks their own.
+    #[serde(default)]
+    pub generate_by_default: bool,
 }
 
 // A colour beyond accent and text that a theme lets the user change; `material` names the generated role it follows.

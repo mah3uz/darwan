@@ -120,7 +120,7 @@ pub fn set(
         Key::Theme(t) => {
             catalog
                 .get(value)
-                .ok_or_else(|| format!("unknown theme {value:?}"))?;
+                .ok_or_else(|| crate::catalog::unknown_theme(value))?;
             config.set_theme(*t, value)
         }
         Key::ClockFormat => match value {
@@ -151,7 +151,7 @@ pub fn set(
         Key::Option { theme, key } => {
             let t = catalog
                 .get(theme)
-                .ok_or_else(|| format!("unknown theme {theme:?}"))?;
+                .ok_or_else(|| crate::catalog::unknown_theme(theme))?;
             if let Some(kind) = custom_kind(t, key) {
                 if value.is_empty() {
                     config.remove_theme_value(theme, key);

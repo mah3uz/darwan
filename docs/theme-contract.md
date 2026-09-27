@@ -80,31 +80,31 @@ theme does, so it works under SDDM too:
 ```qml
 import "darwan"
 
-Custom { id: C }
+Custom { id: kit }
 
 Background { id: userBg; anchors.fill: parent; z: -1 }         // the user's own background, when set
 Image { source: "bg.png"; visible: !userBg.active }             // the theme's, otherwise
 
 Text {
-    color: C.color("text", "#ffffff")                           // the theme's value when the user set none
-    font.family: C.font("clock", pixelFont)
+    color: kit.color("text", "#ffffff")                           // the theme's value when the user set none
+    font.family: kit.font("clock", pixelFont)
 }
-Behavior on opacity { NumberAnimation { duration: C.dur(300); easing.type: C.ease(Easing.OutExpo) } }
-readonly property color lamp: C.color("colorLamp", "#e6bb5c")
-readonly property bool isDark: C.dark                           // with variants
+Behavior on opacity { NumberAnimation { duration: kit.dur(300); easing.type: kit.ease(Easing.OutExpo) } }
+readonly property color lamp: kit.color("colorLamp", "#e6bb5c")
+readonly property bool isDark: kit.dark                           // with variants
 ```
 
 | Kit | What it gives |
 |---|---|
-| `C.dur(ms)` | `ms` divided by the user's speed, 0 with reduce motion |
-| `C.ease(themeDefault)` | the user's curve, or the theme's |
-| `C.color(role, themeDefault)` | role `accent`, `text` or a `[[color]]` key |
-| `C.font(role, themeDefault)` | role `text` or `clock`; an attached font file wins over a family |
-| `C.reduceMotion`, `C.speed`, `C.dark`, `C.scheme` | for the theme's own logic |
+| `kit.dur(ms)` | `ms` divided by the user's speed, 0 with reduce motion |
+| `kit.ease(themeDefault)` | the user's curve, or the theme's |
+| `kit.color(role, themeDefault)` | role `accent`, `text` or a `[[color]]` key |
+| `kit.font(role, themeDefault)` | role `text` or `clock`; an attached font file wins over a family |
+| `kit.reduceMotion`, `kit.speed`, `kit.dark`, `kit.scheme` | for the theme's own logic |
 | `Background { }` | `active` while the user's background shows; `failed` if its file didn't load |
 
 Rules:
-- **Stop ambient loops on reduce motion** (`running: !C.reduceMotion`): `dur()` returns 0 for transitions, and an
+- **Stop ambient loops on reduce motion** (`running: !kit.reduceMotion`): `dur()` returns 0 for transitions, and an
   infinite animation with no duration would spin.
 - **Hide the theme's own background while `userBg.active`**, and don't decode a video nobody sees: give the theme's
   `MediaPlayer` an empty `source`, or put it in a `Loader`, while the user's background shows.

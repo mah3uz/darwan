@@ -124,6 +124,9 @@ enum Cmd {
         /// Seconds before a theme counts as hung
         #[arg(long, default_value_t = 60)]
         timeout: u64,
+        /// Apply your settings from config.toml, as the lock does, instead of each theme's defaults
+        #[arg(long)]
+        with_config: bool,
     },
     /// Print the script that sets up tab completion, e.g. `source <(darwan completion zsh)`
     Completion { shell: completion::Shell },
@@ -231,6 +234,7 @@ fn main() -> ExitCode {
             shots,
             jobs,
             timeout,
+            with_config,
         } => check::run(
             &paths,
             check::Options {
@@ -241,6 +245,7 @@ fn main() -> ExitCode {
                 shots,
                 jobs,
                 timeout: Duration::from_secs(timeout),
+                with_config,
             },
         ),
     };

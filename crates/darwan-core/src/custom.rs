@@ -492,17 +492,22 @@ pub fn apply(
     for c in &theme.manifest.colors {
         roles.push((c.key.as_str(), c.key.as_str(), c.material.clone()));
     }
-    let wants_palette = roles.iter().any(|(k, _, _)| get(k) == Some(GENERATE));
+    let user_colours = roles.iter().any(|(k, _, _)| get(k).is_some());
+    let by_default = sup.generate_by_default && !user_colours;
+    let wants_palette = by_default || roles.iter().any(|(k, _, _)| get(k) == Some(GENERATE));
     let palette = if wants_palette {
         let source = match get("color_source").unwrap_or("background") {
             DESKTOP => host.desktop_wallpaper(is_dark).map(|w| w.path),
             _ => background_file
                 .clone()
                 .or_else(|| {
-                    theme
-                        .manifest
-                        .background_file
+                    let m = &theme.manifest;
+                    let dark_file = m
+                        .background_file_dark
                         .as_ref()
+                        .filter(|_| is_dark == Some(true));
+                    dark_file
+                        .or(m.background_file.as_ref())
                         .map(|f| theme.dir.join(f))
                 })
                 .or_else(|| theme.preview.clone()),
@@ -535,6 +540,13 @@ pub fn apply(
     } else {
         None
     };
+    if sup.material_palette
+        && let Some(p) = &palette
+    {
+        for (role, hex) in p {
+            overlay.insert(format!("material_{role}"), hex.clone());
+        }
+    }
     for (key, contract, material) in roles {
         match get(key) {
             Some(GENERATE) => {
@@ -630,6 +642,12 @@ pub fn check_contract(theme: &Theme, key: &str, value: &str) -> Option<Result<()
         ),
         "reduceMotion" => gate(sup.motion, one_of(value, &["true", "false"])),
         k if theme.manifest.color(k).is_some() => color(value),
+        k if k
+            .strip_prefix("material_")
+            .is_some_and(|r| MATERIAL_ROLES.contains(&r)) =>
+        {
+            gate(sup.material_palette, color(value))
+        }
         _ => return None,
     })
 }
@@ -818,6 +836,48 @@ mod tests {
             "night wallpaper for dark"
         );
         assert!(issues.is_empty(), "{issues:?}");
+    }
+
+    #[test]
+    fn a_generate_by_default_theme_gets_the_whole_palette_until_the_user_picks_colours() {
+        let t = theme(
+            "[supports]\ncolors = true\nmaterial_palette = true\ngenerate_by_default = true\nvariants = [\"light\", \"dark\"]\ndefault_variant = \"light\"\n",
+        );
+        let (mut overlay, mut issues) = (BTreeMap::new(), Vec::new());
+        apply(
+            &t,
+            &values(&[("color_source", DESKTOP)]),
+            &Fake,
+            &mut overlay,
+            &mut issues,
+        );
+        assert_eq!(
+            overlay.get("material_primary").map(String::as_str),
+            Some("#112233")
+        );
+        assert!(
+            !overlay.contains_key("colorAccent"),
+            "the theme maps the palette itself"
+        );
+        for (k, v) in &overlay {
+            assert_eq!(check_contract(&t, k, v), Some(Ok(())), "{k}");
+        }
+        let (mut overlay, mut issues) = (BTreeMap::new(), Vec::new());
+        apply(
+            &t,
+            &values(&[("accent", "#ff0000")]),
+            &Fake,
+            &mut overlay,
+            &mut issues,
+        );
+        assert!(
+            !overlay.contains_key("material_primary"),
+            "a picked colour turns generation off"
+        );
+        assert_eq!(
+            overlay.get("colorAccent").map(String::as_str),
+            Some("#ff0000")
+        );
     }
 
     #[test]

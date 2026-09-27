@@ -72,6 +72,19 @@ impl Catalog {
     }
 }
 
+// Themes that moved, so an old config gets told what to set instead of just "unknown".
+const MOVED: &[(&str, &str)] = &[(
+    "material-you-dark",
+    "it is now material-you with `darwan set material-you.variant dark`",
+)];
+
+pub fn unknown_theme(id: &str) -> String {
+    match MOVED.iter().find(|(old, _)| *old == id) {
+        Some((_, hint)) => format!("unknown theme {id:?}: {hint}"),
+        None => format!("unknown theme {id:?}"),
+    }
+}
+
 // Ids reach a root helper, so only lowercase path segments are accepted: no `..`, no absolute paths.
 pub fn valid_id(id: &str) -> bool {
     !id.is_empty()
@@ -162,6 +175,12 @@ mod tests {
         ] {
             assert!(!valid_id(bad), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn a_moved_theme_says_where_it_went() {
+        assert!(unknown_theme("material-you-dark").contains("material-you.variant dark"));
+        assert_eq!(unknown_theme("nope"), "unknown theme \"nope\"");
     }
 
     #[test]

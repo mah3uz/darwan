@@ -30,7 +30,7 @@ pub fn prepare(paths: &Paths, id: Option<&str>, file_name: &str) -> Result<Prepa
     let Some(pos) = catalog.themes().iter().position(|t| t.id == id) else {
         return Err(match problems.iter().find(|p| p.id == id) {
             Some(p) => format!("theme {id:?} is broken: {}", p.message),
-            None => format!("unknown theme {id:?}"),
+            None => darwan_core::catalog::unknown_theme(&id),
         });
     };
     let theme = catalog.into_themes().swap_remove(pos);
