@@ -80,6 +80,27 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
         }
     }
 
+    {
+        use darwan_core::custom::Host;
+        let host = darwan_core::system::SystemHost::new();
+        match host.desktop_wallpaper(None) {
+            Some(w) => r.ok(format!("desktop wallpaper: {} ({})", w.path.display(), w.source)),
+            None if darwan_core::wallpaper::unsupported_engine(&darwan_core::wallpaper::Env::system()) => r.warn(
+                "the desktop wallpaper is a Wallpaper Engine scene; themes can't use it as a background",
+            ),
+            None => r.warn("no desktop wallpaper found; \"use my desktop wallpaper\" won't work"),
+        }
+        match host.desktop_prefers_dark() {
+            Some(dark) => r.ok(format!(
+                "the desktop prefers {} (auto light/dark follows it)",
+                if dark { "dark" } else { "light" }
+            )),
+            None => {
+                r.warn("the desktop states no light/dark preference; auto uses each theme's own")
+            }
+        }
+    }
+
     println!("\nThemes");
     let (catalog, problems) =
         Catalog::load(&paths.themes()).map_err(|e| format!("{}: {e}", paths.themes().display()))?;

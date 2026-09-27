@@ -439,6 +439,10 @@ pub fn apply(
     match get("background") {
         None => {}
         Some(DESKTOP) => match host.desktop_wallpaper(is_dark) {
+            Some(w) if is_hex_color(&w.path.display().to_string()) => {
+                overlay.insert("backgroundType".into(), "color".into());
+                overlay.insert("backgroundColor".into(), w.path.display().to_string());
+            }
             Some(w) => match Media::of(&w.path) {
                 Some(kind) => {
                     overlay.insert("backgroundType".into(), kind.name().into());

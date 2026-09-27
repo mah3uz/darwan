@@ -34,6 +34,10 @@ pub fn config_file() -> PathBuf {
     xdg("XDG_CONFIG_HOME", ".config").join("darwan/config.toml")
 }
 
+pub fn cache_dir() -> PathBuf {
+    xdg("XDG_CACHE_HOME", ".cache").join("darwan")
+}
+
 pub fn state_dir() -> PathBuf {
     xdg("XDG_STATE_HOME", ".local/state").join("darwan")
 }

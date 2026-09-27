@@ -35,7 +35,7 @@ pub fn prepare(paths: &Paths, id: Option<&str>, file_name: &str) -> Result<Prepa
     };
     let theme = catalog.into_themes().swap_remove(pos);
 
-    let resolved = resolve::resolve(&theme, &config, &darwan_core::custom::Offline);
+    let resolved = resolve::resolve(&theme, &config, &darwan_core::system::SystemHost::new());
     for issue in &resolved.issues {
         eprintln!("warning: ignoring {}: {}", issue.key, issue.message);
     }
