@@ -85,9 +85,7 @@ fn role(s: &DynamicScheme, name: &str) -> Argb {
     }
 }
 
-pub fn from_rgba(rgba: image::RgbaImage, request: &PaletteRequest) -> Palette {
-    let (source, luminance) = source_color(rgba);
-    let dark = request.dark.unwrap_or(luminance < 0.5);
+fn palette(source: Argb, dark: bool, request: &PaletteRequest) -> Palette {
     let s = scheme(&request.scheme, source, dark, request.contrast);
     MATERIAL_ROLES
         .iter()
@@ -98,6 +96,18 @@ pub fn from_rgba(rgba: image::RgbaImage, request: &PaletteRequest) -> Palette {
             )
         })
         .collect()
+}
+
+pub fn from_rgba(rgba: image::RgbaImage, request: &PaletteRequest) -> Palette {
+    let (source, luminance) = source_color(rgba);
+    palette(source, request.dark.unwrap_or(luminance < 0.5), request)
+}
+
+// A single picked colour as the seed, as Android does; "#rrggbb", validated by the caller.
+pub fn from_seed(hex: &str, request: &PaletteRequest) -> Option<Palette> {
+    let n = u32::from_str_radix(hex.strip_prefix('#')?, 16).ok()?;
+    let seed = Argb::new(255, (n >> 16) as u8, (n >> 8) as u8, n as u8);
+    Some(palette(seed, request.dark.unwrap_or(false), request))
 }
 
 // A frame one second in (the first frames are often black), falling back to the first.
@@ -263,6 +273,20 @@ mod tests {
             first,
             "an edited wallpaper is regenerated"
         );
+    }
+
+    #[test]
+    fn a_seed_colour_sets_the_palettes_hue_in_both_modes() {
+        for dark in [false, true] {
+            let p = from_seed("#e63946", &request("scheme-tonal-spot", Some(dark))).unwrap();
+            assert_eq!(p.len(), MATERIAL_ROLES.len());
+            let h = hue(&p["primary"]);
+            assert!(
+                !(40.0..340.0).contains(&h),
+                "primary hue {h} should stay red (dark: {dark})"
+            );
+        }
+        assert!(from_seed("red", &request("scheme-tonal-spot", None)).is_none());
     }
 
     #[test]

@@ -67,6 +67,8 @@ fonts = ["text", "clock"]         # which font roles the user can change
 motion = true                     # animation speed, curve and reduce motion
 variants = ["light", "dark"]      # only for a designed second look; theme.conf sets colorScheme
 default_variant = "light"
+material_palette = true           # the theme reads material_<role> keys: generated, or seeded from a picked accent
+generate_by_default = false       # true: generate the palette until the user picks colours
 
 # theme.conf states colorAccent and colorText for themes without variants (the form shows them as the defaults)
 

@@ -495,6 +495,13 @@ pub fn apply(
     let user_colours = roles.iter().any(|(k, _, _)| get(k).is_some());
     let by_default = sup.generate_by_default && !user_colours;
     let wants_palette = by_default || roles.iter().any(|(k, _, _)| get(k) == Some(GENERATE));
+    let request = PaletteRequest {
+        scheme: get("color_scheme").unwrap_or(SCHEMES[0].0).to_string(),
+        dark: is_dark,
+        contrast: get("color_contrast")
+            .and_then(|c| c.parse().ok())
+            .unwrap_or(0.0),
+    };
     let palette = if wants_palette {
         let source = match get("color_source").unwrap_or("background") {
             DESKTOP => host.desktop_wallpaper(is_dark).map(|w| w.path),
@@ -511,13 +518,6 @@ pub fn apply(
                         .map(|f| theme.dir.join(f))
                 })
                 .or_else(|| theme.preview.clone()),
-        };
-        let request = PaletteRequest {
-            scheme: get("color_scheme").unwrap_or(SCHEMES[0].0).to_string(),
-            dark: is_dark,
-            contrast: get("color_contrast")
-                .and_then(|c| c.parse().ok())
-                .unwrap_or(0.0),
         };
         match source {
             Some(image) => host
@@ -537,6 +537,9 @@ pub fn apply(
                 None
             }
         }
+    } else if sup.material_palette {
+        // A picked accent seeds the whole palette, so the theme recolours as one instead of in two places.
+        get("accent").and_then(|hex| crate::palette::from_seed(hex, &request))
     } else {
         None
     };
@@ -870,10 +873,57 @@ mod tests {
             &mut overlay,
             &mut issues,
         );
-        assert!(
-            !overlay.contains_key("material_primary"),
-            "a picked colour turns generation off"
+        let seeded = overlay
+            .get("material_primary")
+            .expect("a picked accent seeds the palette");
+        assert_ne!(
+            seeded, "#112233",
+            "the seed is the picked colour, not the background"
         );
+        assert_eq!(
+            overlay.get("colorAccent").map(String::as_str),
+            Some("#ff0000")
+        );
+        for (k, v) in &overlay {
+            assert_eq!(check_contract(&t, k, v), Some(Ok(())), "{k}");
+        }
+    }
+
+    #[test]
+    fn without_a_picked_accent_a_palette_theme_keeps_its_designed_colours() {
+        let t = theme(
+            "[supports]\ncolors = true\nmaterial_palette = true\nvariants = [\"light\", \"dark\"]\ndefault_variant = \"light\"\n",
+        );
+        let (mut overlay, mut issues) = (BTreeMap::new(), Vec::new());
+        apply(
+            &t,
+            &values(&[("text_color", "#101010")]),
+            &Fake,
+            &mut overlay,
+            &mut issues,
+        );
+        assert!(
+            !overlay.keys().any(|k| k.starts_with("material_")),
+            "a text colour alone is not a seed"
+        );
+        assert_eq!(
+            overlay.get("colorText").map(String::as_str),
+            Some("#101010")
+        );
+    }
+
+    #[test]
+    fn a_picked_accent_does_not_recolour_a_theme_without_a_palette() {
+        let t = theme("[supports]\ncolors = true\n");
+        let (mut overlay, mut issues) = (BTreeMap::new(), Vec::new());
+        apply(
+            &t,
+            &values(&[("accent", "#ff0000")]),
+            &Fake,
+            &mut overlay,
+            &mut issues,
+        );
+        assert!(!overlay.keys().any(|k| k.starts_with("material_")));
         assert_eq!(
             overlay.get("colorAccent").map(String::as_str),
             Some("#ff0000")
