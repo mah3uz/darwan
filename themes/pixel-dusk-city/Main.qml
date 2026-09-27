@@ -2,8 +2,10 @@ import QtQuick
 import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -23,21 +25,22 @@ Rectangle {
     property real ui: 0
 
     // Theme colors
-    readonly property color amberHot:   "#e8803c"
+    readonly property color amberHot:   kit.color("accent", "#e8803c")
     readonly property color amberSoft:  "#c8a060"
-    readonly property color tealSign:   "#4dd8c4"
-    readonly property color textWhite:  "#f0ece4"
+    readonly property color tealSign:   kit.color("colorSign", "#4dd8c4")
+    readonly property color textWhite:  kit.color("text", "#f0ece4")
     readonly property color textDim:    "#907860"
 
     TextConstants { id: textConstants }
     FontLoader { id: pfReg; source: "font/PixelifySans-Bold.ttf" }
-    readonly property string pfRegFamily: pfReg.status === FontLoader.Ready ? pfReg.name : "sans-serif"
+    readonly property string pfRegFamily: kit.font("text", pfReg.status === FontLoader.Ready ? pfReg.name : "sans-serif")
     FontLoader { id: pfMed; source: "font/PixelifySans-Bold.ttf" }
-    readonly property string pfMedFamily: pfMed.status === FontLoader.Ready ? pfMed.name : "sans-serif"
+    readonly property string pfMedFamily: kit.font("text", pfMed.status === FontLoader.Ready ? pfMed.name : "sans-serif")
     FontLoader { id: pfSemi; source: "font/PixelifySans-Bold.ttf" }
-    readonly property string pfSemiFamily: pfSemi.status === FontLoader.Ready ? pfSemi.name : "sans-serif"
+    readonly property string pfSemiFamily: kit.font("text", pfSemi.status === FontLoader.Ready ? pfSemi.name : "sans-serif")
     FontLoader { id: pfBold; source: "font/PixelifySans-Bold.ttf" }
-    readonly property string pfBoldFamily: pfBold.status === FontLoader.Ready ? pfBold.name : "sans-serif"
+    readonly property string pfBoldFamily: kit.font("text", pfBold.status === FontLoader.Ready ? pfBold.name : "sans-serif")
+    readonly property string clockFamily: kit.font("clock", pfBold.status === FontLoader.Ready ? pfBold.name : "sans-serif")
 
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex
         visible: false; width: 100; height: 100
@@ -55,11 +58,12 @@ Rectangle {
     Timer { interval: 300; running: true; onTriggered: passwordField.forceActiveFocus() }
 
     Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: 1800; easing.type: Easing.OutCubic }
+    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: kit.dur(1800); easing.type: kit.ease(Easing.OutCubic) }
 
     // Background
     Rectangle { anchors.fill: parent; color: "#0c0a08" }
-    Loader { anchors.fill: parent; source: "BackgroundVideo.qml" }
+    Background { id: userBg; anchors.fill: parent }
+    Loader { anchors.fill: parent; active: !userBg.active; source: "BackgroundVideo.qml" }
 
     // View Vignette
     RadialGradient {
@@ -97,15 +101,15 @@ Rectangle {
                 color: em.ct === 0 ? root.amberHot : em.ct === 1 ? root.amberSoft : root.tealSign
             }
             SequentialAnimation {
-                running: true; loops: Animation.Infinite
+                running: !kit.reduceMotion; loops: Animation.Infinite
                 PauseAnimation { duration: em.dl }
                 ParallelAnimation {
-                    NumberAnimation { target: em; property: "y"; from: root.height + 10; to: -20; duration: em.dur; easing.type: Easing.OutQuad }
-                    NumberAnimation { target: em; property: "x"; from: em.sx; to: em.sx + em.dr; duration: em.dur; easing.type: Easing.InOutSine }
+                    NumberAnimation { target: em; property: "y"; from: root.height + 10; to: -20; duration: em.dur; easing.type: kit.ease(Easing.OutQuad) }
+                    NumberAnimation { target: em; property: "x"; from: em.sx; to: em.sx + em.dr; duration: em.dur; easing.type: kit.ease(Easing.InOutSine) }
                     SequentialAnimation {
-                        NumberAnimation { target: em; property: "opacity"; to: 0.85; duration: 700 }
+                        NumberAnimation { target: em; property: "opacity"; to: 0.85; duration: kit.dur(700) }
                         PauseAnimation  { duration: em.dur - 1600 }
-                        NumberAnimation { target: em; property: "opacity"; to: 0; duration: 900 }
+                        NumberAnimation { target: em; property: "opacity"; to: 0; duration: kit.dur(900) }
                     }
                 }
             }
@@ -122,7 +126,7 @@ Rectangle {
             id: clockText
             text: Qt.formatTime(new Date(), clockFmt)
             color: root.textWhite
-            font.family: pfBoldFamily; font.pixelSize: 78 * s
+            font.family: root.clockFamily; font.pixelSize: 78 * s
             Timer { interval: 1000; running: true; repeat: true; onTriggered: clockText.text = Qt.formatTime(new Date(), clockFmt) }
         }
         Row {
@@ -130,9 +134,9 @@ Rectangle {
             Rectangle {
                 width: 4 * s; height: 4 * s; color: root.amberHot
                 anchors.verticalCenter: parent.verticalCenter
-                SequentialAnimation on opacity { loops: Animation.Infinite
-                    NumberAnimation { to: 0.2; duration: 1400; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1.0; duration: 1400; easing.type: Easing.InOutSine }
+                SequentialAnimation on opacity { loops: Animation.Infinite; running: !kit.reduceMotion
+                    NumberAnimation { to: 0.2; duration: kit.dur(1400); easing.type: kit.ease(Easing.InOutSine) }
+                    NumberAnimation { to: 1.0; duration: kit.dur(1400); easing.type: kit.ease(Easing.InOutSine) }
                 }
             }
             Text {
@@ -198,7 +202,7 @@ Rectangle {
                     height: 2 * s
                     color: root.amberHot
                     width: passwordField.activeFocus ? parent.width : 0
-                    Behavior on width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+                    Behavior on width { NumberAnimation { duration: kit.dur(320); easing.type: kit.ease(Easing.OutCubic) } }
                 }
 
                 Text {
@@ -208,7 +212,7 @@ Rectangle {
                     color: root.amberSoft
                     font.family: pfMedFamily; font.pixelSize: 14 * s; font.letterSpacing: 3 * s
                     opacity: passwordField.text.length === 0 ? 0.38 : 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(400); easing.type: kit.ease(Easing.InOutSine) } }
                 }
 
                 TextInput {
@@ -241,9 +245,9 @@ Rectangle {
                     x: passwordField.x + passwordField.cursorRectangle.x
                     visible: passwordField.focus && (passwordField.text.length > 0 || passwordField.wasClicked)
                     SequentialAnimation {
-                        loops: Animation.Infinite; running: customCursor.visible
-                        NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: 450 }
-                        NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: 450 }
+                        loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion
+                        NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: kit.dur(450) }
+                        NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: kit.dur(450) }
                     }
                 }
 
@@ -262,8 +266,8 @@ Rectangle {
                                : "transparent"
                         border.color: Qt.rgba(0.91, 0.50, 0.24, passwordField.text.length > 0 ? 0.55 : 0.20)
                         border.width: 1 * s
-                        Behavior on color        { ColorAnimation { duration: 160 } }
-                        Behavior on border.color { ColorAnimation { duration: 200 } }
+                        Behavior on color        { ColorAnimation { duration: kit.dur(160) } }
+                        Behavior on border.color { ColorAnimation { duration: kit.dur(200) } }
                     }
                     Text {
                         id: loginText
@@ -272,7 +276,7 @@ Rectangle {
                         color: root.amberHot
                         font.family: pfBoldFamily; font.pixelSize: 9 * s; font.letterSpacing: 2 * s
                         opacity: passwordField.text.length > 0 ? 1.0 : 0.30
-                        Behavior on opacity { NumberAnimation { duration: 200 } }
+                        Behavior on opacity { NumberAnimation { duration: kit.dur(200) } }
                     }
                     MouseArea {
                         id: submitMouse; anchors.fill: parent; hoverEnabled: true
@@ -295,11 +299,11 @@ Rectangle {
     // Error Animation
     SequentialAnimation {
         id: shakeAnim
-        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x + 10; duration: 45 }
-        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x - 8;  duration: 45 }
-        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x + 6;  duration: 45 }
-        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x - 4;  duration: 45 }
-        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x;      duration: 45 }
+        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x + 10; duration: kit.dur(45) }
+        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x - 8;  duration: kit.dur(45) }
+        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x + 6;  duration: kit.dur(45) }
+        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x - 4;  duration: kit.dur(45) }
+        NumberAnimation { target: loginPanel; property: "x"; to: loginPanel.x;      duration: kit.dur(45) }
     }
 
     // Footer Area
@@ -323,11 +327,11 @@ Rectangle {
                     anchors.fill: parent; radius: 2 * s
                     color: "transparent"; border.color: root.amberHot; border.width: 1 * s
                     opacity: sessionMouse.containsMouse ? 1.0 : 0.30
-                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(150) } }
                     Rectangle {
                         anchors.fill: parent; anchors.margins: 1 * s; color: root.amberHot; radius: 1 * s
                         opacity: sessionMouse.containsMouse ? 0.15 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                        Behavior on opacity { NumberAnimation { duration: kit.dur(150) } }
                     }
                 }
                 Row {
@@ -356,11 +360,11 @@ Rectangle {
                         anchors.fill: parent; radius: 2 * s
                         color: "transparent"; border.color: root.amberHot; border.width: 1 * s
                         opacity: pm.containsMouse ? 1.0 : 0.30
-                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                        Behavior on opacity { NumberAnimation { duration: kit.dur(150) } }
                         Rectangle {
                             anchors.fill: parent; anchors.margins: 1 * s; color: root.amberHot; radius: 1 * s
                             opacity: pm.containsMouse ? 0.15 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                            Behavior on opacity { NumberAnimation { duration: kit.dur(150) } }
                         }
                     }
                     Text {

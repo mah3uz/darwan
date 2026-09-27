@@ -3,9 +3,11 @@ import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 // Munchlax Layout
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -21,13 +23,14 @@ Rectangle {
     property real ui: 0
 
     // Theme Colors
-    readonly property color mTeal: "#50dfd4"
-    readonly property color mCream: "#fcf8eb"
-    readonly property color mOrange: "#f4a261"
+    readonly property color mTeal: kit.color("accent", "#50dfd4")
+    readonly property color mCream: kit.color("text", "#fcf8eb")
+    readonly property color mOrange: kit.color("colorOrange", "#f4a261")
 
     FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader { id: pf; source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
-    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
+    readonly property string pfFamily: kit.font("text", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
+    readonly property string clockFamily: kit.font("clock", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
 
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string sName: model.name || "" } }
     ListView { id: userHelper; model: typeof userModel !== "undefined" ? userModel : null; currentIndex: root.userIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
@@ -36,9 +39,11 @@ Rectangle {
     Timer { interval: 300; running: true; onTriggered: pwd.forceActiveFocus() }
 
     Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: 600; easing.type: Easing.OutSine }
+    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: kit.dur(600); easing.type: kit.ease(Easing.OutSine) }
 
-    Loader { anchors.fill: parent; source: "BackgroundVideo.qml" }
+    Background { id: userBg; anchors.fill: parent }
+
+    Loader { anchors.fill: parent; active: !userBg.active; source: "BackgroundVideo.qml" }
 
     // Bottom Overlay
     Rectangle {
@@ -70,7 +75,7 @@ Rectangle {
             Text {
                 id: ct
                 text: Qt.formatTime(new Date(), clockFmt)
-                color: root.mCream; font.family: pfFamily; font.pixelSize: 96 * s
+                color: root.mCream; font.family: root.clockFamily; font.pixelSize: 96 * s
                 Timer { interval: 1000; running: true; repeat: true; onTriggered: ct.text = Qt.formatTime(new Date(), clockFmt) }
             }
         }
@@ -98,8 +103,8 @@ Rectangle {
 
             Item {
                 width: parent.width; height: 36 * s
-                Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; width: parent.width; height: 1 * s; color: root.mTeal; opacity: pwd.activeFocus ? 1.0 : 0.3; Behavior on opacity { NumberAnimation {duration: 300} } }
-                Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; width: pwd.activeFocus ? parent.width : 0; height: 2 * s; color: root.mOrange; Behavior on width { NumberAnimation {duration: 300; easing.type: Easing.OutExpo} }
+                Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; width: parent.width; height: 1 * s; color: root.mTeal; opacity: pwd.activeFocus ? 1.0 : 0.3; Behavior on opacity { NumberAnimation {duration: kit.dur(300)} } }
+                Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; width: pwd.activeFocus ? parent.width : 0; height: 2 * s; color: root.mOrange; Behavior on width { NumberAnimation {duration: kit.dur(300); easing.type: kit.ease(Easing.OutExpo)} }
                     layer.enabled: true; layer.effect: Glow { color: root.mOrange; radius: 6; spread: 0.4 }
                 }
                 TextInput {
@@ -114,7 +119,7 @@ Rectangle {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; text: "password"; color: root.mTeal; font.family: pfFamily; font.pixelSize: 14 * s; font.letterSpacing: 4 * s
                     opacity: pwd.text.length === 0 ? 0.4 : 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(400); easing.type: kit.ease(Easing.InOutSine) } }
                 }
                 Rectangle {
                     id: customCursor
@@ -124,9 +129,9 @@ Rectangle {
                     x: pwd.cursorRectangle.x
                     visible: pwd.focus && (pwd.text.length > 0 || pwd.wasClicked)
                     SequentialAnimation {
-                        loops: Animation.Infinite; running: customCursor.visible
-                        NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: 450 }
-                        NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: 450 }
+                        loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion
+                        NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: kit.dur(450) }
+                        NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: kit.dur(450) }
                     }
                 }
                 MouseArea {
@@ -140,8 +145,8 @@ Rectangle {
 
             Item {
                 anchors.left: parent.left; width: 140 * s; height: 36 * s
-                Rectangle { anchors.fill: parent; color: sbm.containsMouse ? root.mTeal : "transparent"; border.color: root.mTeal; border.width: 1; radius: 4 * s; Behavior on color { ColorAnimation { duration: 150 } } }
-                Text { anchors.centerIn: parent; text: "LOGIN"; color: sbm.containsMouse ? "#000" : root.mCream; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; Behavior on color { ColorAnimation { duration: 150 } } }
+                Rectangle { anchors.fill: parent; color: sbm.containsMouse ? root.mTeal : "transparent"; border.color: root.mTeal; border.width: 1; radius: 4 * s; Behavior on color { ColorAnimation { duration: kit.dur(150) } } }
+                Text { anchors.centerIn: parent; text: "LOGIN"; color: sbm.containsMouse ? "#000" : root.mCream; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; Behavior on color { ColorAnimation { duration: kit.dur(150) } } }
                 MouseArea { id: sbm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: doLogin() }
             }
 
@@ -157,7 +162,7 @@ Rectangle {
             delegate: Item {
                 visible: modelData.a === 2 ? !root.isQuickshell : true
                 width: pmt.implicitWidth + 24 * s; height: 28 * s
-                Rectangle { anchors.fill: parent; color: "transparent"; border.color: root.mTeal; border.width: 1 * s; opacity: pm.containsMouse ? 1.0 : 0.4; radius: 4 * s; Behavior on opacity { NumberAnimation { duration: 150 } } Rectangle { anchors.fill: parent; anchors.margins: 1 * s; color: modelData.a === 2 ? root.mOrange : root.mTeal; radius: 3 * s; opacity: pm.containsMouse ? 0.3 : 0; Behavior on opacity { NumberAnimation { duration: 150 } } } }
+                Rectangle { anchors.fill: parent; color: "transparent"; border.color: root.mTeal; border.width: 1 * s; opacity: pm.containsMouse ? 1.0 : 0.4; radius: 4 * s; Behavior on opacity { NumberAnimation { duration: kit.dur(150) } } Rectangle { anchors.fill: parent; anchors.margins: 1 * s; color: modelData.a === 2 ? root.mOrange : root.mTeal; radius: 3 * s; opacity: pm.containsMouse ? 0.3 : 0; Behavior on opacity { NumberAnimation { duration: kit.dur(150) } } } }
                 Text { id: pmt; anchors.centerIn: parent; text: modelData.l; color: root.mCream; font.family: pfFamily; font.pixelSize: 10 * s; font.letterSpacing: 2 * s }
                 MouseArea { id: pm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (modelData.a === 0) { if (typeof sddm !== "undefined") sddm.reboot() } else if (modelData.a === 1) { if (typeof sddm !== "undefined") sddm.powerOff() } else if (typeof sessionModel !== "undefined" && sessionModel.rowCount() > 0) root.sessionIndex = (root.sessionIndex + 1) % sessionModel.rowCount() } }
             }

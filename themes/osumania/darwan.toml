@@ -20,3 +20,6 @@ choices = [
 [supports]
 clock_format = true
 date_format = true
+background = true
+fonts = ["text", "clock"]
+motion = true

@@ -5,8 +5,10 @@ import QtQuick.Window 2.15
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -48,7 +50,7 @@ Rectangle {
         
         property real xOffset: (!centered && menuMa.containsMouse) ? 35*s : 0
         x: xOffset
-        Behavior on xOffset { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
+        Behavior on xOffset { NumberAnimation { duration: kit.dur(300); easing.type: kit.ease(Easing.OutQuint) } }
 
         // Button Content
         Item {
@@ -118,12 +120,12 @@ Rectangle {
         SequentialAnimation {
             id: clickAnim
             ParallelAnimation {
-                NumberAnimation { target: menuItem; property: "scale"; to: 0.94; duration: 60; easing.type: Easing.OutQuad }
-                NumberAnimation { target: clickFlash; property: "opacity"; to: 0.4; duration: 60 }
+                NumberAnimation { target: menuItem; property: "scale"; to: 0.94; duration: kit.dur(60); easing.type: kit.ease(Easing.OutQuad) }
+                NumberAnimation { target: clickFlash; property: "opacity"; to: 0.4; duration: kit.dur(60) }
             }
             ParallelAnimation {
-                NumberAnimation { target: menuItem; property: "scale"; to: 1.0; duration: 200; easing.type: Easing.OutBack }
-                NumberAnimation { target: clickFlash; property: "opacity"; to: 0; duration: 200 }
+                NumberAnimation { target: menuItem; property: "scale"; to: 1.0; duration: kit.dur(200); easing.type: kit.ease(Easing.OutBack) }
+                NumberAnimation { target: clickFlash; property: "opacity"; to: 0; duration: kit.dur(200) }
             }
         }
     }
@@ -204,7 +206,8 @@ Rectangle {
         id: mainFont
         source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : ""
     }
-    readonly property string mainFontFamily: mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif"
+    readonly property string mainFontFamily: kit.font("text", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
+    readonly property string clockFontFamily: kit.font("clock", mainFont.status === FontLoader.Ready ? mainFont.name : "sans-serif")
     TextConstants { id: textConstants }
 
     // SDDM Bridges
@@ -233,7 +236,7 @@ Rectangle {
     }
     NumberAnimation {
         id: fadeIn; target: root; property: "uiOpacity"
-        from: 0; to: 1; duration: 300; easing.type: Easing.OutCubic
+        from: 0; to: 1; duration: kit.dur(300); easing.type: kit.ease(Easing.OutCubic)
     }
 
     // Background Image
@@ -241,18 +244,20 @@ Rectangle {
         id: bgImage
         anchors.fill: parent
         source: root.bgFiles[root.bgIndex]
+        visible: !userBg.active
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         opacity: root.loginSuccess ? 0.15 : (root.gameActive ? 0.3 : 0.65)
-        Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: kit.dur(800); easing.type: kit.ease(Easing.OutCubic) } }
     }
+    Background { id: userBg; anchors.fill: parent; opacity: bgImage.opacity }
 
     // Dark Tint
     Rectangle {
         anchors.fill: parent
         color: root.darkColor
         opacity: root.gameActive ? 0.85 : 0.45
-        Behavior on opacity { NumberAnimation { duration: 800 } }
+        Behavior on opacity { NumberAnimation { duration: kit.dur(800) } }
     }
 
     // Vignette
@@ -270,7 +275,7 @@ Rectangle {
         anchors.fill: parent
         opacity: (root.gameActive || root.loginSuccess) ? 0 : root.uiOpacity
         visible: opacity > 0.01
-        Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutQuint } }
+        Behavior on opacity { NumberAnimation { duration: kit.dur(600); easing.type: kit.ease(Easing.OutQuint) } }
 
         // Top HUD
         Item {
@@ -341,15 +346,15 @@ Rectangle {
                 SequentialAnimation {
                     id: userSwitchAnim
                     ParallelAnimation {
-                        NumberAnimation { target: userCardContent; property: "opacity"; to: 0; duration: 70; easing.type: Easing.InQuad }
-                        NumberAnimation { target: userCardContent; property: "scale"; to: 0.75; duration: 70; easing.type: Easing.InQuad }
-                        NumberAnimation { target: userCardContent; property: "x"; to: -50 * s; duration: 70; easing.type: Easing.InQuad }
+                        NumberAnimation { target: userCardContent; property: "opacity"; to: 0; duration: kit.dur(70); easing.type: kit.ease(Easing.InQuad) }
+                        NumberAnimation { target: userCardContent; property: "scale"; to: 0.75; duration: kit.dur(70); easing.type: kit.ease(Easing.InQuad) }
+                        NumberAnimation { target: userCardContent; property: "x"; to: -50 * s; duration: kit.dur(70); easing.type: kit.ease(Easing.InQuad) }
                     }
                     PropertyAction { target: userCardContent; property: "x"; value: 80 * s }
                     ParallelAnimation {
-                        NumberAnimation { target: userCardContent; property: "opacity"; to: 1.0; duration: 550; easing.type: Easing.OutElastic; easing.period: 0.6; easing.amplitude: 1.0 }
-                        NumberAnimation { target: userCardContent; property: "scale"; to: 1.0; duration: 550; easing.type: Easing.OutElastic; easing.period: 0.6; easing.amplitude: 1.0 }
-                        NumberAnimation { target: userCardContent; property: "x"; to: 0; duration: 550; easing.type: Easing.OutElastic; easing.period: 0.6; easing.amplitude: 1.0 }
+                        NumberAnimation { target: userCardContent; property: "opacity"; to: 1.0; duration: kit.dur(550); easing.type: kit.ease(Easing.OutElastic); easing.period: 0.6; easing.amplitude: 1.0 }
+                        NumberAnimation { target: userCardContent; property: "scale"; to: 1.0; duration: kit.dur(550); easing.type: kit.ease(Easing.OutElastic); easing.period: 0.6; easing.amplitude: 1.0 }
+                        NumberAnimation { target: userCardContent; property: "x"; to: 0; duration: kit.dur(550); easing.type: kit.ease(Easing.OutElastic); easing.period: 0.6; easing.amplitude: 1.0 }
                     }
                 }
 
@@ -405,7 +410,7 @@ Rectangle {
                             property string timeStr: Qt.formatTime(new Date(), clockFmt)
                             Timer { interval: 1000; running: true; repeat: true; onTriggered: parent.timeStr = Qt.formatTime(new Date(), clockFmt) }
                             text: timeStr
-                            color: "white"; font.family: mainFontFamily; font.pixelSize: 32*s; font.weight: Font.Bold
+                            color: "white"; font.family: clockFontFamily; font.pixelSize: 32*s; font.weight: Font.Bold
                             anchors.verticalCenter: parent.verticalCenter
                             layer.enabled: true; layer.effect: DropShadow { color: "#88000000"; radius: 4 }
                         }
@@ -432,7 +437,7 @@ Rectangle {
             z: 10
             anchors.centerIn: parent
             anchors.horizontalCenterOffset: mainMenuWrapper.menuExpanded ? -220*s : 0
-            Behavior on anchors.horizontalCenterOffset { NumberAnimation { duration: 500; easing.type: Easing.OutElastic; easing.amplitude: 1.0; easing.period: 0.9 } }
+            Behavior on anchors.horizontalCenterOffset { NumberAnimation { duration: kit.dur(500); easing.type: kit.ease(Easing.OutElastic); easing.amplitude: 1.0; easing.period: 0.9 } }
             width:  340 * s
             height: 340 * s
 
@@ -470,7 +475,7 @@ Rectangle {
                             
                             NumberAnimation on y {
                                 from: y; to: y - (50 * s); duration: 8000 + Math.random() * 4000
-                                loops: Animation.Infinite; running: true
+                                loops: Animation.Infinite; running: !kit.reduceMotion
                             }
                         }
                     }
@@ -490,13 +495,13 @@ Rectangle {
 
                     property real hoverScale: menuMa_global.containsMouse ? 1.08 : 1.0
                     scale: hoverScale * innerPulse.scaleVal
-                    Behavior on hoverScale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                    Behavior on hoverScale { NumberAnimation { duration: kit.dur(250); easing.type: kit.ease(Easing.OutBack) } }
                     
                     QtObject { id: innerPulse; property real scaleVal: 1.0 }
                     SequentialAnimation {
-                        running: true; loops: Animation.Infinite
-                        NumberAnimation { target: innerPulse; property: "scaleVal"; from: 1.0; to: 1.03; duration: 450; easing.type: Easing.OutQuad }
-                        NumberAnimation { target: innerPulse; property: "scaleVal"; from: 1.03; to: 1.0; duration: 450; easing.type: Easing.InQuad }
+                        running: !kit.reduceMotion; loops: Animation.Infinite
+                        NumberAnimation { target: innerPulse; property: "scaleVal"; from: 1.0; to: 1.03; duration: kit.dur(450); easing.type: kit.ease(Easing.OutQuad) }
+                        NumberAnimation { target: innerPulse; property: "scaleVal"; from: 1.03; to: 1.0; duration: kit.dur(450); easing.type: kit.ease(Easing.InQuad) }
                     }
 
                     Text {
@@ -516,12 +521,12 @@ Rectangle {
                     Rectangle {
                         anchors.centerIn: parent; width: parent.width; height: parent.height; radius: width/2
                         color: "transparent"; border.color: "white"; border.width: 4*s
-                        SequentialAnimation on scale { loops: Animation.Infinite
+                        SequentialAnimation on scale { loops: Animation.Infinite; running: !kit.reduceMotion
                             PauseAnimation { duration: index * 600 }
-                            NumberAnimation { from: 0.95; to: 1.5; duration: 1200; easing.type: Easing.OutQuad } }
-                        SequentialAnimation on opacity { loops: Animation.Infinite
+                            NumberAnimation { from: 0.95; to: 1.5; duration: kit.dur(1200); easing.type: kit.ease(Easing.OutQuad) } }
+                        SequentialAnimation on opacity { loops: Animation.Infinite; running: !kit.reduceMotion
                             PauseAnimation { duration: index * 600 }
-                            NumberAnimation { from: 0.6; to: 0.0; duration: 1200; easing.type: Easing.OutQuad } }
+                            NumberAnimation { from: 0.6; to: 0.0; duration: kit.dur(1200); easing.type: kit.ease(Easing.OutQuad) } }
                     }
                 }
 
@@ -549,8 +554,8 @@ Rectangle {
                 z: 5
                 opacity: mainMenuWrapper.menuExpanded ? 1 : 0
                 visible: opacity > 0.01
-                Behavior on opacity { NumberAnimation { duration: 150 } }
-                Behavior on anchors.leftMargin { NumberAnimation { duration: 450; easing.type: Easing.OutElastic; easing.amplitude: 1.0; easing.period: 0.8 } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(150) } }
+                Behavior on anchors.leftMargin { NumberAnimation { duration: kit.dur(450); easing.type: kit.ease(Easing.OutElastic); easing.amplitude: 1.0; easing.period: 0.8 } }
 
                 OsuMenuItem { s: root.s; label: "Play"; iconColor: "#662D91"; onActivated: { if (passField.text.length > 0) root.showingDiff = true; else passField.forceActiveFocus() } }
                 OsuMenuItem { s: root.s; label: "Session"; iconColor: "#4B247A"; onActivated: root.sessionIndex = (root.sessionIndex + 1) % Math.max(1, sessionModel.count) }
@@ -564,7 +569,7 @@ Rectangle {
             id: diffOverlay
             anchors.fill: parent; z: 5000; color: Qt.rgba(0, 0, 0, 0.98)
             visible: opacity > 0.01; opacity: root.showingDiff ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 300 } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(300) } }
 
             // Block Hover
             MouseArea { anchors.fill: parent; hoverEnabled: true; onClicked: root.showingDiff = false }
@@ -615,7 +620,7 @@ Rectangle {
                 layer.enabled: true
                 layer.effect: DropShadow { color: "#aa000000"; radius: 10; samples: 17; spread: 0.1 }
                 
-                Behavior on border.color { ColorAnimation { duration: 200 } }
+                Behavior on border.color { ColorAnimation { duration: kit.dur(200) } }
             }
 
             Row {
@@ -662,7 +667,7 @@ Rectangle {
                             Rectangle {
                                 width: 8 * s; height: 8 * s; radius: 4 * s; color: "white"
                                 anchors.verticalCenter: parent.verticalCenter
-                                NumberAnimation on scale { from: 0.5; to: 1.0; duration: 150; easing.type: Easing.OutBack }
+                                NumberAnimation on scale { from: 0.5; to: 1.0; duration: kit.dur(150); easing.type: kit.ease(Easing.OutBack) }
                                 layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 3 }
                             }
                         }
@@ -678,8 +683,9 @@ Rectangle {
                         
                         SequentialAnimation on opacity {
                             loops: Animation.Infinite
-                            NumberAnimation { from: 1.0; to: 0.2; duration: 500; easing.type: Easing.InOutQuad }
-                            NumberAnimation { from: 0.2; to: 1.0; duration: 500; easing.type: Easing.InOutQuad }
+                            running: !kit.reduceMotion
+                            NumberAnimation { from: 1.0; to: 0.2; duration: kit.dur(500); easing.type: kit.ease(Easing.InOutQuad) }
+                            NumberAnimation { from: 0.2; to: 1.0; duration: kit.dur(500); easing.type: kit.ease(Easing.InOutQuad) }
                         }
                     }
                 }
@@ -704,7 +710,7 @@ Rectangle {
         visible: root.gameActive
         focus: root.gameActive
         opacity: root.gameActive ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 500 } }
+        Behavior on opacity { NumberAnimation { duration: kit.dur(500) } }
 
         // Progress Bar
         Item {
@@ -718,7 +724,7 @@ Rectangle {
             Rectangle {
                 width: parent.width * Math.min(1.0, root.osuHits / settings.requiredHits)
                 height: parent.height; color: root.accentColor
-                Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on width { NumberAnimation { duration: kit.dur(300); easing.type: kit.ease(Easing.OutCubic) } }
                 layer.enabled: true
                 layer.effect: DropShadow {
                     color: root.glowColor; radius: 8; samples: 13; spread: 0.3
@@ -739,7 +745,7 @@ Rectangle {
             Rectangle {
                 width: parent.width * root.osuHealth
                 height: parent.height; color: root.osuHealth > 0.3 ? "#fff" : "#ff4444"
-                Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on width { NumberAnimation { duration: kit.dur(300); easing.type: kit.ease(Easing.OutCubic) } }
 
                 layer.enabled: true
                 layer.effect: DropShadow { color: color; radius: 12; samples: 17; opacity: 0.8 }
@@ -779,13 +785,13 @@ Rectangle {
                 color: comboBreakAnim.running ? "#ff4444" : "white"; font.family: mainFontFamily
                 font.pixelSize: 52*s + Math.min(20*s, root.osuCombo * 0.5); font.weight: Font.Black
 
-                NumberAnimation on scale { id: comboPopAnim; from: 1.35; to: 1.0; duration: 150; easing.type: Easing.OutBack }
+                NumberAnimation on scale { id: comboPopAnim; from: 1.35; to: 1.0; duration: kit.dur(150); easing.type: kit.ease(Easing.OutBack) }
 
                 SequentialAnimation {
                     id: comboBreakAnim
-                    NumberAnimation { target: comboText; property: "anchors.horizontalCenterOffset"; from: -10*s; to: 10*s; duration: 50 }
-                    NumberAnimation { target: comboText; property: "anchors.horizontalCenterOffset"; from: 10*s; to: -8*s; duration: 50 }
-                    NumberAnimation { target: comboText; property: "anchors.horizontalCenterOffset"; to: 0; duration: 50 }
+                    NumberAnimation { target: comboText; property: "anchors.horizontalCenterOffset"; from: -10*s; to: 10*s; duration: kit.dur(50) }
+                    NumberAnimation { target: comboText; property: "anchors.horizontalCenterOffset"; from: 10*s; to: -8*s; duration: kit.dur(50) }
+                    NumberAnimation { target: comboText; property: "anchors.horizontalCenterOffset"; to: 0; duration: kit.dur(50) }
                 }
 
                 layer.enabled: true
@@ -883,8 +889,8 @@ Rectangle {
 
                         ParallelAnimation { 
                             id: trailAnim
-                            NumberAnimation { target: particle; property: "opacity"; to: 0; duration: 350; easing.type: Easing.OutSine }
-                            NumberAnimation { target: particle; property: "scale";   to: 0.2; duration: 400; easing.type: Easing.InQuad }
+                            NumberAnimation { target: particle; property: "opacity"; to: 0; duration: kit.dur(350); easing.type: kit.ease(Easing.OutSine) }
+                            NumberAnimation { target: particle; property: "scale";   to: 0.2; duration: kit.dur(400); easing.type: kit.ease(Easing.InQuad) }
                         }
 
                         function spawn(px, py) {
@@ -909,7 +915,7 @@ Rectangle {
 
                 // Press Scale
                 scale: gameArea.isActionHeld ? 0.85 : 1.0
-                Behavior on scale { NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
+                Behavior on scale { NumberAnimation { duration: kit.dur(80); easing.type: kit.ease(Easing.OutQuad) } }
 
                 // Main ring
                 Rectangle {
@@ -952,7 +958,7 @@ Rectangle {
             color: "white"; font.family: mainFontFamily
             font.pixelSize: 28*s; font.weight: Font.Black; font.letterSpacing: 6*s
             opacity: root.osuCircleCount === 0 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 400 } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(400) } }
             layer.enabled: true
             layer.effect: DropShadow { color: root.glowColor; radius: 16; samples: 21; spread: 0.2 }
         }
@@ -1007,7 +1013,7 @@ Rectangle {
 
                 NumberAnimation on width  { from: hc.width * 3.0; to: hc.width * 1.05; duration: hc.approachDuration; easing.type: Easing.Linear; running: true }
                 NumberAnimation on height { from: hc.width * 3.0; to: hc.width * 1.05; duration: hc.approachDuration; easing.type: Easing.Linear; running: true }
-                Behavior on opacity { NumberAnimation { duration: 80 } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(80) } }
             }
 
             // Circle Body
@@ -1059,11 +1065,11 @@ Rectangle {
                 id: hitBurst
                 anchors.centerIn: parent; width: parent.width; height: parent.width; radius: width/2
                 color: "transparent"; border.color: root.glowColor; border.width: 5*s; opacity: 0
-                NumberAnimation on scale   { id: burstScale;   from: 1.0; to: 2.2; duration: 350; easing.type: Easing.OutQuad; running: false }
-                NumberAnimation on opacity { id: burstOpacity; from: 1.0; to: 0.0; duration: 350; easing.type: Easing.OutQuad; running: false; onStopped: { hc.destroy() } }
+                NumberAnimation on scale   { id: burstScale;   from: 1.0; to: 2.2; duration: kit.dur(350); easing.type: kit.ease(Easing.OutQuad); running: false }
+                NumberAnimation on opacity { id: burstOpacity; from: 1.0; to: 0.0; duration: kit.dur(350); easing.type: kit.ease(Easing.OutQuad); running: false; onStopped: { hc.destroy() } }
             }
 
-            NumberAnimation on opacity { id: missAnim; to: 0.0; duration: 300; running: false }
+            NumberAnimation on opacity { id: missAnim; to: 0.0; duration: kit.dur(300); running: false }
 
             Timer {
                 id: lifeTimer; interval: hc.lifetime + root.hitWindow50; running: true
@@ -1098,8 +1104,8 @@ Rectangle {
             SequentialAnimation {
                 id: circleAnim
                 ParallelAnimation {
-                    NumberAnimation { target: circleBody; property: "scale"; to: 1.4; duration: 240; easing.type: Easing.OutQuad }
-                    NumberAnimation { target: circleBody; property: "opacity"; to: 0.0; duration: 240; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: circleBody; property: "scale"; to: 1.4; duration: kit.dur(240); easing.type: kit.ease(Easing.OutQuad) }
+                    NumberAnimation { target: circleBody; property: "opacity"; to: 0.0; duration: kit.dur(240); easing.type: kit.ease(Easing.OutQuad) }
                 }
             }
         }
@@ -1145,7 +1151,7 @@ Rectangle {
                 id: sliderCanvas
                 anchors.fill: parent
                 opacity: (!completed && !missed) ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 150 } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(150) } }
 
                 onPaint: {
                     var ctx = getContext("2d")
@@ -1202,7 +1208,7 @@ Rectangle {
                 x: sx - 40*s; y: sy - 40*s
                 width: 80*s; height: 80*s
                 opacity: hit ? 0 : 1
-                Behavior on opacity { NumberAnimation { duration: 100 } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(100) } }
 
                 // Circle Fill
                 Rectangle {
@@ -1230,7 +1236,7 @@ Rectangle {
                 id: sBall
                 width: 76*s; height: 76*s
                 opacity: sliding ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 80 } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(80) } }
 
                 x: sliderRoot.ballX - 38*s
                 y: sliderRoot.ballY - 38*s
@@ -1253,9 +1259,9 @@ Rectangle {
                     color: root.accentColor
                     
                     SequentialAnimation on scale {
-                        loops: Animation.Infinite; running: sliding
-                        NumberAnimation { from: 1.0; to: 1.4; duration: 300; easing.type: Easing.InOutQuad }
-                        NumberAnimation { from: 1.4; to: 1.0; duration: 300; easing.type: Easing.InOutQuad }
+                        loops: Animation.Infinite; running: (sliding) && !kit.reduceMotion
+                        NumberAnimation { from: 1.0; to: 1.4; duration: kit.dur(300); easing.type: kit.ease(Easing.InOutQuad) }
+                        NumberAnimation { from: 1.4; to: 1.0; duration: kit.dur(300); easing.type: kit.ease(Easing.InOutQuad) }
                     }
 
                     layer.enabled: true
@@ -1360,7 +1366,7 @@ Rectangle {
             // Exit Animation
             SequentialAnimation {
                 id: deathAnim
-                NumberAnimation { target: sliderRoot; property: "opacity"; to: 0; duration: 200 }
+                NumberAnimation { target: sliderRoot; property: "opacity"; to: 0; duration: kit.dur(200) }
                 ScriptAction { script: sliderRoot.destroy() }
             }
         }
@@ -1378,8 +1384,8 @@ Rectangle {
             layer.enabled: true
             layer.effect: DropShadow { color: Qt.rgba(col.r, col.g, col.b, 0.6); radius: 10; samples: 15 }
 
-            NumberAnimation on y   { from: y;       to: y - 60*s; duration: 700; easing.type: Easing.OutCubic }
-            NumberAnimation on opacity { from: 1.0; to: 0.0;      duration: 700; easing.type: Easing.InCubic }
+            NumberAnimation on y   { from: y;       to: y - 60*s; duration: kit.dur(700); easing.type: kit.ease(Easing.OutCubic) }
+            NumberAnimation on opacity { from: 1.0; to: 0.0;      duration: kit.dur(700); easing.type: kit.ease(Easing.InCubic) }
             onOpacityChanged: if (opacity <= 0.01) fbText.destroy()
         }
     }
@@ -1391,8 +1397,8 @@ Rectangle {
             id: rip
             width: 80*s; height: 80*s; radius: 40*s
             color: "transparent"; border.color: root.glowColor; border.width: 5*s
-            NumberAnimation on scale   { from: 1.0; to: 2.5; duration: 400; easing.type: Easing.OutQuad }
-            NumberAnimation on opacity { from: 0.9; to: 0.0; duration: 400; easing.type: Easing.OutQuad }
+            NumberAnimation on scale   { from: 1.0; to: 2.5; duration: kit.dur(400); easing.type: kit.ease(Easing.OutQuad) }
+            NumberAnimation on opacity { from: 0.9; to: 0.0; duration: kit.dur(400); easing.type: kit.ease(Easing.OutQuad) }
             onOpacityChanged: if (opacity <= 0.01) rip.destroy()
         }
     }
@@ -1407,9 +1413,9 @@ Rectangle {
     SequentialAnimation {
         id: gameShake
         property real intensity: 5*s
-        NumberAnimation { target: gameArea; property: "anchors.horizontalCenterOffset"; from: -gameShake.intensity; to: gameShake.intensity; duration: 30 }
-        NumberAnimation { target: gameArea; property: "anchors.horizontalCenterOffset"; from: gameShake.intensity; to: -gameShake.intensity; duration: 30 }
-        NumberAnimation { target: gameArea; property: "anchors.horizontalCenterOffset"; to: 0; duration: 30 }
+        NumberAnimation { target: gameArea; property: "anchors.horizontalCenterOffset"; from: -gameShake.intensity; to: gameShake.intensity; duration: kit.dur(30) }
+        NumberAnimation { target: gameArea; property: "anchors.horizontalCenterOffset"; from: gameShake.intensity; to: -gameShake.intensity; duration: kit.dur(30) }
+        NumberAnimation { target: gameArea; property: "anchors.horizontalCenterOffset"; to: 0; duration: kit.dur(30) }
     }
 
     // Passive Drain
@@ -1470,7 +1476,7 @@ Rectangle {
 
     SequentialAnimation {
         id: winSequence
-        PauseAnimation { duration: 400 }
+        PauseAnimation { duration: kit.dur(400) }
         ScriptAction {
             script: {
                 root.gameActive = false
@@ -1483,7 +1489,7 @@ Rectangle {
                 root.activeCircles = []
             }
         }
-        PauseAnimation { duration: 800 }
+        PauseAnimation { duration: kit.dur(800) }
         ScriptAction {
             script: {
                 var uname = (userHelper.currentItem && userHelper.currentItem.uLogin)
@@ -1498,7 +1504,7 @@ Rectangle {
         id: winFlash
         anchors.fill: parent; color: root.accentColor; z: 9999
         opacity: 0
-        NumberAnimation { id: loginTransition; target: winFlash; property: "opacity"; from: 0; to: 1; duration: 600; easing.type: Easing.OutQuad }
+        NumberAnimation { id: loginTransition; target: winFlash; property: "opacity"; from: 0; to: 1; duration: kit.dur(600); easing.type: kit.ease(Easing.OutQuad) }
     }
 
     function spawnCircle() {
@@ -1671,8 +1677,8 @@ Rectangle {
         id: failSequence
         ScriptAction { script: { root.osuFailed = true; circleSpawnTimer.stop() } }
         ParallelAnimation {
-            NumberAnimation { target: gameScreen; property: "opacity"; to: 0.1; duration: 500 }
-            NumberAnimation { target: failOverlay; property: "opacity"; to: 1; duration: 250 }
+            NumberAnimation { target: gameScreen; property: "opacity"; to: 0.1; duration: kit.dur(500) }
+            NumberAnimation { target: failOverlay; property: "opacity"; to: 1; duration: kit.dur(250) }
         }
     }
 
@@ -1818,10 +1824,10 @@ Rectangle {
 
     SequentialAnimation {
         id: errorShake
-        NumberAnimation { target: errorMsg; property: "anchors.rightMargin"; from: -8*s; to: 8*s; duration: 60 }
-        NumberAnimation { target: errorMsg; property: "anchors.rightMargin"; from: 8*s; to: -6*s; duration: 60 }
-        NumberAnimation { target: errorMsg; property: "anchors.rightMargin"; from: -6*s; to: 4*s; duration: 60 }
-        NumberAnimation { target: errorMsg; property: "anchors.rightMargin"; to: 0;          duration: 60 }
+        NumberAnimation { target: errorMsg; property: "anchors.rightMargin"; from: -8*s; to: 8*s; duration: kit.dur(60) }
+        NumberAnimation { target: errorMsg; property: "anchors.rightMargin"; from: 8*s; to: -6*s; duration: kit.dur(60) }
+        NumberAnimation { target: errorMsg; property: "anchors.rightMargin"; from: -6*s; to: 4*s; duration: kit.dur(60) }
+        NumberAnimation { target: errorMsg; property: "anchors.rightMargin"; to: 0;          duration: kit.dur(60) }
     }
 
 }

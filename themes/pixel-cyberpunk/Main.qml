@@ -3,8 +3,10 @@ import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     id: root
     width: Screen.width
@@ -18,9 +20,9 @@ Rectangle {
     property real ui: 0
 
     // Colors
-    readonly property color cyanWire: "#5ce5e6"
-    readonly property color electricBlue: "#62a3f0"
-    readonly property color cleanWhite: "#ffffff"
+    readonly property color cyanWire: kit.color("accent", "#5ce5e6")
+    readonly property color electricBlue: kit.color("colorBlue", "#62a3f0")
+    readonly property color cleanWhite: kit.color("text", "#ffffff")
     readonly property color metalDark: "#0b151f"
     readonly property color darkTeal: "#132c38"
 
@@ -34,7 +36,8 @@ Rectangle {
         id: pf
         source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : ""
     }
-    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
+    readonly property string pfFamily: kit.font("text", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
+    readonly property string clockFamily: kit.font("clock", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
 
     ListView {
         id: sessionHelper
@@ -80,8 +83,8 @@ Rectangle {
         property: "ui"
         from: 0
         to: 1
-        duration: 800
-        easing.type: Easing.OutCubic
+        duration: kit.dur(800)
+        easing.type: kit.ease(Easing.OutCubic)
     }
 
     MouseArea {
@@ -90,8 +93,10 @@ Rectangle {
         z: -1
     }
 
+    Background { id: userBg; anchors.fill: parent }
     Loader {
         anchors.fill: parent
+        active: !userBg.active
         source: "BackgroundVideo.qml"
     }
 
@@ -181,7 +186,7 @@ Rectangle {
                 opacity: 0.85
                 border.color: userMouse.containsMouse ? root.cyanWire : root.electricBlue
                 border.width: 1 * s
-                Behavior on border.color { ColorAnimation { duration: 120 } }
+                Behavior on border.color { ColorAnimation { duration: kit.dur(120) } }
             }
 
             Text {
@@ -210,7 +215,7 @@ Rectangle {
                 anchors.rightMargin: 12 * s
                 anchors.verticalCenter: parent.verticalCenter
                 elide: Text.ElideRight
-                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: kit.dur(120) } }
             }
 
             MouseArea {
@@ -237,7 +242,7 @@ Rectangle {
                 opacity: 0.85
                 border.color: pwd.focus ? root.cyanWire : root.electricBlue
                 border.width: 1 * s
-                Behavior on border.color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: kit.dur(150) } }
             }
 
             TextInput {
@@ -278,7 +283,7 @@ Rectangle {
                 font.pixelSize: 9 * s
                 font.letterSpacing: 1 * s
                 opacity: pwd.text.length === 0 ? 0.5 : 0
-                Behavior on opacity { NumberAnimation { duration: 150 } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(150) } }
             }
 
             // Cursor
@@ -293,9 +298,9 @@ Rectangle {
 
                 SequentialAnimation {
                     loops: Animation.Infinite
-                    running: customCursor.visible
-                    NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.1; duration: 400 }
-                    NumberAnimation { target: customCursor; property: "opacity"; from: 0.1; to: 1; duration: 400 }
+                    running: customCursor.visible && !kit.reduceMotion
+                    NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.1; duration: kit.dur(400) }
+                    NumberAnimation { target: customCursor; property: "opacity"; from: 0.1; to: 1; duration: kit.dur(400) }
                 }
             }
 
@@ -320,8 +325,8 @@ Rectangle {
                 opacity: loginMouse.containsMouse ? 0.95 : 0.85
                 border.color: loginMouse.containsMouse ? root.cyanWire : root.electricBlue
                 border.width: 1 * s
-                Behavior on opacity { NumberAnimation { duration: 120 } }
-                Behavior on border.color { ColorAnimation { duration: 120 } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(120) } }
+                Behavior on border.color { ColorAnimation { duration: kit.dur(120) } }
             }
 
             Text {
@@ -333,7 +338,7 @@ Rectangle {
                 font.pixelSize: 9 * s
                 font.letterSpacing: 1 * s
                 font.bold: true
-                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: kit.dur(120) } }
             }
 
             MouseArea {
@@ -373,8 +378,9 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     SequentialAnimation on opacity {
                         loops: Animation.Infinite
-                        NumberAnimation { from: 1.0; to: 0.3; duration: 600 }
-                        NumberAnimation { from: 0.3; to: 1.0; duration: 600 }
+                        running: !kit.reduceMotion
+                        NumberAnimation { from: 1.0; to: 0.3; duration: kit.dur(600) }
+                        NumberAnimation { from: 0.3; to: 1.0; duration: kit.dur(600) }
                     }
                 }
                 Text {
@@ -391,7 +397,7 @@ Rectangle {
                 id: clockText
                 text: Qt.formatTime(new Date(), clockFmt)
                 color: root.cleanWhite
-                font.family: pfFamily
+                font.family: root.clockFamily
                 font.pixelSize: 32 * s
                 font.bold: true
                 font.letterSpacing: 1 * s
@@ -457,7 +463,7 @@ Rectangle {
                         opacity: pm.containsMouse ? 0.45 : 0.25
                         border.color: pm.containsMouse ? root.cyanWire : root.electricBlue
                         border.width: 1 * s
-                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                        Behavior on opacity { NumberAnimation { duration: kit.dur(120) } }
                     }
 
                     Text {
@@ -470,7 +476,7 @@ Rectangle {
                         font.letterSpacing: 1.5 * s
                         font.bold: true
 
-                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on color { ColorAnimation { duration: kit.dur(120) } }
                     }
 
                     MouseArea {
