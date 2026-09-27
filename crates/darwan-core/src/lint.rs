@@ -69,6 +69,47 @@ pub fn lint(theme: &Theme) -> Vec<String> {
     }
 
     let sup = &m.supports;
+    // The kit's own files don't count as the theme using it.
+    let own_qml = qml_text_except(&theme.dir, "darwan");
+    let uses_kit = sup.background || sup.colors || sup.motion || !sup.fonts.is_empty();
+    if uses_kit {
+        for file in ["Custom.qml", "Background.qml"] {
+            if !theme.dir.join("darwan").join(file).is_file() {
+                problems.push(format!(
+                    "customisations need darwan/{file} (copy runtime/theme-kit)"
+                ));
+            }
+        }
+        if !own_qml.contains("Custom {") {
+            problems.push("customisations need a `Custom { id: … }` from the theme kit".into());
+        }
+    }
+    for (flag, call, what) in [
+        (
+            sup.background,
+            "Background {",
+            "supports.background but no QML shows the kit's Background",
+        ),
+        (
+            sup.colors,
+            ".color(",
+            "supports.colors but no QML calls color()",
+        ),
+        (
+            sup.motion,
+            ".dur(",
+            "supports.motion but no QML calls dur()",
+        ),
+        (
+            !sup.fonts.is_empty(),
+            ".font(",
+            "supports.fonts but no QML calls font()",
+        ),
+    ] {
+        if flag && !own_qml.contains(call) {
+            problems.push(what.into());
+        }
+    }
     if !sup.variants.is_empty() {
         for v in &sup.variants {
             if v != "light" && v != "dark" {
@@ -148,6 +189,23 @@ pub fn lint(theme: &Theme) -> Vec<String> {
         }
     }
     problems
+}
+
+fn qml_text_except(dir: &std::path::Path, skip: &str) -> String {
+    let mut out = String::new();
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return out;
+    };
+    for path in entries.filter_map(Result::ok).map(|e| e.path()) {
+        if path.is_dir() {
+            if path.file_name().is_none_or(|n| n != skip) {
+                out.push_str(&qml_text_except(&path, skip));
+            }
+        } else if path.extension().is_some_and(|x| x == "qml") {
+            out.push_str(&std::fs::read_to_string(&path).unwrap_or_default());
+        }
+    }
+    out
 }
 
 fn qml_text(dir: &std::path::Path) -> String {
@@ -272,7 +330,15 @@ mod tests {
                 .any(|p| p.contains("\"rain\" needs a hex default")),
             "{problems:?}"
         );
-        assert_eq!(problems.len(), 2, "{problems:?}");
+        assert_eq!(
+            problems.iter().filter(|p| p.starts_with("colour")).count(),
+            2,
+            "{problems:?}"
+        );
+        assert!(
+            problems.iter().any(|p| p.contains("darwan/Custom.qml")),
+            "colours need the kit: {problems:?}"
+        );
     }
 
     #[test]

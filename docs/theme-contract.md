@@ -52,6 +52,66 @@ Text { text: Qt.formatDate(new Date(), config.dateFormat || "dddd, MMMM d") }
 ```
 In Qt formats `hh` without `AP` is still a 24-hour hour; a separate hour text needs `d.getHours() % 12 || 12` for the 12-hour clock.
 
+## Customisation
+
+A theme can let users change its background, colours, fonts, light/dark look and animation, through settings that
+work the same in every theme. Declare what the theme supports in `darwan.toml`:
+
+```toml
+background_file = "bg.png"        # optional: the image colours are generated from by default
+
+[supports]
+background = true                 # the user's image, animated image, video, colour or desktop wallpaper
+colors = true                     # accent and text colours, plus the [[color]] roles below
+fonts = ["text", "clock"]         # which font roles the user can change
+motion = true                     # animation speed, curve and reduce motion
+variants = ["light", "dark"]      # only for a designed second look; theme.conf sets colorScheme
+default_variant = "light"
+
+[[color]]                         # a colour beyond accent and text; its default lives in theme.conf
+key = "colorLamp"
+label = "Lamp"
+material = "tertiary"             # the generated Material role it follows
+```
+
+Then copy the theme kit into the theme (`just theme-kit <id>`) and use it. The kit reads `config` the same way the
+theme does, so it works under SDDM too:
+
+```qml
+import "darwan"
+
+Custom { id: C }
+
+Background { id: userBg; anchors.fill: parent; z: -1 }         // the user's own background, when set
+Image { source: "bg.png"; visible: !userBg.active }             // the theme's, otherwise
+
+Text {
+    color: C.color("text", "#ffffff")                           // the theme's value when the user set none
+    font.family: C.font("clock", pixelFont)
+}
+Behavior on opacity { NumberAnimation { duration: C.dur(300); easing.type: C.ease(Easing.OutExpo) } }
+readonly property color lamp: C.color("colorLamp", "#e6bb5c")
+readonly property bool isDark: C.dark                           // with variants
+```
+
+| Kit | What it gives |
+|---|---|
+| `C.dur(ms)` | `ms` divided by the user's speed, 0 with reduce motion |
+| `C.ease(themeDefault)` | the user's curve, or the theme's |
+| `C.color(role, themeDefault)` | role `accent`, `text` or a `[[color]]` key |
+| `C.font(role, themeDefault)` | role `text` or `clock`; an attached font file wins over a family |
+| `C.reduceMotion`, `C.speed`, `C.dark`, `C.scheme` | for the theme's own logic |
+| `Background { }` | `active` while the user's background shows; `failed` if its file didn't load |
+
+Rules:
+- **Stop ambient loops on reduce motion** (`running: !C.reduceMotion`): `dur()` returns 0 for transitions, and an
+  infinite animation with no duration would spin.
+- **Hide the theme's own background while `userBg.active`**, and don't decode a video nobody sees: give the theme's
+  `MediaPlayer` an empty `source`, or put it in a `Loader`, while the user's background shows.
+- A missing or broken user file leaves `active` false, so the theme's own background shows; never an empty screen.
+- The kit files in `darwan/` must stay identical to `runtime/theme-kit` (a test checks); change the kit there and
+  run `just theme-kit` to refresh every theme.
+
 ## Rules the checks enforce
 
 `darwan check --all` fails a theme on any QML warning or error. `darwan check --all --no-fonts` hides `font/` and fails on any visible text whose `font.family` is empty.

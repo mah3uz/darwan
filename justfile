@@ -37,6 +37,10 @@ gui: build
 preview theme *args: build
     DARWAN_DATA_DIR={{root}} {{bin}}/darwan preview {{theme}} {{args}}
 
+# Copy runtime/theme-kit into the named themes, or refresh every theme that has it, e.g. `just theme-kit nothing`
+theme-kit *ids:
+    cd {{root}} && for id in {{ if ids == "" { "$(find themes -path '*/darwan/Custom.qml' | sed 's|^themes/||; s|/darwan/Custom.qml$||')" } else { ids } }}; do mkdir -p "themes/$id/darwan" && cp runtime/theme-kit/darwan/*.qml "themes/$id/darwan/" && echo "themes/$id/darwan"; done
+
 # Build the package from the committed HEAD into dist/, as the AUR build does from a tag
 package:
     #!/usr/bin/env bash

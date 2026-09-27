@@ -67,3 +67,25 @@ fn every_required_font_is_git_ignored_or_openly_licensed() {
         }
     }
 }
+
+#[test]
+fn every_vendored_theme_kit_is_identical_to_the_canonical_one() {
+    let kit = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../runtime/theme-kit/darwan");
+    for theme in catalog().themes() {
+        let dir = theme.dir.join("darwan");
+        if !dir.exists() {
+            continue;
+        }
+        for entry in std::fs::read_dir(&kit).unwrap() {
+            let name = entry.unwrap().file_name();
+            let copy = std::fs::read(dir.join(&name)).unwrap_or_default();
+            let canonical = std::fs::read(kit.join(&name)).unwrap();
+            assert!(
+                copy == canonical,
+                "{}/darwan/{} differs from runtime/theme-kit; run `just theme-kit`",
+                theme.id,
+                name.to_string_lossy()
+            );
+        }
+    }
+}

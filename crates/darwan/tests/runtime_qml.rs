@@ -49,6 +49,10 @@ fn runtime_qml_tests_pass() {
     )
     .unwrap();
 
+    image::RgbaImage::from_pixel(8, 8, image::Rgba([40, 80, 160, 255]))
+        .save(generated.join("bg.png"))
+        .unwrap();
+
     let out = Command::new(qmltestrunner())
         .arg("-input")
         .arg(&tests)
