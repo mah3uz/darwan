@@ -2,9 +2,11 @@ import QtQuick
 import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import SddmComponents 2.0
+import "darwan"
 
 // Skyscrapers Layout
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -20,13 +22,14 @@ Rectangle {
     property int userIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
     property real ui: 0
 
-    readonly property color roseUI: "#d05870"
-    readonly property color peachSky: "#f0a060"
-    readonly property color sunCream: "#fae8d0"
+    readonly property color roseUI: kit.color("accent", "#d05870")
+    readonly property color peachSky: kit.color("colorSky", "#f0a060")
+    readonly property color sunCream: kit.color("text", "#fae8d0")
     readonly property color silhouettes: "#303c44"
 
     FontLoader { id: pf; source: "font/PixelifySans-Bold.ttf" }
-    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
+    readonly property string pfFamily: kit.font("text", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
+    readonly property string clockFamily: kit.font("clock", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
     
     ListView { id: sessionHelper; model: typeof sessionModel !== "undefined" ? sessionModel : null; currentIndex: root.sessionIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string sName: model.name || "" } }
     ListView { id: userHelper; model: typeof userModel !== "undefined" ? userModel : null; currentIndex: root.userIndex; opacity: 0; width: 100; height: 100; z: -100; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
@@ -35,9 +38,11 @@ Rectangle {
     Timer { interval: 300; running: true; onTriggered: pwd.forceActiveFocus() }
 
     Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: 2000; easing.type: Easing.OutSine }
+    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: kit.dur(2000); easing.type: kit.ease(Easing.OutSine) }
 
-    Loader { anchors.fill: parent; source: "BackgroundVideo.qml" }
+    Background { id: userBg; anchors.fill: parent }
+
+    Loader { anchors.fill: parent; active: !userBg.active; source: "BackgroundVideo.qml" }
 
     // View Overlays
     Rectangle { anchors.top: parent.top; width: parent.width; height: 160 * s; gradient: Gradient { GradientStop { position: 0.0; color: "#60000000" } GradientStop { position: 1.0; color: "transparent" } } }
@@ -52,7 +57,7 @@ Rectangle {
         
         Text {
             id: clk; text: Qt.formatTime(new Date(), clockFmt)
-            color: root.sunCream; font.family: pfFamily; font.pixelSize: 84 * s; font.letterSpacing: -2 * s
+            color: root.sunCream; font.family: root.clockFamily; font.pixelSize: 84 * s; font.letterSpacing: -2 * s
             Timer { interval: 1000; running: true; repeat: true; onTriggered: clk.text = Qt.formatTime(new Date(), clockFmt) }
             layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 6; samples: 8; horizontalOffset: 2 * s; verticalOffset: 2 * s }
         }
@@ -76,12 +81,12 @@ Rectangle {
                 text: ((userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : (userModel.lastUser || "User")).toUpperCase()
                 color: unm.containsMouse ? "white" : root.sunCream; font.family: pfFamily; font.pixelSize: 22 * s; font.letterSpacing: 4 * s
                 layer.enabled: true; layer.effect: DropShadow { color: "#80000000"; radius: 4; samples: 8; horizontalOffset: 1; verticalOffset: 1 }
-                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
             }
             Rectangle {
                 anchors.bottom: unt.bottom; anchors.bottomMargin: -6 * s; anchors.horizontalCenter: parent.horizontalCenter
                 width: unm.containsMouse ? parent.width : 0; height: 1 * s; color: root.roseUI; opacity: 0.8
-                Behavior on width { NumberAnimation { duration: 200 } }
+                Behavior on width { NumberAnimation { duration: kit.dur(200) } }
             }
             MouseArea { id: unm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (typeof userModel !== "undefined" && userModel.rowCount() > 0) root.userIndex = (root.userIndex + 1) % userModel.rowCount() } }
         }
@@ -90,7 +95,7 @@ Rectangle {
         Item {
             width: parent.width; height: 36 * s
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1 * s; color: root.roseUI; opacity: pwd.activeFocus ? 1.0 : 0.4 }
-            Rectangle { anchors.bottom: parent.bottom; width: pwd.activeFocus ? parent.width : 0; height: 2 * s; color: root.peachSky; anchors.horizontalCenter: parent.horizontalCenter; Behavior on width { NumberAnimation {duration: 300; easing.type: Easing.OutExpo} } }
+            Rectangle { anchors.bottom: parent.bottom; width: pwd.activeFocus ? parent.width : 0; height: 2 * s; color: root.peachSky; anchors.horizontalCenter: parent.horizontalCenter; Behavior on width { NumberAnimation {duration: kit.dur(300); easing.type: kit.ease(Easing.OutExpo)} } }
             TextInput {
                 id: pwd; anchors.fill: parent; color: root.peachSky; font.family: pfFamily; font.pixelSize: 18 * s; font.letterSpacing: 4 * s
                 echoMode: TextInput.Password; onTextEdited: err.text = ""; passwordCharacter: "─"; focus: true; clip: true; horizontalAlignment: TextInput.AlignHCenter; verticalAlignment: TextInput.AlignVCenter
@@ -103,7 +108,7 @@ Rectangle {
             Text { 
                 anchors.centerIn: parent; text: "password..."; color: root.roseUI; font.family: pfFamily; font.pixelSize: 14 * s; font.letterSpacing: 4 * s
                 opacity: pwd.text.length === 0 ? 0.5 : 0
-                Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutSine } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(400); easing.type: kit.ease(Easing.InOutSine) } }
             }
             Rectangle {
                 id: customCursor
@@ -113,9 +118,9 @@ Rectangle {
                 x: pwd.cursorRectangle.x
                 visible: pwd.focus && (pwd.text.length > 0 || pwd.wasClicked)
                 SequentialAnimation {
-                    loops: Animation.Infinite; running: customCursor.visible
-                    NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: 450 }
-                    NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: 450 }
+                    loops: Animation.Infinite; running: (customCursor.visible) && !kit.reduceMotion
+                    NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.05; duration: kit.dur(450) }
+                    NumberAnimation { target: customCursor; property: "opacity"; from: 0.05; to: 1; duration: kit.dur(450) }
                 }
             }
             MouseArea {
@@ -131,8 +136,8 @@ Rectangle {
         Item {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 140 * s; height: 36 * s
-            Rectangle { anchors.fill: parent; color: sbm.containsMouse ? root.roseUI : "transparent"; border.color: root.roseUI; border.width: 1; radius: 4 * s; Behavior on color { ColorAnimation { duration: 150 } } }
-            Text { anchors.centerIn: parent; text: "LOG IN"; color: sbm.containsMouse ? "#000" : root.sunCream; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; Behavior on color { ColorAnimation { duration: 150 } } }
+            Rectangle { anchors.fill: parent; color: sbm.containsMouse ? root.roseUI : "transparent"; border.color: root.roseUI; border.width: 1; radius: 4 * s; Behavior on color { ColorAnimation { duration: kit.dur(150) } } }
+            Text { anchors.centerIn: parent; text: "LOG IN"; color: sbm.containsMouse ? "#000" : root.sunCream; font.family: pfFamily; font.pixelSize: 12 * s; font.letterSpacing: 4 * s; Behavior on color { ColorAnimation { duration: kit.dur(150) } } }
             MouseArea { id: sbm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: doLogin() }
         }
         Text { id: err; text: ""; height: 12 * s; verticalAlignment: Text.AlignBottom; color: "#ff5555"; anchors.horizontalCenter: parent.horizontalCenter; font.family: pfFamily; font.pixelSize: 12 * s }
@@ -150,12 +155,12 @@ Rectangle {
                     id: pmt; anchors.centerIn: parent; text: modelData.l
                     color: pm.containsMouse ? "white" : root.sunCream; font.family: pfFamily; font.pixelSize: 11 * s; font.letterSpacing: 2 * s
                     layer.enabled: true; layer.effect: DropShadow { color: "#80000000"; radius: 4; samples: 8; horizontalOffset: 1; verticalOffset: 1 }
-                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(150) } }
                 }
                 Rectangle {
                     anchors.bottom: pmt.bottom; anchors.bottomMargin: -4 * s; anchors.horizontalCenter: parent.horizontalCenter
                     width: pm.containsMouse ? parent.width : 0; height: 1 * s; color: root.roseUI; opacity: 0.8
-                    Behavior on width { NumberAnimation { duration: 200 } }
+                    Behavior on width { NumberAnimation { duration: kit.dur(200) } }
                 }
                 MouseArea { id: pm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (modelData.a === 0) { if (typeof sddm !== "undefined") sddm.reboot() } else if (modelData.a === 1) { if (typeof sddm !== "undefined") sddm.powerOff() } else if (typeof sessionModel !== "undefined" && sessionModel.rowCount() > 0) root.sessionIndex = (root.sessionIndex + 1) % sessionModel.rowCount() } }
             }

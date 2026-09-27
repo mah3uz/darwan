@@ -1,7 +1,12 @@
 name = "Reverse: 1999 - II"
 author = "Darkkal44"
 background = "video"
+background_file = "bg.mp4"
 
 [supports]
 clock_format = true
 date_format = true
+background = true
+colors = true
+fonts = ["text", "clock"]
+motion = true

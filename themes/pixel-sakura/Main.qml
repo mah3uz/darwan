@@ -2,8 +2,10 @@ import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Window
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     id: root
 
@@ -15,9 +17,9 @@ Rectangle {
     property bool sessionMenuOpen: false
 
     // Colors
-    readonly property color sakuraPink: "#df7a8c"
-    readonly property color slateDark: "#32354c"
-    readonly property color slateMid: "#506275"
+    readonly property color sakuraPink: kit.color("accent", "#df7a8c")
+    readonly property color slateDark: kit.color("text", "#32354c")
+    readonly property color slateMid: kit.color("colorSlate", "#506275")
     readonly property color sunRed: "#e26b67"
 
     function doLogin() {
@@ -46,7 +48,8 @@ Rectangle {
         id: pf
         source: "font/PixelifySans-Bold.ttf"
     }
-    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
+    readonly property string pfFamily: kit.font("text", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
+    readonly property string clockFamily: kit.font("clock", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
 
     ListView {
         id: sessionHelper
@@ -86,8 +89,8 @@ Rectangle {
         property: "ui"
         from: 0
         to: 1
-        duration: 1600
-        easing.type: Easing.OutCubic
+        duration: kit.dur(1600)
+        easing.type: kit.ease(Easing.OutCubic)
     }
 
     // Background
@@ -97,8 +100,10 @@ Rectangle {
         z: -3
     }
 
+    Background { id: userBg; anchors.fill: parent }
     Loader {
         anchors.fill: parent
+        active: !userBg.active
         source: "BackgroundVideo.qml"
     }
 
@@ -117,7 +122,7 @@ Rectangle {
             id: clockText
             text: Qt.formatTime(new Date(), clockFmt)
             color: root.slateDark
-            font.family: pfFamily
+            font.family: root.clockFamily
             font.pixelSize: 64 * s
             font.bold: true
             anchors.left: parent.left
@@ -207,7 +212,7 @@ Rectangle {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: 150
+                        duration: kit.dur(150)
                     }
                 }
             }
@@ -241,8 +246,8 @@ Rectangle {
                 height: 1 * s
                 color: pwdInput.activeFocus ? root.sakuraPink : root.slateMid
                 opacity: pwdInput.activeFocus ? 0.8 : 0.35
-                Behavior on color { ColorAnimation { duration: 150 } }
-                Behavior on opacity { NumberAnimation { duration: 150 } }
+                Behavior on color { ColorAnimation { duration: kit.dur(150) } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(150) } }
             }
 
             TextInput {
@@ -292,7 +297,7 @@ Rectangle {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: 150
+                        duration: kit.dur(150)
                     }
                 }
             }
@@ -309,9 +314,9 @@ Rectangle {
 
                 SequentialAnimation {
                     loops: Animation.Infinite
-                    running: customCursor.visible
-                    NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.1; duration: 400 }
-                    NumberAnimation { target: customCursor; property: "opacity"; from: 0.1; to: 1; duration: 400 }
+                    running: customCursor.visible && !kit.reduceMotion
+                    NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.1; duration: kit.dur(400) }
+                    NumberAnimation { target: customCursor; property: "opacity"; from: 0.1; to: 1; duration: kit.dur(400) }
                 }
             }
         }
@@ -366,7 +371,7 @@ Rectangle {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: 150
+                                duration: kit.dur(150)
                             }
                         }
                     }
@@ -421,7 +426,7 @@ Rectangle {
 
                             Behavior on color {
                                 ColorAnimation {
-                                    duration: 150
+                                    duration: kit.dur(150)
                                 }
                             }
                         }
@@ -460,35 +465,35 @@ Rectangle {
             target: shakeTranslate
             property: "x"
             to: 8 * s
-            duration: 50
+            duration: kit.dur(50)
         }
 
         NumberAnimation {
             target: shakeTranslate
             property: "x"
             to: -6 * s
-            duration: 50
+            duration: kit.dur(50)
         }
 
         NumberAnimation {
             target: shakeTranslate
             property: "x"
             to: 4 * s
-            duration: 50
+            duration: kit.dur(50)
         }
 
         NumberAnimation {
             target: shakeTranslate
             property: "x"
             to: -2 * s
-            duration: 50
+            duration: kit.dur(50)
         }
 
         NumberAnimation {
             target: shakeTranslate
             property: "x"
             to: 0
-            duration: 50
+            duration: kit.dur(50)
         }
     }
 

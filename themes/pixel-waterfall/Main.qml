@@ -3,8 +3,10 @@ import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Rectangle {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     id: root
     width: Screen.width
@@ -18,9 +20,9 @@ Rectangle {
     property real ui: 0
 
     // Colors
-    readonly property color cleanWhite: "#ffffff"
-    readonly property color lightCyan: "#b2f0f4"
-    readonly property color deepIceBlue: "#7bc3d4"
+    readonly property color cleanWhite: kit.color("text", "#ffffff")
+    readonly property color lightCyan: kit.color("accent", "#b2f0f4")
+    readonly property color deepIceBlue: kit.color("colorIce", "#7bc3d4")
     readonly property color darkTealLine: "#1c5b6e"
     readonly property color watermarkTeal: "#3892a8"
 
@@ -34,7 +36,8 @@ Rectangle {
         id: pf
         source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : ""
     }
-    readonly property string pfFamily: pf.status === FontLoader.Ready ? pf.name : "sans-serif"
+    readonly property string pfFamily: kit.font("text", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
+    readonly property string clockFamily: kit.font("clock", pf.status === FontLoader.Ready ? pf.name : "sans-serif")
 
     ListView {
         id: sessionHelper
@@ -81,8 +84,8 @@ Rectangle {
         property: "ui"
         from: 0
         to: 1
-        duration: 800
-        easing.type: Easing.OutCubic
+        duration: kit.dur(800)
+        easing.type: kit.ease(Easing.OutCubic)
     }
 
     // Cursor Fix
@@ -92,8 +95,10 @@ Rectangle {
         z: -1
     }
 
+    Background { id: userBg; anchors.fill: parent }
     Loader {
         anchors.fill: parent
+        active: !userBg.active
         source: "BackgroundVideo.qml"
     }
 
@@ -151,7 +156,7 @@ Rectangle {
             id: clockText
             text: Qt.formatTime(new Date(), clockFmt)
             color: root.cleanWhite
-            font.family: pfFamily
+            font.family: root.clockFamily
             font.pixelSize: 76 * s
             font.bold: true
 
@@ -199,7 +204,7 @@ Rectangle {
                     }
                 }
 
-                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on color { ColorAnimation { duration: kit.dur(120) } }
             }
 
             // Password
@@ -242,7 +247,7 @@ Rectangle {
                     font.pixelSize: 12 * s
                     font.letterSpacing: 2 * s
                     opacity: pwd.text.length === 0 ? 0.75 : 0
-                    Behavior on opacity { NumberAnimation { duration: 180 } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(180) } }
                 }
 
                 // Cursor
@@ -257,9 +262,9 @@ Rectangle {
 
                     SequentialAnimation {
                         loops: Animation.Infinite
-                        running: customCursor.visible
-                        NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.1; duration: 400 }
-                        NumberAnimation { target: customCursor; property: "opacity"; from: 0.1; to: 1; duration: 400 }
+                        running: customCursor.visible && !kit.reduceMotion
+                        NumberAnimation { target: customCursor; property: "opacity"; from: 1; to: 0.1; duration: kit.dur(400) }
+                        NumberAnimation { target: customCursor; property: "opacity"; from: 0.1; to: 1; duration: kit.dur(400) }
                     }
                 }
 
@@ -288,7 +293,7 @@ Rectangle {
                     font.pixelSize: 12 * s
                     font.letterSpacing: 2 * s
                     font.bold: true
-                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(120) } }
                 }
 
                 MouseArea {
@@ -341,14 +346,14 @@ Rectangle {
                     border.color: root.darkTealLine
                     border.width: 1.5 * s
                     opacity: pm.containsMouse ? 1.0 : 0.7
-                    Behavior on opacity { NumberAnimation { duration: 120 } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(120) } }
 
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: 1.5 * s
                         color: modelData.a === 2 ? root.lightCyan : root.darkTealLine
                         opacity: pm.containsMouse ? 0.35 : 0
-                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                        Behavior on opacity { NumberAnimation { duration: kit.dur(120) } }
                     }
                 }
 

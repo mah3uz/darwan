@@ -1,6 +1,7 @@
 name = "Honkai: Star Rail"
 author = "Darkkal44"
 background = "video"
+background_file = "bg.mp4"
 
 [[font]]
 file = "font.ttf"
@@ -11,3 +12,7 @@ url = ""
 [supports]
 clock_format = true
 date_format = true
+background = true
+colors = true
+fonts = ["text", "clock"]
+motion = true

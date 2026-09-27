@@ -4,8 +4,10 @@ import Qt5Compat.GraphicalEffects
 import QtMultimedia
 import Qt.labs.folderlistmodel
 import SddmComponents 2.0
+import "darwan"
 
 Item {
+    Custom { id: kit }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -18,8 +20,8 @@ Item {
     readonly property real s: height / 1080
 
     // Colors
-    readonly property color fg:         "#fdfaf2" 
-    readonly property color gold:       "#c9a063" 
+    readonly property color fg:         kit.color("text", "#fdfaf2")
+    readonly property color gold:       kit.color("accent", "#c9a063")
     readonly property color orbitClr:    "#ffffff" 
     
     // Quickshell
@@ -37,7 +39,8 @@ Item {
         id: titleFont
         source: "font/Cinzel-Bold.ttf"
     }
-    readonly property string titleFontFamily: titleFont.status === FontLoader.Ready ? titleFont.name : "serif"
+    readonly property string titleFontFamily: kit.font("text", titleFont.status === FontLoader.Ready ? titleFont.name : "serif")
+    readonly property string clockFontFamily: kit.font("clock", titleFont.status === FontLoader.Ready ? titleFont.name : "serif")
 
     // Helpers
     ListView { 
@@ -56,19 +59,24 @@ Item {
     // Background
     Rectangle { anchors.fill: parent; color: "#000000"; z: -1000 }
     
-    MediaPlayer { 
-        id: player; source: "bg.mp4"; videoOutput: bgVideo; loops: MediaPlayer.Infinite
-        Component.onCompleted: player.play()
+    Loader {
+        anchors.fill: parent; z: -500; active: !userBg.active
+        sourceComponent: Item {
+            MediaPlayer {
+                id: player; source: "bg.mp4"; videoOutput: bgVideo; loops: MediaPlayer.Infinite
+                Component.onCompleted: player.play()
+            }
+            VideoOutput { id: bgVideo; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
+        }
     }
-    
-    VideoOutput { id: bgVideo; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop; z: -500 }
+    Background { id: userBg; anchors.fill: parent; z: -500 }
     
     Rectangle { 
         id: dimOverlay
         anchors.fill: parent; z: -300
         color: "#000000"
         opacity: root.interactionMode ? 0.75 : 0.4
-        Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.InOutQuad } }
+        Behavior on opacity { NumberAnimation { duration: kit.dur(800); easing.type: kit.ease(Easing.InOutQuad) } }
     }
 
     // Clock
@@ -78,14 +86,14 @@ Item {
         anchors.top: parent.top; anchors.topMargin: 60 * s
         width: 300 * s; height: 80 * s; z: 1000
         opacity: root.interactionMode ? 0.3 : 1.0
-        Behavior on opacity { NumberAnimation { duration: 600 } }
+        Behavior on opacity { NumberAnimation { duration: kit.dur(600) } }
         
         Row {
             spacing: 12 * s
             Text {
                 id: hhLab
                 text: Qt.formatTime(new Date(), clockFmt)
-                font.family: titleFontFamily; font.pixelSize: 64 * s; font.letterSpacing: 4 * s; color: root.fg
+                font.family: clockFontFamily; font.pixelSize: 64 * s; font.letterSpacing: 4 * s; color: root.fg
                 layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 10 }
             }
             Rectangle { width: 1.2 * s; height: 40 * s; color: root.gold; opacity: 0.8; anchors.verticalCenter: parent.verticalCenter }
@@ -107,7 +115,7 @@ Item {
         source: "logo.png"
         width: 650 * s; fillMode: Image.PreserveAspectFit; anchors.centerIn: parent
         opacity: root.interactionMode ? 0.15 : 1.0; z: 100
-        Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.InOutQuad } }
+        Behavior on opacity { NumberAnimation { duration: kit.dur(600); easing.type: kit.ease(Easing.InOutQuad) } }
     }
 
     // Interface
@@ -121,8 +129,8 @@ Item {
             id: startPrompt
             anchors.fill: parent; opacity: root.interactionMode ? 0 : 1.0; visible: opacity > 0
             scale: startMa.containsMouse ? 1.05 : 1.0
-            Behavior on opacity { NumberAnimation { duration: 400 } }
-            Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(400) } }
+            Behavior on scale { NumberAnimation { duration: kit.dur(300); easing.type: kit.ease(Easing.OutCubic) } }
 
             Item {
                 id: startOrbit
@@ -137,7 +145,7 @@ Item {
                 Rectangle {
                     width: 6 * s; height: 6 * s; radius: 3 * s; color: root.orbitClr; opacity: 0.6
                     property real t: 0
-                    NumberAnimation on t { from: 0; to: Math.PI * 2; duration: 9000; loops: Animation.Infinite; running: !root.interactionMode }
+                    NumberAnimation on t { from: 0; to: Math.PI * 2; duration: 9000; loops: Animation.Infinite; running: (!root.interactionMode) && !kit.reduceMotion }
                     x: (160 * s) + (160 * s * Math.cos(t)) - (width / 2); y: (45 * s) + (45 * s * Math.sin(t)) - (height / 2)
                 }
             }
@@ -151,7 +159,7 @@ Item {
         Item {
             id: inputZone
             anchors.fill: parent; opacity: root.interactionMode ? 1.0 : 0; visible: opacity > 0
-            Behavior on opacity { NumberAnimation { duration: 400 } }
+            Behavior on opacity { NumberAnimation { duration: kit.dur(400) } }
 
             Item {
                 id: userSwitcher
@@ -190,9 +198,9 @@ Item {
                             x: passInput.cursorRectangle.x - (width / 2)
                             opacity: (passInput.focus && root.interactionMode && (passInput.text.length > 0 || passInput.wasClicked)) ? 1.0 : 0
                             SequentialAnimation {
-                                loops: Animation.Infinite; running: cursorRect.opacity > 0
-                                NumberAnimation { target: cursorRect; property: "opacity"; from: 1; to: 0.1; duration: 450 }
-                                NumberAnimation { target: cursorRect; property: "opacity"; from: 0.1; to: 1; duration: 450 }
+                                loops: Animation.Infinite; running: (cursorRect.opacity > 0) && !kit.reduceMotion
+                                NumberAnimation { target: cursorRect; property: "opacity"; from: 1; to: 0.1; duration: kit.dur(450) }
+                                NumberAnimation { target: cursorRect; property: "opacity"; from: 0.1; to: 1; duration: kit.dur(450) }
                             }
                         }
                         MouseArea { anchors.fill: parent; onClicked: { passInput.forceActiveFocus(); passInput.wasClicked = true } }
@@ -214,7 +222,7 @@ Item {
         anchors.bottom: parent.bottom; anchors.bottomMargin: 80 * s
         width: 350 * s; height: 50 * s; z: 2000; visible: !root.isQuickshell
         opacity: root.interactionMode ? 0.3 : 1.0
-        Behavior on opacity { NumberAnimation { duration: 600 } }
+        Behavior on opacity { NumberAnimation { duration: kit.dur(600) } }
 
         Item {
             anchors.fill: parent
@@ -225,16 +233,16 @@ Item {
                 font.letterSpacing: (sMa.containsMouse || root.sessionMenuOpen) ? 8 * s : 6 * s
                 color: (sMa.containsMouse || root.sessionMenuOpen) ? root.gold : root.fg
                 anchors.left: parent.left; anchors.leftMargin: 25 * s; opacity: 0.9
-                Behavior on color { ColorAnimation { duration: 300 } }
-                Behavior on font.letterSpacing { NumberAnimation { duration: 450; easing.type: Easing.OutQuart } }
+                Behavior on color { ColorAnimation { duration: kit.dur(300) } }
+                Behavior on font.letterSpacing { NumberAnimation { duration: kit.dur(450); easing.type: kit.ease(Easing.OutQuart) } }
                 layer.enabled: true; layer.effect: DropShadow { color: "#cc000000"; radius: 10 }
             }
             Text {
                 text: "✦"; font.pixelSize: 12 * s; color: root.gold; anchors.verticalCenter: sessionLabel.verticalCenter
                 anchors.left: parent.left; opacity: (sMa.containsMouse || root.sessionMenuOpen) ? 1.0 : 0
                 x: (sMa.containsMouse || root.sessionMenuOpen) ? 0 : -5 * s
-                Behavior on opacity { NumberAnimation { duration: 350 } }
-                Behavior on x { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: kit.dur(350) } }
+                Behavior on x { NumberAnimation { duration: kit.dur(450); easing.type: kit.ease(Easing.OutCubic) } }
             }
         }
         MouseArea { id: sMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.sessionMenuOpen = !root.sessionMenuOpen }
@@ -244,7 +252,7 @@ Item {
             anchors.bottom: parent.top; anchors.bottomMargin: 20 * s
             anchors.left: parent.left; width: 320 * s
             height: root.sessionMenuOpen ? (40 * s * (typeof sessionModel !== "undefined" ? sessionModel.rowCount() : 0)) + 20 : 0; clip: true
-            Behavior on height { NumberAnimation { duration: 400; easing.type: Easing.OutExpo } }
+            Behavior on height { NumberAnimation { duration: kit.dur(400); easing.type: kit.ease(Easing.OutExpo) } }
             
             Rectangle { anchors.fill: parent; color: "#111111"; opacity: 0.6; radius: 4 * s; layer.enabled: true; layer.effect: DropShadow { color: "#aa000000"; radius: 15 } }
             Rectangle { anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 1.2 * s; color: root.gold; opacity: 0.4 }
@@ -255,12 +263,12 @@ Item {
                     model: typeof sessionModel !== "undefined" ? sessionModel : null
                     delegate: Item {
                         width: 280 * s; height: 32 * s; property bool itemHover: mMa.containsMouse
-                        Text { text: "✦"; font.pixelSize: 12 * s; color: root.gold; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; opacity: (root.sessionIndex === index || itemHover) ? 1.0 : 0; Behavior on opacity { NumberAnimation { duration: 200 } } }
+                        Text { text: "✦"; font.pixelSize: 12 * s; color: root.gold; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; opacity: (root.sessionIndex === index || itemHover) ? 1.0 : 0; Behavior on opacity { NumberAnimation { duration: kit.dur(200) } } }
                         Text {
                             text: model.name.toUpperCase(); font.family: titleFontFamily; font.pixelSize: 14 * s; font.letterSpacing: 2 * s
                             color: root.fg; opacity: (root.sessionIndex === index || itemHover) ? 1.0 : 0.4
                             anchors.left: parent.left; anchors.leftMargin: 25 * s; anchors.verticalCenter: parent.verticalCenter
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
+                            Behavior on opacity { NumberAnimation { duration: kit.dur(200) } }
                         }
                         MouseArea { id: mMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { root.sessionIndex = index; root.sessionMenuOpen = false } }
                     }
@@ -276,7 +284,7 @@ Item {
         anchors.bottom: parent.bottom; anchors.bottomMargin: 80 * s
         spacing: 60 * s; z: 1000
         opacity: root.interactionMode ? 0.3 : 1.0
-        Behavior on opacity { NumberAnimation { duration: 600 } }
+        Behavior on opacity { NumberAnimation { duration: kit.dur(600) } }
 
         Repeater {
             model: [{ id: "restart", text: "REBOOT", action: "reboot" }, { id: "power", text: "SHUTDOWN", action: "powerOff" }]
@@ -286,15 +294,15 @@ Item {
                     id: cmdText
                     text: modelData.text; font.family: titleFontFamily; font.pixelSize: 15 * s; font.letterSpacing: bMa.containsMouse ? 8 * s : 6 * s; color: bMa.containsMouse ? root.gold : root.fg
                     anchors.right: parent.right; anchors.rightMargin: 25 * s; transformOrigin: Item.Right
-                    Behavior on color { ColorAnimation { duration: 300 } }
-                    Behavior on font.letterSpacing { NumberAnimation { duration: 450; easing.type: Easing.OutQuart } }
+                    Behavior on color { ColorAnimation { duration: kit.dur(300) } }
+                    Behavior on font.letterSpacing { NumberAnimation { duration: kit.dur(450); easing.type: kit.ease(Easing.OutQuart) } }
                     layer.enabled: true; layer.effect: DropShadow { color: "#cc000000"; radius: 10 }
                 }
                 Text {
                     text: "✦"; font.pixelSize: 12 * s; color: root.gold; anchors.verticalCenter: cmdText.verticalCenter
                     anchors.right: parent.right; opacity: bMa.containsMouse ? 1.0 : 0; anchors.rightMargin: bMa.containsMouse ? 0 : -5 * s
-                    Behavior on opacity { NumberAnimation { duration: 350 } }
-                    Behavior on anchors.rightMargin { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
+                    Behavior on opacity { NumberAnimation { duration: kit.dur(350) } }
+                    Behavior on anchors.rightMargin { NumberAnimation { duration: kit.dur(450); easing.type: kit.ease(Easing.OutCubic) } }
                 }
                 MouseArea { id: bMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (typeof sddm !== "undefined") sddm[modelData.action]() } }
             }

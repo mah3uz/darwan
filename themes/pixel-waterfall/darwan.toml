@@ -2,7 +2,17 @@ name = "Waterfall"
 family = "Pixel"
 author = "Darkkal44"
 background = "video"
+background_file = "bg.mp4"
 
 [supports]
 clock_format = true
 date_format = true
+background = true
+colors = true
+fonts = ["text", "clock"]
+motion = true
+
+[[color]]
+key = "colorIce"
+label = "Ice"
+material = "secondary"
