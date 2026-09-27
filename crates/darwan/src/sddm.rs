@@ -75,8 +75,8 @@ pub fn apply(paths: &Paths, id: Option<&str>) -> Result<ExitCode, String> {
     for (k, v) in &overlay {
         println!("  {k} = {v}");
     }
-    let json = serde_json::to_string(&overlay).map_err(|e| e.to_string())?;
-    run_helper(&["sddm-apply", &theme.id], json.as_bytes())?;
+    let (header, files) = request(&overlay)?;
+    run_helper_streaming(&["sddm-apply", &theme.id], &header, &files)?;
 
     config
         .set_theme(Target::Sddm, &theme.id)
@@ -93,7 +93,55 @@ pub fn reset() -> Result<ExitCode, String> {
     Ok(ExitCode::SUCCESS)
 }
 
+// Overlay keys that name one of the user's files; SDDM can't read home folders, so the helper stores a copy.
+const FILE_KEYS: [&str; 3] = ["backgroundPath", "fontTextFile", "fontClockFile"];
+
+// The helper's request line, and the files whose bytes follow it in the same order.
+fn request(overlay: &BTreeMap<String, String>) -> Result<(Vec<u8>, Vec<PathBuf>), String> {
+    let mut sent = overlay.clone();
+    let mut attachments = Vec::new();
+    let mut files = Vec::new();
+    for key in FILE_KEYS {
+        let Some(path) = overlay.get(key).map(PathBuf::from) else {
+            continue;
+        };
+        let size = std::fs::metadata(&path)
+            .map_err(|e| format!("{}: {e}", path.display()))?
+            .len();
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        attachments.push(serde_json::json!({ "key": key, "ext": ext, "size": size }));
+        sent.insert(key.to_string(), "@attachment".to_string());
+        files.push(path);
+    }
+    let mut header =
+        serde_json::to_vec(&serde_json::json!({ "overlay": sent, "attachments": attachments }))
+            .map_err(|e| e.to_string())?;
+    header.push(b'\n');
+    Ok((header, files))
+}
+
+fn run_helper_streaming(args: &[&str], header: &[u8], files: &[PathBuf]) -> Result<(), String> {
+    run_helper_with(args, |stdin| {
+        stdin.write_all(header)?;
+        for f in files {
+            std::io::copy(&mut std::fs::File::open(f)?, stdin)?;
+        }
+        Ok(())
+    })
+}
+
 pub fn run_helper(args: &[&str], stdin: &[u8]) -> Result<(), String> {
+    run_helper_with(args, |w| w.write_all(stdin))
+}
+
+fn run_helper_with(
+    args: &[&str],
+    feed: impl FnOnce(&mut std::process::ChildStdin) -> std::io::Result<()>,
+) -> Result<(), String> {
     if !Path::new(HELPER).is_file() {
         return Err(format!("{HELPER} is not installed"));
     }
@@ -103,12 +151,10 @@ pub fn run_helper(args: &[&str], stdin: &[u8]) -> Result<(), String> {
         .stdin(Stdio::piped())
         .spawn()
         .map_err(|e| format!("cannot run pkexec: {e}"))?;
-    child
-        .stdin
-        .take()
-        .expect("stdin is piped")
-        .write_all(stdin)
-        .map_err(|e| format!("writing to the helper: {e}"))?;
+    {
+        let mut stdin = child.stdin.take().expect("stdin is piped");
+        feed(&mut stdin).map_err(|e| format!("writing to the helper: {e}"))?;
+    }
     let status = child.wait().map_err(|e| e.to_string())?;
     match status.code() {
         Some(0) => Ok(()),
@@ -257,5 +303,39 @@ mod tests {
         );
         assert_eq!(theme_current("[Theme]\nCurrentTheme=x\n"), None);
         assert_eq!(theme_current("[Autologin]\nCurrent=x\n"), None);
+    }
+
+    #[test]
+    fn user_files_become_attachments_and_other_values_stay_in_the_overlay() {
+        let dir = tempfile::tempdir().unwrap();
+        let clip = dir.path().join("Rain.MP4");
+        std::fs::write(&clip, b"12345").unwrap();
+        let overlay: BTreeMap<String, String> = [
+            ("backgroundType", "video"),
+            ("backgroundPath", clip.to_str().unwrap()),
+            ("colorAccent", "#e6bb5c"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+        let (header, files) = request(&overlay).unwrap();
+        assert_eq!(header.last(), Some(&b'\n'));
+        let v: serde_json::Value = serde_json::from_slice(&header).unwrap();
+        assert_eq!(
+            v["overlay"]["backgroundPath"], "@attachment",
+            "the helper never gets a path to open"
+        );
+        assert_eq!(v["overlay"]["colorAccent"], "#e6bb5c");
+        assert_eq!(
+            v["attachments"][0],
+            serde_json::json!({ "key": "backgroundPath", "ext": "mp4", "size": 5 })
+        );
+        assert_eq!(files, [clip]);
+        let (plain, none) = request(&BTreeMap::new()).unwrap();
+        assert!(none.is_empty());
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&plain).unwrap()["attachments"],
+            serde_json::json!([])
+        );
     }
 }
