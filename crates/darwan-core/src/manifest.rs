@@ -9,12 +9,16 @@ pub struct Manifest {
     pub family: Option<String>,
     pub author: String,
     pub background: Background,
+    // The theme's own background image, for generating colours from it.
+    pub background_file: Option<String>,
     #[serde(default, rename = "font")]
     pub fonts: Vec<FontRequirement>,
     #[serde(default)]
     pub supports: Supports,
     #[serde(default, rename = "option")]
     pub options: Vec<ThemeOption>,
+    #[serde(default, rename = "color")]
+    pub colors: Vec<ColorRole>,
 }
 
 impl Manifest {
@@ -24,6 +28,10 @@ impl Manifest {
 
     pub fn option(&self, key: &str) -> Option<&ThemeOption> {
         self.options.iter().find(|o| o.key == key)
+    }
+
+    pub fn color(&self, key: &str) -> Option<&ColorRole> {
+        self.colors.iter().find(|c| c.key == key)
     }
 }
 
@@ -53,7 +61,30 @@ pub struct Supports {
     #[serde(default)]
     pub date_format: bool,
     #[serde(default)]
-    pub background_override: bool,
+    pub background: bool,
+    #[serde(default)]
+    pub colors: bool,
+    #[serde(default)]
+    pub fonts: Vec<String>,
+    #[serde(default)]
+    pub motion: bool,
+    #[serde(default)]
+    pub variants: Vec<String>,
+    pub default_variant: Option<String>,
+}
+
+// A colour beyond accent and text that a theme lets the user change; `material` names the generated role it follows.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ColorRole {
+    pub key: String,
+    pub label: String,
+    #[serde(default = "default_material")]
+    pub material: String,
+}
+
+fn default_material() -> String {
+    "primary".into()
 }
 
 // Flat, not a tagged enum: serde can't combine `flatten` with `deny_unknown_fields`.
@@ -66,8 +97,8 @@ pub struct ThemeOption {
     pub kind: OptionKind,
     #[serde(default)]
     pub choices: Vec<Choice>,
-    pub min: Option<i64>,
-    pub max: Option<i64>,
+    pub min: Option<f64>,
+    pub max: Option<f64>,
     #[serde(default)]
     pub filters: Vec<String>,
     #[serde(default)]
@@ -80,6 +111,7 @@ pub enum OptionKind {
     Bool,
     Enum,
     Int,
+    Range,
     Color,
     File,
 }
@@ -114,8 +146,19 @@ impl ThemeOption {
                 let n: i64 = value
                     .parse()
                     .map_err(|_| format!("expected an integer, got {value:?}"))?;
-                let (min, max) = (self.min.unwrap_or(i64::MIN), self.max.unwrap_or(i64::MAX));
-                if (min..=max).contains(&n) {
+                let (min, max) = (self.min.unwrap_or(f64::MIN), self.max.unwrap_or(f64::MAX));
+                if (min..=max).contains(&(n as f64)) {
+                    Ok(())
+                } else {
+                    Err(format!("expected {min}..={max}, got {n}"))
+                }
+            }
+            OptionKind::Range => {
+                let n: f64 = value
+                    .parse()
+                    .map_err(|_| format!("expected a number, got {value:?}"))?;
+                let (min, max) = (self.min.unwrap_or(f64::MIN), self.max.unwrap_or(f64::MAX));
+                if n.is_finite() && (min..=max).contains(&n) {
                     Ok(())
                 } else {
                     Err(format!("expected {min}..={max}, got {n}"))

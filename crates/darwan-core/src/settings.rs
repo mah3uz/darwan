@@ -2,6 +2,8 @@ use std::fmt;
 
 use crate::catalog::{Catalog, valid_id};
 use crate::config::{Target, UserConfig};
+use crate::custom::{self, Kind};
+use crate::manifest::OptionKind;
 
 pub struct DatePreset {
     pub format: &'static str,
@@ -150,18 +152,45 @@ pub fn set(
             let t = catalog
                 .get(theme)
                 .ok_or_else(|| format!("unknown theme {theme:?}"))?;
+            if let Some(kind) = custom_kind(t, key) {
+                if value.is_empty() {
+                    config.remove_theme_value(theme, key);
+                    return Ok(());
+                }
+                custom::check(t, key, value).map_err(|e| format!("{theme}.{key}: {e}"))?;
+                return config.set_theme_value(theme, key, value, kind);
+            }
             let opt = t.manifest.option(key).ok_or_else(|| {
                 let keys: Vec<&str> = t.manifest.options.iter().map(|o| o.key.as_str()).collect();
+                let standard: Vec<&str> = custom::SETTINGS.iter().map(|s| s.key).collect();
                 if keys.is_empty() {
-                    format!("{theme} has no options")
+                    format!(
+                        "{theme} has no option {key:?}; the standard settings are {}",
+                        standard.join(", ")
+                    )
                 } else {
-                    format!("{theme} has no option {key:?}; it has {}", keys.join(", "))
+                    format!(
+                        "{theme} has no option {key:?}; it has {}, and the standard settings {}",
+                        keys.join(", "),
+                        standard.join(", ")
+                    )
                 }
             })?;
             opt.check(value)
                 .map_err(|e| format!("{theme}.{key}: {e}"))?;
             config.set_theme_value(theme, key, value, opt.kind)
         }
+    }
+}
+
+// Standard settings and a theme's colour roles, with the TOML type they are stored as.
+fn custom_kind(theme: &crate::catalog::Theme, key: &str) -> Option<OptionKind> {
+    match custom::setting(key).map(|s| s.kind) {
+        Some(Kind::Percent) => Some(OptionKind::Int),
+        Some(Kind::Speed | Kind::Contrast) => Some(OptionKind::Range),
+        Some(Kind::Bool) => Some(OptionKind::Bool),
+        Some(_) => Some(OptionKind::Enum),
+        None => theme.manifest.color(key).map(|_| OptionKind::Color),
     }
 }
 

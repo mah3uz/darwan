@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::catalog::Theme;
 use crate::config::UserConfig;
+use crate::custom::{self, Host};
 use crate::settings;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -17,23 +18,42 @@ pub struct Resolved {
 }
 
 // Defaults are not copied: SDDM and the runtime layer the overlay over theme.conf.
-pub fn resolve(theme: &Theme, config: &UserConfig) -> Resolved {
+pub fn resolve(theme: &Theme, config: &UserConfig, host: &dyn Host) -> Resolved {
     let mut r = Resolved::default();
+    let issue_key = |key: &str| format!("themes.\"{}\".{key}", theme.id);
+    let mut standard = BTreeMap::new();
     for (key, value) in config.theme_values(&theme.id) {
-        let checked = value.and_then(|v| match theme.manifest.option(&key) {
-            None => Err(format!("{} has no option {key:?}", theme.manifest.name)),
-            Some(opt) => opt.check(&v).map(|()| v),
+        let is_standard = custom::setting(&key).is_some() || theme.manifest.color(&key).is_some();
+        let checked = value.and_then(|v| {
+            if is_standard {
+                custom::check(theme, &key, &v).map(|()| v)
+            } else {
+                match theme.manifest.option(&key) {
+                    None => Err(format!("{} has no option {key:?}", theme.manifest.name)),
+                    Some(opt) => opt.check(&v).map(|()| v),
+                }
+            }
         });
         match checked {
+            Ok(v) if is_standard => {
+                standard.insert(key, v);
+            }
             Ok(v) => {
                 r.overlay.insert(key, v);
             }
             Err(message) => r.issues.push(Issue {
-                key: format!("themes.\"{}\".{key}", theme.id),
+                key: issue_key(&key),
                 message,
             }),
         }
     }
+    let mut issues = Vec::new();
+    custom::apply(theme, &standard, host, &mut r.overlay, &mut issues);
+    r.issues
+        .extend(issues.into_iter().map(|(key, message)| Issue {
+            key: issue_key(&key),
+            message,
+        }));
 
     let supports = &theme.manifest.supports;
     if supports.clock_format {
@@ -102,9 +122,12 @@ pub fn check_overlay(theme: &Theme, overlay: &BTreeMap<String, String>) -> Vec<I
                         Err(format!("{value:?} does not match dateFormat"))
                     }
                 }
-                _ => match theme.manifest.option(key) {
-                    Some(opt) => opt.check(value),
-                    None => Err(format!("{} has no option {key:?}", theme.manifest.name)),
+                _ => match custom::check_contract(theme, key, value) {
+                    Some(result) => result,
+                    None => match theme.manifest.option(key) {
+                        Some(opt) => opt.check(value),
+                        None => Err(format!("{} has no option {key:?}", theme.manifest.name)),
+                    },
                 },
             };
             result.err().map(|message| Issue {
@@ -136,6 +159,10 @@ fn global(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn resolve(theme: &Theme, config: &UserConfig) -> Resolved {
+        super::resolve(theme, config, &custom::Offline)
+    }
     use crate::manifest::Manifest;
 
     fn theme(supports: &str) -> Theme {

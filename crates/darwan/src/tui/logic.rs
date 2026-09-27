@@ -33,8 +33,20 @@ pub fn step(field: &Field, forward: bool) -> Option<String> {
             };
             Some(next.clamp(*min, *max).to_string())
         }
+        FieldKind::Range { min, max, step } => {
+            let n: f64 = field.value.parse().unwrap_or(*min);
+            let next = if forward { n + step } else { n - step };
+            // Snap to the step grid so repeated steps never drift into 0.30000000000000004.
+            let snapped = min + ((next - min) / step).round() * step;
+            Some(format_number(snapped.clamp(*min, *max)))
+        }
         _ => None,
     }
+}
+
+fn format_number(n: f64) -> String {
+    let s = format!("{n:.2}");
+    s.trim_end_matches('0').trim_end_matches('.').to_string()
 }
 
 pub fn display_value(field: &Field) -> String {
@@ -44,7 +56,13 @@ pub fn display_value(field: &Field) -> String {
             .find(|(v, _)| *v == field.value)
             .map_or(field.value.clone(), |(_, l)| l.clone()),
         FieldKind::Bool => if field.value == "true" { "on" } else { "off" }.into(),
-        FieldKind::Text if field.value.is_empty() => "theme default".into(),
+        FieldKind::Text | FieldKind::Media(_) | FieldKind::Font | FieldKind::Color { .. }
+            if field.value.is_empty() =>
+        {
+            "theme default".into()
+        }
+        FieldKind::Media(_) if field.value == "desktop" => "desktop wallpaper".into(),
+        FieldKind::Color { .. } if field.value == "generate" => "generated".into(),
         _ => field.value.clone(),
     }
 }
@@ -62,6 +80,7 @@ mod tests {
             value: value.into(),
             is_set: false,
             disabled: None,
+            group: None,
         }
     }
 
@@ -86,7 +105,10 @@ mod tests {
     #[test]
     fn free_text_kinds_are_not_stepped() {
         assert_eq!(step(&field(FieldKind::Text, ""), true), None);
-        assert_eq!(step(&field(FieldKind::Color, "#fff"), true), None);
+        assert_eq!(
+            step(&field(FieldKind::Color { generate: false }, "#fff"), true),
+            None
+        );
     }
 
     #[test]
@@ -95,5 +117,29 @@ mod tests {
         assert_eq!(display_value(&field(kind, "static")), "Fixed");
         assert_eq!(display_value(&field(FieldKind::Bool, "true")), "on");
         assert_eq!(display_value(&field(FieldKind::Text, "")), "theme default");
+    }
+
+    #[test]
+    fn ranges_step_on_their_grid_and_stay_in_bounds() {
+        let speed = FieldKind::Range {
+            min: 0.25,
+            max: 3.0,
+            step: 0.25,
+        };
+        assert_eq!(
+            step(&field(speed.clone(), "1"), true).as_deref(),
+            Some("1.25")
+        );
+        assert_eq!(
+            step(&field(speed.clone(), "0.25"), false).as_deref(),
+            Some("0.25")
+        );
+        assert_eq!(step(&field(speed, "3"), true).as_deref(), Some("3"));
+        let contrast = FieldKind::Range {
+            min: -1.0,
+            max: 1.0,
+            step: 0.25,
+        };
+        assert_eq!(step(&field(contrast, "0"), false).as_deref(), Some("-0.25"));
     }
 }

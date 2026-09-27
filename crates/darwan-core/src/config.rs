@@ -124,7 +124,8 @@ impl UserConfig {
                     Some(Value::String(s)) => Ok(s.value().clone()),
                     Some(Value::Boolean(b)) => Ok(b.value().to_string()),
                     Some(Value::Integer(i)) => Ok(i.value().to_string()),
-                    _ => Err("expected a string, boolean or integer".to_string()),
+                    Some(Value::Float(f)) => Ok(f.value().to_string()),
+                    _ => Err("expected a string, boolean or number".to_string()),
                 };
                 (k.to_string(), v)
             })
@@ -158,6 +159,10 @@ impl UserConfig {
                 toml_edit::value(value == "true")
             }
             OptionKind::Int => match value.parse::<i64>() {
+                Ok(n) => toml_edit::value(n),
+                Err(_) => toml_edit::value(value),
+            },
+            OptionKind::Range => match value.parse::<f64>() {
                 Ok(n) => toml_edit::value(n),
                 Err(_) => toml_edit::value(value),
             },

@@ -78,6 +78,7 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Value {
                 "value": f.value,
                 "isSet": f.is_set,
                 "disabled": f.disabled.unwrap_or_default(),
+                "group": f.group.unwrap_or_default(),
             });
             let kind = match f.kind {
                 FieldKind::Bool => "bool",
@@ -93,11 +94,25 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Value {
                     v["max"] = max.into();
                     "int"
                 }
-                FieldKind::Color => "color",
+                FieldKind::Range { min, max, step } => {
+                    v["min"] = min.into();
+                    v["max"] = max.into();
+                    v["step"] = step.into();
+                    "range"
+                }
+                FieldKind::Color { generate } => {
+                    v["generate"] = generate.into();
+                    "color"
+                }
                 FieldKind::File(filters) => {
                     v["filters"] = filters.into();
                     "file"
                 }
+                FieldKind::Media(filters) => {
+                    v["filters"] = filters.into();
+                    "media"
+                }
+                FieldKind::Font => "font",
                 FieldKind::Text => "text",
             };
             v["kind"] = kind.into();

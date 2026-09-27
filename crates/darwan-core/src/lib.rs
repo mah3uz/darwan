@@ -1,5 +1,6 @@
 pub mod catalog;
 pub mod config;
+pub mod custom;
 pub mod environment;
 pub mod form;
 pub mod gallery;

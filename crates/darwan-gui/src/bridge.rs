@@ -213,7 +213,7 @@ impl qobject::Backend {
         let Some(theme) = r.catalog.get(&id.to_string()) else {
             return false;
         };
-        let resolved = resolve::resolve(theme, &r.config);
+        let resolved = resolve::resolve(theme, &r.config, &darwan_core::custom::Offline);
         let path = r.overlay_path.to_string();
         let written = ini::write_general(&resolved.overlay)
             .map_err(|e| e.to_string())

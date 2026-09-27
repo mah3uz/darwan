@@ -68,6 +68,61 @@ pub fn lint(theme: &Theme) -> Vec<String> {
         problems.push("supports.date_format but no QML reads config.dateFormat".into());
     }
 
+    let sup = &m.supports;
+    if !sup.variants.is_empty() {
+        for v in &sup.variants {
+            if v != "light" && v != "dark" {
+                problems.push(format!("variant {v:?} must be light or dark"));
+            }
+        }
+        match &sup.default_variant {
+            Some(d) if sup.variants.contains(d) => {
+                if theme.defaults.get("colorScheme") != Some(d) {
+                    problems.push(format!(
+                        "supports.variants needs colorScheme={d} in theme.conf"
+                    ));
+                }
+            }
+            _ => problems
+                .push("supports.variants needs a default_variant that is one of them".into()),
+        }
+        if !qml.contains("config.colorScheme") {
+            problems.push("supports.variants but no QML reads config.colorScheme".into());
+        }
+    } else if sup.default_variant.is_some() {
+        problems.push("default_variant without supports.variants".into());
+    }
+    for role in &sup.fonts {
+        if role != "text" && role != "clock" {
+            problems.push(format!("font role {role:?} must be text or clock"));
+        }
+    }
+    let mut color_keys = BTreeSet::new();
+    for c in &m.colors {
+        if !color_keys.insert(&c.key)
+            || m.option(&c.key).is_some()
+            || crate::custom::setting(&c.key).is_some()
+        {
+            problems.push(format!("colour {:?} clashes with another key", c.key));
+        }
+        if !crate::custom::MATERIAL_ROLES.contains(&c.material.as_str()) {
+            problems.push(format!(
+                "colour {:?} follows unknown Material role {:?}",
+                c.key, c.material
+            ));
+        }
+        match theme.defaults.get(&c.key) {
+            Some(v) if crate::custom::is_hex_color(v) => {}
+            _ => problems.push(format!(
+                "colour {:?} needs a hex default in theme.conf",
+                c.key
+            )),
+        }
+    }
+    if !m.colors.is_empty() && !sup.colors {
+        problems.push("[[color]] roles need supports.colors".into());
+    }
+
     for font in &m.fonts {
         if font.file.is_empty() || font.file.contains('/') {
             problems.push(format!(
@@ -174,6 +229,50 @@ mod tests {
         let dep = "[[option]]\nkey = \"i\"\nlabel = \"I\"\ntype = \"int\"\nmin = 1\nmax = 2\nenabled_when = { themeMode = \"light\", nope = \"x\" }\n";
         let (_root, cat) = theme_with(&format!("{MODE}{dep}"), "[General]\nthemeMode=dark\ni=1\n");
         assert_eq!(lint(&cat.themes()[0]).len(), 2);
+    }
+
+    #[test]
+    fn variants_need_a_default_in_theme_conf_and_qml_that_reads_it() {
+        let v = "[supports]\nvariants = [\"light\", \"dark\"]\ndefault_variant = \"light\"\n";
+        let (_root, cat) = theme_with(v, "[General]\n");
+        let problems = lint(&cat.themes()[0]);
+        assert!(
+            problems.iter().any(|p| p.contains("colorScheme=light")),
+            "{problems:?}"
+        );
+        assert!(
+            problems
+                .iter()
+                .any(|p| p.contains("no QML reads config.colorScheme")),
+            "{problems:?}"
+        );
+        let (_root, cat) = theme_with(
+            "[supports]\nvariants = [\"dark\"]\n",
+            "[General]\ncolorScheme=dark\n",
+        );
+        assert!(
+            lint(&cat.themes()[0])
+                .iter()
+                .any(|p| p.contains("default_variant"))
+        );
+    }
+
+    #[test]
+    fn colour_roles_need_support_a_hex_default_and_a_real_material_role() {
+        let roles = "[supports]\ncolors = true\n\n[[color]]\nkey = \"lamp\"\nlabel = \"Lamp\"\nmaterial = \"tertiary\"\n\n[[color]]\nkey = \"rain\"\nlabel = \"Rain\"\nmaterial = \"sparkle\"\n";
+        let (_root, cat) = theme_with(roles, "[General]\nlamp=#e6bb5c\nrain=blue\n");
+        let problems = lint(&cat.themes()[0]);
+        assert!(
+            problems.iter().any(|p| p.contains("\"sparkle\"")),
+            "{problems:?}"
+        );
+        assert!(
+            problems
+                .iter()
+                .any(|p| p.contains("\"rain\" needs a hex default")),
+            "{problems:?}"
+        );
+        assert_eq!(problems.len(), 2, "{problems:?}");
     }
 
     #[test]
