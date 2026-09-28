@@ -13,7 +13,8 @@ class MpvVideo : public MpvAbstractItem
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     Q_PROPERTY(bool loop READ loop WRITE setLoop NOTIFY loopChanged)
     Q_PROPERTY(FillMode fillMode READ fillMode WRITE setFillMode NOTIFY fillModeChanged)
-    // "full"; "eco": the transcoded copy darwan cached for this file, if there is one; "still": the first frame only.
+    // "full"; "eco": the transcoded copy darwan cached for this file, if there is one (animated images use theirs in
+    // every tier); "still": the first frame only.
     Q_PROPERTY(QString tier READ tier WRITE setTier NOTIFY tierChanged)
 
 public:

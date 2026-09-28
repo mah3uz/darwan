@@ -2,8 +2,11 @@ use std::path::Path;
 use std::process::{Command, ExitCode};
 
 use darwan_core::catalog::Catalog;
+use darwan_core::config::{Target, UserConfig};
+use darwan_core::hardware;
 use darwan_core::manifest::Background;
 use darwan_core::paths::Paths;
+use darwan_core::saver::{Hypridle, Quality, runs_command};
 
 use crate::sddm;
 use crate::session::WaylandSession;
@@ -69,12 +72,11 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
             None => r.warn("could not read Hyprland's misc:allow_session_lock_restore"),
         }
     }
-    let hypridle = darwan_core::paths::config_file()
-        .parent()
-        .and_then(Path::parent)
-        .map(|c| c.join("hypr/hypridle.conf"));
-    if let Some(text) = hypridle.and_then(|p| std::fs::read_to_string(p).ok()) {
-        match hypridle_advice(&text) {
+    let hypridle = std::fs::read_to_string(crate::saver::hypridle_config())
+        .ok()
+        .map(|t| darwan_core::saver::parse_hypridle(&t));
+    if let Some(h) = &hypridle {
+        match hypridle_advice(h) {
             Some(Ok(msg)) => r.ok(msg),
             Some(Err(msg)) => r.warn(msg),
             None => {}
@@ -149,6 +151,9 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
         r.warn("JetBrainsMono Nerd Font is not installed: clockwork/neo-orbital icons will show as boxes (ttf-jetbrains-mono-nerd)");
     }
 
+    println!("\n{}", style::heading("Screensaver"));
+    screensaver(&mut r, paths, &catalog, hypridle.as_ref());
+
     println!("\n{}", style::heading("SDDM"));
     if !on_path("sddm-greeter-qt6") {
         r.warn("SDDM (Qt 6) is not installed; SDDM actions are unavailable");
@@ -222,28 +227,110 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
 }
 
 // None when hypridle doesn't lock with darwan: another locker's setup is not ours to judge.
-fn hypridle_advice(conf: &str) -> Option<Result<String, String>> {
-    let mut lock_cmd = None;
-    let mut inhibit_sleep = None;
-    for line in conf.lines() {
-        let line = line.split('#').next().unwrap_or("").trim();
-        let Some((key, value)) = line.split_once('=') else {
-            continue;
-        };
-        match key.trim() {
-            "lock_cmd" => lock_cmd = Some(value.trim().to_string()),
-            "inhibit_sleep" => inhibit_sleep = value.trim().parse::<u8>().ok(),
-            _ => {}
-        }
-    }
-    if !lock_cmd?.contains("darwan lock") {
+fn hypridle_advice(h: &Hypridle) -> Option<Result<String, String>> {
+    if !runs_command(h.lock_cmd.as_deref()?, "lock") {
         return None;
     }
     // Mode 2, hypridle's default, waits for the lock only when the command names hyprlock.
-    Some(match inhibit_sleep {
+    Some(match h.inhibit_sleep {
         Some(3) => Ok("hypridle locks with darwan and waits for the lock before sleep".into()),
         _ => Err("hypridle locks with darwan but may sleep before the lock is up: set inhibit_sleep = 3 in hypridle.conf".into()),
     })
+}
+
+fn screensaver(r: &mut Report, paths: &Paths, catalog: &Catalog, hypridle: Option<&Hypridle>) {
+    let plugin = paths.qml_modules.join("Darwan/libdarwanplugin.so");
+    if plugin.is_file() {
+        r.ok(format!(
+            "darwan's QML plugin is installed ({})",
+            plugin.display()
+        ));
+    } else {
+        r.fail(format!(
+            "{} is missing: the lock plays no video and the screensaver can't start; reinstall darwan (or `just build` in a checkout)",
+            plugin.display()
+        ));
+    }
+
+    if !on_path("hypridle") {
+        r.warn("hypridle is not installed: nothing starts the screensaver when you're idle (pacman -S hypridle)");
+    }
+    match hypridle.map(|h| (h, h.saver_timeout)) {
+        None => r.warn(format!(
+            "no {}: add a listener {{ timeout = 300; on-timeout = darwan saver }} to start the screensaver",
+            crate::saver::hypridle_config().display()
+        )),
+        Some((_, None)) => r.warn("no hypridle listener runs `darwan saver`: add listener { timeout = 300; on-timeout = darwan saver }"),
+        Some((h, Some(secs))) => {
+            r.ok(format!("hypridle starts the screensaver after {secs} s"));
+            if !h.after_sleep_cmd.as_deref().is_some_and(|c| runs_command(c, "resumed")) {
+                r.warn("hypridle's after_sleep_cmd doesn't run `darwan resumed`: opening a lid without touching anything can bring the screensaver straight back");
+            }
+            if !h.before_sleep_cmd.as_deref().is_some_and(|c| c.contains("lock-session") || runs_command(c, "lock")) {
+                r.warn("hypridle doesn't lock before sleep (before_sleep_cmd = loginctl lock-session): a screensaver that never locks is left open across sleep");
+            }
+        }
+    }
+
+    let config = UserConfig::load(&darwan_core::paths::config_file()).unwrap_or_default();
+    if let Some(theme) = config
+        .theme(Target::Lock)
+        .ok()
+        .flatten()
+        .and_then(|id| catalog.get(id))
+    {
+        if theme.manifest.supports.screensaver {
+            r.ok(format!(
+                "the lock theme {} has a screensaver mode",
+                theme.id
+            ));
+        } else {
+            let adapted = catalog
+                .themes()
+                .iter()
+                .filter(|t| t.manifest.supports.screensaver)
+                .count();
+            r.warn(format!(
+                "the lock theme {} has no screensaver mode, so `darwan saver` declines; {adapted} themes have one",
+                theme.id
+            ));
+        }
+        let quality = config
+            .saver_quality()
+            .ok()
+            .flatten()
+            .unwrap_or(Quality::Auto);
+        let facts = hardware::probe();
+        let gpu = facts
+            .gpu
+            .as_ref()
+            .map_or("no GPU (software rendering)".to_string(), |g| {
+                format!(
+                    "{} {}GPU{}",
+                    g.vendor.name(),
+                    if g.integrated { "integrated " } else { "" },
+                    if g.hw_decode {
+                        " with a video decoder"
+                    } else {
+                        ", no video decoder driver"
+                    }
+                )
+            });
+        let (tier, why) = hardware::tier(quality, &facts);
+        r.ok(format!(
+            "renders on {gpu}; videos play {} ({why})",
+            tier.as_str()
+        ));
+        if tier == hardware::Tier::Eco {
+            let missing = crate::media_cmd::missing_eco(&theme.dir);
+            if missing > 0 {
+                r.warn(format!(
+                    "{missing} of {}'s videos have no eco copy yet and play in full; pick the theme again to make them",
+                    theme.id
+                ));
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -252,19 +339,17 @@ mod tests {
 
     #[test]
     fn hypridle_must_wait_for_darwans_lock_before_sleep() {
+        let advice = |conf: &str| hypridle_advice(&darwan_core::saver::parse_hypridle(conf));
         let good = "general {\n    lock_cmd = darwan lock\n    inhibit_sleep = 3 # wait\n}\n";
-        assert!(matches!(hypridle_advice(good), Some(Ok(_))));
+        assert!(matches!(advice(good), Some(Ok(_))));
         let default_mode = "general {\n    lock_cmd = darwan lock\n}\n";
         assert!(
-            matches!(hypridle_advice(default_mode), Some(Err(_))),
+            matches!(advice(default_mode), Some(Err(_))),
             "mode 2 releases sleep at once for any locker but hyprlock"
         );
         let commented = "general {\n    lock_cmd = darwan lock\n    # inhibit_sleep = 3\n}\n";
-        assert!(matches!(hypridle_advice(commented), Some(Err(_))));
-        assert_eq!(
-            hypridle_advice("general {\n    lock_cmd = hyprlock\n}\n"),
-            None
-        );
-        assert_eq!(hypridle_advice("listener {\n    timeout = 300\n}\n"), None);
+        assert!(matches!(advice(commented), Some(Err(_))));
+        assert_eq!(advice("general {\n    lock_cmd = hyprlock\n}\n"), None);
+        assert_eq!(advice("listener {\n    timeout = 300\n}\n"), None);
     }
 }

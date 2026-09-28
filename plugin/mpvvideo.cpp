@@ -112,7 +112,10 @@ void MpvVideo::load()
         return;
     }
     QString path = m_source.isLocalFile() ? m_source.toLocalFile() : m_source.toString();
-    if (m_tier == u"eco"_s && m_source.isLocalFile()) {
+    // An animated image's video copy decodes on the GPU instead of every frame on the CPU, so it always wins.
+    static const QStringList animated{u"gif"_s, u"webp"_s, u"apng"_s, u"png"_s};
+    const bool isAnimated = animated.contains(QFileInfo(path).suffix().toLower());
+    if ((m_tier == u"eco"_s || isAnimated) && m_source.isLocalFile()) {
         const QString eco = ecoPath(path);
         if (QFileInfo::exists(eco))
             path = eco;

@@ -21,10 +21,24 @@ Item {
             player.errorOccurred(1, reason)
     }
 
+    // Chosen once, when the item first has a window: moving to another window (the saver becoming the lock) passes
+    // through none, and reloading there would restart the video.
+    property string backend: ""
+    function choose() {
+        if (backend === "" && GraphicsInfo.api !== GraphicsInfo.Unknown)
+            backend = GraphicsInfo.api === GraphicsInfo.OpenGL ? "MpvOutput.qml" : "NativeOutput.qml"
+    }
+    Component.onCompleted: choose()
+    Connections {
+        target: output.GraphicsInfo
+        function onApiChanged() { output.choose() }
+    }
+
     // Items loaded from a file don't see this file's ids, so each backend finds this item as its Loader's parent.
+    // Without darwan's plugin the mpv backend can't load; Qt's player still plays the video.
     Loader {
         anchors.fill: parent
-        active: output.GraphicsInfo.api !== GraphicsInfo.Unknown
-        source: !active ? "" : output.GraphicsInfo.api === GraphicsInfo.OpenGL ? "MpvOutput.qml" : "NativeOutput.qml"
+        source: output.backend
+        onStatusChanged: if (status === Loader.Error && output.backend === "MpvOutput.qml") Qt.callLater(() => output.backend = "NativeOutput.qml")
     }
 }

@@ -13,6 +13,9 @@ Item {
     readonly property real dim: Math.min(80, Math.max(0, parseInt(cfg.backgroundDim) || 0)) / 100
     property bool failed: false
     readonly property bool active: kind !== "" && !failed
+    // Under darwan's hosts an animated image plays as video: libmpv, and darwan's video copy of it once made. SDDM
+    // has neither, so it keeps AnimatedImage.
+    readonly property bool asVideo: kind === "video" || (kind === "animated" && typeof darwan !== "undefined")
 
     visible: active
 
@@ -23,7 +26,7 @@ Item {
 
     Loader {
         anchors.fill: parent
-        active: bg.kind === "image" || bg.kind === "animated"
+        active: (bg.kind === "image" || bg.kind === "animated") && !bg.asVideo
         sourceComponent: bg.kind === "animated" ? animated : still
     }
 
@@ -51,7 +54,7 @@ Item {
 
     Loader {
         anchors.fill: parent
-        active: bg.kind === "video"
+        active: bg.asVideo
         sourceComponent: Item {
             MediaPlayer {
                 id: player

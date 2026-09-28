@@ -77,9 +77,9 @@ Your AUR helper or `makepkg -s` installs these for you.
 
 |                           | Packages                                                                                                                            |
 |--------------------------:|:------------------------------------------------------------------------------------------------------------------------------------|
-|              **Required** | `quickshell` `qt6-base` `qt6-declarative` `qt6-5compat` `qt6-multimedia` `qt6-multimedia-ffmpeg` `polkit` `ttf-jetbrains-mono-nerd` |
-|              **Optional** | `sddm` (the login screen) · `libfaketime` (`darwan preview --at`) · `noto-fonts-cjk` (Chinese text in Genshin Impact)               |
-| **Build** (`darwan` only) | `rust` `lld` `librsvg` |
+|              **Required** | `quickshell` `qt6-base` `qt6-declarative` `qt6-5compat` `qt6-multimedia` `qt6-multimedia-ffmpeg` `mpvqt` `polkit` `ttf-jetbrains-mono-nerd` |
+|              **Optional** | `sddm` (the login screen) · `hypridle` (the screensaver) · `libfaketime` (`darwan preview --at`) · `noto-fonts-cjk` (Chinese text in Genshin Impact) |
+| **Build** (`darwan` only) | `rust` `lld` `librsvg` `cmake` |
 
 #### 🚀 INSTALL
 
@@ -119,6 +119,7 @@ The package installs:
 | `/usr/bin/darwan`                               | CLI + TUI                                                 |
 | `/usr/bin/darwan-gui`                           | GUI, also in your app launcher as *Darwan*                |
 | `/usr/lib/darwan/darwan-helper`                 | privileged SDDM helper, run through `pkexec`              |
+| `/usr/lib/darwan/qml/Darwan/`                   | the QML plugin that plays videos (libmpv) and wakes the screensaver |
 | `/usr/share/darwan/runtime/`                    | the QML runtime shared by the lockscreen and the previews |
 | `/usr/share/darwan/themes/`                     | all 40 themes                                             |
 | `/usr/share/polkit-1/actions/org.darwan.policy` | lets the helper ask for your password once per session    |
@@ -318,6 +319,49 @@ Pressing the keybind while already locked does nothing, because only one lockscr
 refuses to lock while `allow_session_lock_restore` is off. If the lockscreen crashes, for example when a monitor drops
 out during sleep, Darwan starts a new one by itself and it takes the lock back.
 
+<a id="screensaver"></a>
+
+#### 🌙 SCREENSAVER
+
+Every theme doubles as a screensaver: when you're idle, your lock theme fades in over the desktop with only its
+background and its animation (rain, drifting ash, a turning dial), no clock or password field. Any key or click brings
+the lock's widgets in (the first key you type goes straight into the password field), or, if the screensaver hasn't
+locked yet, fades it away to your desktop. A revealed lock settles back to the screensaver after 30 seconds without
+input.
+
+hypridle starts it. Add a listener to `~/.config/hypr/hypridle.conf`, and `darwan resumed` to the sleep block:
+
+```ini
+general {
+    lock_cmd = darwan lock
+    before_sleep_cmd = loginctl lock-session
+    after_sleep_cmd = darwan resumed     # plus your usual `hyprctl dispatch dpms on`, if any
+    inhibit_sleep = 3
+}
+
+listener {
+    timeout = 300
+    on-timeout = darwan saver
+}
+```
+
+Keep your screen-off listener as it is: Darwan notices the outputs powering off by itself. With the outputs off, an
+unlocked screensaver ends (waking shows the desktop) and a locked one drops its theme to a black lock (waking shows the
+password prompt). Waking from sleep never shows the screensaver either.
+
+| Setting            | Values                             | Default | Does                                                                   |
+|:-------------------|:-----------------------------------|:--------|:-----------------------------------------------------------------------|
+| `saver.lock_after` | seconds, or `never`                | `0`     | how long the screensaver waits before it locks; `0` locks as it appears |
+| `saver.quality`    | `auto` `full` `eco` `still`        | `auto`  | what videos play: as shipped, at up to 1080p and 30 fps, or a still frame |
+
+`auto` picks from your hardware and power: full video on a dedicated GPU with a decoder; the smaller copies on
+integrated graphics, on battery, without a video decoder driver or with less than 8 GB of memory; stills with the
+power-saver profile or without a GPU. The smaller copies are made once, in the background, when you pick a theme or a
+background. With several monitors only the focused one plays video (the others show its first frame), unless
+`saver.quality = "full"`. `darwan doctor` shows what it chose and why.
+
+Try it without waiting: `darwan preview <theme> --saver` (or *Screensaver preview* in the GUI, `a` in the TUI).
+
 <a id="desktop-shells"></a>
 
 #### 🧩 DESKTOP SHELLS
@@ -325,7 +369,8 @@ out during sleep, Darwan starts a new one by itself and it takes the lock back.
 Most Hyprland shells bring a lockscreen of their own. A lock starts from your keybind, from idle, or before sleep, and
 `loginctl lock-session` (which many power menus call) asks whoever listens for it. Send all of these to
 `darwan lock` and turn the shell's own lock off: Hyprland allows one lockscreen at a time, so when two answer, one
-fails. The [website](https://darwan.dev/docs/shells) has the full walk-through.
+fails. The [website](https://darwan.dev/docs/shells) has the full walk-through. For the [screensaver](#screensaver),
+let hypridle own idle: give it the `darwan saver` listener and turn the shell's idle lock off, or both will fire.
 
 | Shell                     | Its lockscreen                | What changes                                                | Login screen              |
 |:--------------------------|:------------------------------|:------------------------------------------------------------|:--------------------------|
@@ -434,6 +479,10 @@ show_ampm = false
 
 [date]
 format = "ddd, MMM d"   # one of the presets below; unset, each theme keeps its own
+
+[saver]
+lock_after = 60         # seconds from the screensaver to the lock, or "never"; 0 locks at once
+quality = "auto"        # "auto" | "full" | "eco" | "still"
 
 [themes."clockwork/orbital"]
 themeMode = "light"

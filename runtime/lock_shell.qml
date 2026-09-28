@@ -2,7 +2,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Darwan
 import "contract"
 
 // One process for the screensaver and the lock. The saver draws each screen's theme on an overlay layer above the
@@ -49,6 +48,8 @@ ShellRoot {
     property var saverSlots: ({})
     property var lockSlots: ({})
     property var hosts: []
+    // Without darwan's plugin there is nothing to catch the waking input: no ambient mode, and a saver locks at once.
+    property bool gateMissing: false
 
     // Exit codes the supervisor reads: 0 authenticated, 4 the unlocked saver ended, anything else restarts it locked.
     function leave(code) {
@@ -85,6 +86,20 @@ ShellRoot {
             sessionLock.locked = true
             relockCheck.restart()
         })
+    }
+
+    function gateFailed() {
+        if (gateMissing)
+            return
+        console.warn("darwan: the input gate did not load (darwan's QML plugin missing?); no screensaver mode")
+        gateMissing = true
+        ambient = false
+        if (saverPhase === "")
+            return
+        if (lockAfter >= 0)
+            lockWanted = true
+        else
+            leave(4)
     }
 
     // Input on a saver or lock surface.
@@ -302,7 +317,7 @@ ShellRoot {
                 userRealName: Quickshell.env("DARWAN_REAL_NAME") || userName
                 sessionList: root.sessions
                 authBackend: PamAuth {}
-                ambient: root.ambient && !root.warming
+                ambient: root.ambient && !root.warming && !root.gateMissing
                 mediaTier: slotContent.screenName === root.primaryOutput ? root.mediaTier : root.secondaryTier
                 // Unload before quitting: a playing video crashes Qt's FFmpeg backend on exit.
                 onUnlocked: {
@@ -375,9 +390,13 @@ ShellRoot {
                 }
             }
 
-            InputGate {
-                active: saverWindow.taking
-                onActivity: if (saverWindow.taking) root.userActive()
+            Loader {
+                source: "Gate.qml"
+                onStatusChanged: if (status === Loader.Error) root.gateFailed()
+                onLoaded: {
+                    item.active = Qt.binding(() => saverWindow.taking)
+                    item.activity.connect(() => { if (saverWindow.taking) root.userActive() })
+                }
             }
         }
     }
@@ -444,10 +463,37 @@ ShellRoot {
             }
 
             // Ambient: printable keys go on to the hidden password field, so typing the password straight away works.
-            InputGate {
-                active: root.ambient || !root.themeLoaded
-                passText: root.themeLoaded
-                onActivity: root.userActive()
+            Loader {
+                source: "Gate.qml"
+                onStatusChanged: if (status === Loader.Error) root.gateFailed()
+                onLoaded: {
+                    item.active = Qt.binding(() => root.ambient || !root.themeLoaded)
+                    item.passText = Qt.binding(() => root.themeLoaded)
+                    item.activity.connect(root.userActive)
+                }
+            }
+
+            // Without the gate, a black lock (for sleep, or with the outputs off) still loads its theme on input. The
+            // pointer entering a freshly mapped surface is not input: only real movement counts.
+            MouseArea {
+                property point origin: Qt.point(-1, -1)
+                anchors.fill: parent
+                enabled: root.gateMissing && !root.themeLoaded
+                visible: enabled
+                hoverEnabled: true
+                onPositionChanged: mouse => {
+                    if (origin.x < 0)
+                        origin = Qt.point(mouse.x, mouse.y)
+                    else if (Math.hypot(mouse.x - origin.x, mouse.y - origin.y) > 8)
+                        root.userActive()
+                }
+                onPressed: root.userActive()
+                onWheel: root.userActive()
+            }
+            Item {
+                anchors.fill: parent
+                focus: root.gateMissing && !root.themeLoaded
+                Keys.onPressed: root.userActive()
             }
         }
     }

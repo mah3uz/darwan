@@ -349,6 +349,7 @@ impl App {
             }
             KeyCode::Char('p') => return self.needs(wayland, &["preview", &id]),
             KeyCode::Char('P') => return self.needs(wayland, &["preview", &id, "--sddm"]),
+            KeyCode::Char('a') => return self.needs(wayland, &["preview", &id, "--saver"]),
             KeyCode::Char('L') => return self.needs(wayland, &["lock", &id]),
             KeyCode::Char('s') => return self.needs(helper, &["sddm", "apply", &id]),
             KeyCode::Char('S') => return self.needs(sddm_preview, &["sddm", "preview", &id]),

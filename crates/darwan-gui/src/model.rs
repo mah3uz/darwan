@@ -55,6 +55,7 @@ pub fn details(theme: &Theme, config: &UserConfig) -> Value {
     let is = |target| config.theme(target).ok().flatten() == Some(theme.id.as_str());
     json!({
         "isLock": is(Target::Lock),
+        "screensaver": m.supports.screensaver,
         "isSddm": is(Target::Sddm),
         "id": theme.id,
         "name": gallery::display_name(theme),

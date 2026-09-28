@@ -71,6 +71,15 @@ fn could_use_eco(quality: Quality) -> bool {
     hardware::tier(quality, &facts).0 == Tier::Eco
 }
 
+// Videos of a theme that would be transcoded for eco but have no copy yet.
+pub fn missing_eco(dir: &Path) -> usize {
+    theme_videos(dir)
+        .iter()
+        .filter(|v| media::eco_path(v).is_some_and(|p| !p.exists()))
+        .filter(|v| media::probe(v).as_ref().is_none_or(media::needs_eco))
+        .count()
+}
+
 fn theme_videos(dir: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     let Ok(entries) = std::fs::read_dir(dir) else {

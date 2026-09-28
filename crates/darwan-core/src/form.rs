@@ -2,6 +2,7 @@ use crate::catalog::Theme;
 use crate::config::UserConfig;
 use crate::custom::{self, Area, Kind};
 use crate::manifest::OptionKind;
+use crate::saver::{LockAfter, Quality};
 use crate::settings::{self, Key};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -170,6 +171,56 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
         value: date,
         is_set: date_set,
         disabled: (!supports.date_format).then(|| format!("{name} doesn't support date format")),
+        group: None,
+    });
+
+    let no_saver = (!supports.screensaver).then(|| format!("{name} has no screensaver mode"));
+    let (lock_after, lock_after_set) =
+        current(&Key::SaverLockAfter, &LockAfter::DEFAULT.to_string());
+    let mut after: Vec<(String, String)> = [
+        ("0", "At once"),
+        ("5", "After 5 seconds"),
+        ("30", "After 30 seconds"),
+        ("60", "After a minute"),
+        ("300", "After 5 minutes"),
+        ("never", "Never"),
+    ]
+    .into_iter()
+    .map(|(v, l)| (v.to_string(), l.to_string()))
+    .collect();
+    if !after.iter().any(|(v, _)| *v == lock_after) {
+        after.insert(
+            after.len() - 1,
+            (lock_after.clone(), format!("After {lock_after} seconds")),
+        );
+    }
+    out.push(Field {
+        key: Key::SaverLockAfter,
+        label: "Screensaver locks".into(),
+        kind: FieldKind::Choice(after),
+        value: lock_after,
+        is_set: lock_after_set,
+        disabled: no_saver.clone(),
+        group: None,
+    });
+    let (quality, quality_set) = current(&Key::SaverQuality, Quality::Auto.as_str());
+    out.push(Field {
+        key: Key::SaverQuality,
+        label: "Screensaver videos".into(),
+        kind: FieldKind::Choice(
+            Quality::ALL
+                .iter()
+                .map(|q| {
+                    (
+                        q.as_str().to_string(),
+                        format!("{}: {}", q.as_str(), q.describe()),
+                    )
+                })
+                .collect(),
+        ),
+        value: quality,
+        is_set: quality_set,
+        disabled: no_saver,
         group: None,
     });
     out
@@ -436,6 +487,31 @@ mod tests {
         );
         let cfg = UserConfig::parse("[themes.terraria]\nbackground_mode = \"static\"\n").unwrap();
         assert_eq!(field(&fields(&t, &cfg), "Fixed background").disabled, None);
+    }
+
+    #[test]
+    fn saver_settings_keep_a_custom_delay_and_say_why_they_are_off() {
+        let cfg = UserConfig::parse("[saver]\nlock_after = 45\n").unwrap();
+        let f = fields(&theme("pixel-rainyroom"), &cfg);
+        let locks = field(&f, "Screensaver locks");
+        assert_eq!(locks.value, "45");
+        assert!(
+            matches!(&locks.kind, FieldKind::Choice(c) if c.iter().any(|(v, l)| v == "45" && l == "After 45 seconds")),
+            "a value set by hand must still show as itself, not as a preset it isn't"
+        );
+        assert_eq!(locks.disabled, None);
+        let mut plain = theme("pixel-rainyroom");
+        plain.manifest.supports.screensaver = false;
+        let f = fields(&plain, &UserConfig::default());
+        assert_eq!(
+            field(&f, "Screensaver videos").disabled.as_deref(),
+            Some("Rainy Room has no screensaver mode")
+        );
+        assert_eq!(
+            field(&f, "Screensaver locks").value,
+            "0",
+            "the default locks at once"
+        );
     }
 
     #[test]

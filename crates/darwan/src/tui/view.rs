@@ -40,12 +40,13 @@ fn draw_help(f: &mut Frame, app: &App) {
     let env = &app.env;
     let ok: Result<(), String> = Ok(());
     let sddm_preview = env.sddm_preview();
-    let keys: [(&str, &str, &Result<(), String>); 15] = [
+    let keys: [(&str, &str, &Result<(), String>); 16] = [
         ("↑ ↓  j k", "move", &ok),
         ("g G", "first / last theme", &ok),
         ("⏎ →", "settings for the theme", &ok),
         ("p", "preview as the lockscreen", &env.wayland),
         ("P", "preview with the SDDM layout", &env.wayland),
+        ("a", "preview the screensaver", &env.wayland),
         ("l", "use as the lock theme", &ok),
         ("L", "lock now", &env.wayland),
         ("s", "apply to the SDDM login screen", &env.helper),

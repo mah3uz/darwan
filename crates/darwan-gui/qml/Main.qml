@@ -273,6 +273,12 @@ ApplicationWindow {
                     onRefused: r => window.say(r, false)
                 }
                 ActionButton {
+                    text: "Screensaver preview"
+                    reason: window.details && !window.details.screensaver ? "this theme has no screensaver mode" : window.need(window.avail.wayland, window.busyReason)
+                    onActivated: window.run(["preview", window.themeId, "--saver"], "Screensaver preview")
+                    onRefused: r => window.say(r, false)
+                }
+                ActionButton {
                     text: "Apply to SDDM"
                     reason: window.need(window.avail.helper, window.busyReason)
                     onActivated: window.run(["sddm", "apply", window.themeId], "Apply to SDDM")
