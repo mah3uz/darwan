@@ -32,7 +32,7 @@ just ship 0.1.1
 ```
 
 It first checks that you're on an up-to-date, clean `main`, that the version is new, that `gh` is logged in, and that
-`just lint` and `just test` pass. Then it commits the version bump and asks once before pushing anything, since from
+`just lint` and `just test` pass on a fresh build of Darwan's own crates (dependencies stay cached). Then it commits the version bump and asks once before pushing anything, since from
 there on the release is public. If a later step fails, it stops and you finish the rest by hand, from the step below
 where it stopped.
 

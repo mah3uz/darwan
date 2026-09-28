@@ -127,7 +127,9 @@ ship version:
     ! git ls-remote --exit-code --tags origin "v$v" >/dev/null || fail "tag v$v already exists on origin"
     gh auth status >/dev/null 2>&1 || fail "gh is not logged in; run gh auth login"
 
-    echo "==> lint and tests"
+    echo "==> lint and tests, on a fresh build of Darwan's own crates"
+    # Artifacts left by another checkout sharing target/ can look up to date and test the wrong sources.
+    cargo clean --release --workspace -q
     just lint
     just test
 
