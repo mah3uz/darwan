@@ -1,4 +1,5 @@
 mod bridge;
+mod idle;
 mod model;
 
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};

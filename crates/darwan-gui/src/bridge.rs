@@ -63,6 +63,15 @@ pub mod qobject {
         #[qinvokable]
         fn run(self: Pin<&mut Backend>, args: &QString);
 
+        #[qinvokable]
+        fn idle_status(self: &Backend) -> QString;
+
+        #[qinvokable]
+        fn idle_change(self: Pin<&mut Backend>, action: &QString, value: &QString);
+
+        #[qinvokable]
+        fn idle_start(self: Pin<&mut Backend>);
+
         #[qsignal]
         fn finished(self: Pin<&mut Backend>, ok: bool, command: QString, output: QString);
     }
@@ -82,7 +91,7 @@ use darwan_core::paths::{self, Paths};
 use darwan_core::settings::{self, Key};
 use darwan_core::{host, ini, resolve};
 
-use crate::model;
+use crate::{idle, model};
 
 pub struct BackendRust {
     paths: Paths,
@@ -310,6 +319,53 @@ impl qobject::Backend {
             self.as_mut().rust_mut().dirty = dirty;
             self.dirty_changed();
         }
+    }
+
+    fn idle_status(&self) -> QString {
+        let conf = darwan_core::hypridle::read();
+        json(idle::status(
+            &darwan_core::hypridle::setup(),
+            conf.as_ref(),
+            &self.rust().saved,
+        ))
+    }
+
+    // Written at once, like an action: hypridle reads the file, not the GUI's draft.
+    fn idle_change(mut self: Pin<&mut Self>, action: &QString, value: &QString) {
+        let path = darwan_core::hypridle::config_path();
+        let setup = darwan_core::hypridle::setup();
+        let text = std::fs::read_to_string(&path).ok();
+        let result = idle::apply(
+            text.as_deref(),
+            &action.to_string(),
+            &value.to_string(),
+            setup.lua,
+        )
+        .and_then(|new| {
+            if let Some(dir) = path.parent() {
+                std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+            }
+            std::fs::write(&path, new).map_err(|e| format!("{}: {e}", path.display()))
+        })
+        .and_then(|()| {
+            if setup.running {
+                idle::restart().map(|()| format!("saved {}; hypridle restarted", path.display()))
+            } else {
+                Ok(format!("saved {}", path.display()))
+            }
+        });
+        let ok = result.is_ok();
+        let status = result.unwrap_or_else(|e| e);
+        self.as_mut().set_status(QString::from(status), ok);
+        self.bump();
+    }
+
+    fn idle_start(mut self: Pin<&mut Self>) {
+        let result = idle::start().map(|()| "hypridle started".to_string());
+        let ok = result.is_ok();
+        let status = result.unwrap_or_else(|e| e);
+        self.as_mut().set_status(QString::from(status), ok);
+        self.bump();
     }
 
     fn bump(mut self: Pin<&mut Self>) {

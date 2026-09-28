@@ -12,6 +12,7 @@ fn main() {
         QmlFile::from("qml/Tag.qml"),
         QmlFile::from("qml/StatusBadge.qml"),
         QmlFile::from("qml/ReportDialog.qml"),
+        QmlFile::from("qml/ScreensaverDialog.qml"),
         QmlFile::from("qml/UnsavedDialog.qml"),
     ]);
     CxxQtBuilder::new_qml_module(qml)

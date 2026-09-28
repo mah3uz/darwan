@@ -56,6 +56,8 @@ Item {
     }
 
     property Item lastFocus: null
+    // The theme's focused input (its password field), also for a host that isn't the focused window.
+    readonly property Item field: inTheme(themeLoader.Window.activeFocusItem) ? themeLoader.Window.activeFocusItem : lastFocus
     Connections {
         target: themeLoader.Window.window
         function onActiveFocusItemChanged() {

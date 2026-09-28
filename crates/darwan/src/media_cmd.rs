@@ -44,7 +44,7 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
         .saver_quality()
         .ok()
         .flatten()
-        .unwrap_or(Quality::Auto);
+        .unwrap_or(Quality::DEFAULT);
     let eco = could_use_eco(quality);
 
     let mut sources: Vec<PathBuf> = Vec::new();

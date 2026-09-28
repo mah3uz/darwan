@@ -68,24 +68,22 @@ pub fn lint(theme: &Theme) -> Vec<String> {
         problems.push("supports.date_format but no QML reads config.dateFormat".into());
     }
 
-    if m.supports.screensaver {
-        // The vendored kit reads darwan.ambient itself, so only the theme's own QML counts.
-        let own = qml_text_except(&theme.dir, "darwan");
-        if !own.contains("Ambient {") && !own.contains("darwan.ambient") {
-            problems.push(
-                "supports.screensaver but the theme uses neither Ambient nor darwan.ambient".into(),
-            );
-        }
-        // A saver runs for hours: a short Timer that always runs is JavaScript on nearly every frame, which an
-        // animation isn't. One that runs only during an effect (a login windup) costs nothing while ambient.
-        for ms in always_running_timers(&qml)
-            .into_iter()
-            .filter(|ms| *ms < 100)
-        {
-            problems.push(format!(
-                "supports.screensaver but a Timer always runs every {ms} ms; use an animation or a slower timer"
-            ));
-        }
+    // Every theme is also the screensaver. The vendored kit reads darwan.ambient itself, so only the theme's own
+    // QML counts.
+    let own = qml_text_except(&theme.dir, "darwan");
+    if !own.contains("Ambient {") && !own.contains("darwan.ambient") {
+        problems
+            .push("no screensaver mode: the theme uses neither Ambient nor darwan.ambient".into());
+    }
+    // A saver runs for hours: a short Timer that always runs is JavaScript on nearly every frame, which an animation
+    // isn't. One that runs only during an effect (a login windup) costs nothing while ambient.
+    for ms in always_running_timers(&qml)
+        .into_iter()
+        .filter(|ms| *ms < 100)
+    {
+        problems.push(format!(
+            "a Timer always runs every {ms} ms, all through the screensaver; use an animation or a slower timer"
+        ));
     }
 
     let sup = &m.supports;
@@ -310,7 +308,7 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let dir = root.path().join("t");
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("Main.qml"), "").unwrap();
+        std::fs::write(dir.join("Main.qml"), "Item { Ambient { id: saver } }").unwrap();
         std::fs::write(dir.join("preview.png"), "").unwrap();
         std::fs::write(
             dir.join("metadata.desktop"),
@@ -414,12 +412,14 @@ mod tests {
     }
 
     #[test]
-    fn a_screensaver_theme_must_hide_on_ambient_and_keep_timers_slow() {
-        let (root, cat) = theme_with("[supports]\nscreensaver = true\n", "[General]\n");
+    fn every_theme_must_hide_on_ambient_and_keep_timers_slow() {
+        let (root, _) = theme_with("", "[General]\n");
         let dir = root.path().join("t");
+        std::fs::write(dir.join("Main.qml"), "Item {}").unwrap();
+        let (cat, _) = Catalog::load(root.path()).unwrap();
         assert_eq!(
             lint(&cat.themes()[0]),
-            ["supports.screensaver but the theme uses neither Ambient nor darwan.ambient"]
+            ["no screensaver mode: the theme uses neither Ambient nor darwan.ambient"]
         );
         std::fs::write(
             dir.join("Main.qml"),
@@ -430,7 +430,7 @@ mod tests {
         assert_eq!(
             lint(&cat.themes()[0]),
             [
-                "supports.screensaver but a Timer always runs every 16 ms; use an animation or a slower timer"
+                "a Timer always runs every 16 ms, all through the screensaver; use an animation or a slower timer"
             ]
         );
     }

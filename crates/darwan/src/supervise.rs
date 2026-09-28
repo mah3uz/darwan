@@ -169,6 +169,7 @@ enum Event {
     OutputOn,
     OutputsOff,
     LockRequest,
+    SaverRequest,
     Activity,
 }
 
@@ -251,6 +252,10 @@ pub fn run() -> ExitCode {
                     policy.lock_requested = true;
                     ipc(pid, "lock");
                     check = Some((Instant::now() + Duration::from_secs(1), Check::Startup(0)));
+                }
+                Ok(Event::SaverRequest) => {
+                    let answer = ipc(pid, "ambient").unwrap_or_default();
+                    log(format!("screensaver requested: {}", answer.trim()));
                 }
                 Ok(Event::Activity) => {
                     let answer = ipc(pid, "activity").unwrap_or_default();
@@ -629,19 +634,21 @@ mod signals {
 
     use super::Event;
 
-    fn usr1() -> libc::sigset_t {
+    fn ours() -> libc::sigset_t {
         unsafe {
             let mut set: libc::sigset_t = std::mem::zeroed();
             libc::sigemptyset(&mut set);
             libc::sigaddset(&mut set, libc::SIGUSR1);
+            libc::sigaddset(&mut set, libc::SIGUSR2);
             set
         }
     }
 
-    // `darwan lock` sends SIGUSR1 to hand a lock request to a running saver. Called before any other thread starts,
-    // so every thread inherits the block and only this one takes the signal.
+    // `darwan lock` sends SIGUSR1 to hand a lock request to a running saver, `darwan saver` SIGUSR2 to send a running
+    // lock back to ambient. Called before any other thread starts, so every thread inherits the block and only this
+    // one takes the signals.
     pub fn watch(tx: Sender<Event>) {
-        let set = usr1();
+        let set = ours();
         unsafe {
             libc::pthread_sigmask(libc::SIG_BLOCK, &set, std::ptr::null_mut());
         }
@@ -651,7 +658,12 @@ mod signals {
                 if unsafe { libc::sigwait(&set, &mut sig) } != 0 {
                     return;
                 }
-                if tx.send(Event::LockRequest).is_err() {
+                let event = if sig == libc::SIGUSR2 {
+                    Event::SaverRequest
+                } else {
+                    Event::LockRequest
+                };
+                if tx.send(event).is_err() {
                     return;
                 }
             }
@@ -662,7 +674,7 @@ mod signals {
     pub fn unblock_in_child(cmd: &mut Command) {
         unsafe {
             cmd.pre_exec(|| {
-                let set = usr1();
+                let set = ours();
                 libc::pthread_sigmask(libc::SIG_UNBLOCK, &set, std::ptr::null_mut());
                 Ok(())
             });

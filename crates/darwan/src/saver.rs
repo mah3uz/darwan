@@ -37,12 +37,6 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
     }
 
     let prepared = overlay::prepare(paths, None, "lock.conf")?;
-    if !prepared.theme.manifest.supports.screensaver {
-        return Err(format!(
-            "{} has no screensaver mode; pick a theme that has one (darwan doctor lists them)",
-            prepared.theme.id
-        ));
-    }
     let Some(pid_file) = lock::acquire(&wayland, false, false)? else {
         return Ok(ExitCode::SUCCESS);
     };
@@ -70,17 +64,8 @@ fn since_wake(wayland: &WaylandSession) -> Option<Duration> {
     SystemTime::now().duration_since(modified).ok()
 }
 
-pub fn hypridle_config() -> std::path::PathBuf {
-    let base = match std::env::var_os("XDG_CONFIG_HOME") {
-        Some(v) if !v.is_empty() => std::path::PathBuf::from(v),
-        _ => std::path::PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config"),
-    };
-    base.join("hypr/hypridle.conf")
-}
-
 fn hypridle_timeout() -> Option<Duration> {
-    let text = std::fs::read_to_string(hypridle_config()).ok()?;
-    saver::parse_hypridle(&text)
+    darwan_core::hypridle::read()?
         .saver_timeout
         .map(|s| Duration::from_secs(s.into()))
 }

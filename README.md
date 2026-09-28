@@ -329,13 +329,15 @@ the lock's widgets in (the first key you type goes straight into the password fi
 locked yet, fades it away to your desktop. A revealed lock settles back to the screensaver after 30 seconds without
 input.
 
-hypridle starts it. Add a listener to `~/.config/hypr/hypridle.conf`, and `darwan resumed` to the sleep block:
+hypridle starts it. The GUI's **Screensaver** window sets it up: it says whether hypridle is installed and running
+(and how to start it with your session), writes `~/.config/hypr/hypridle.conf` for you, and changes the idle, screen-off
+and suspend times. By hand, the setup it writes is:
 
 ```ini
 general {
     lock_cmd = darwan lock
     before_sleep_cmd = loginctl lock-session
-    after_sleep_cmd = darwan resumed     # plus your usual `hyprctl dispatch dpms on`, if any
+    after_sleep_cmd = darwan resumed; hyprctl dispatch 'hl.dsp.dpms({ action = "on" })'
     inhibit_sleep = 3
 }
 
@@ -343,22 +345,34 @@ listener {
     timeout = 300
     on-timeout = darwan saver
 }
+
+listener {
+    timeout = 600
+    on-timeout = hyprctl dispatch 'hl.dsp.dpms({ action = "off" })'
+    on-resume = hyprctl dispatch 'hl.dsp.dpms({ action = "on" })'
+}
 ```
 
-Keep your screen-off listener as it is: Darwan notices the outputs powering off by itself. With the outputs off, an
+(With a classic `hyprland.conf`, the screen commands are `hyprctl dispatch dpms off` and `dpms on`.) Start hypridle
+with `systemctl --user enable --now hypridle.service` under uwsm, or from Hyprland's config otherwise. When the
+screensaver's timeout comes round while a woken lock sits unused, it goes back to the screensaver and forgets a
+half-typed password. With several monitors, what you type shows on every one.
+
+Darwan notices the outputs powering off by itself. With the outputs off, an
 unlocked screensaver ends (waking shows the desktop) and a locked one drops its theme to a black lock (waking shows the
 password prompt). Waking from sleep never shows the screensaver either.
 
 | Setting            | Values                             | Default | Does                                                                   |
 |:-------------------|:-----------------------------------|:--------|:-----------------------------------------------------------------------|
-| `saver.lock_after` | seconds, or `never`                | `0`     | how long the screensaver waits before it locks; `0` locks as it appears |
-| `saver.quality`    | `auto` `full` `eco` `still`        | `auto`  | what videos play: as shipped, at up to 1080p and 30 fps, or a still frame |
+| `saver.lock_after` | seconds, or `never`                | `10`    | how long the screensaver waits before it locks; `0` locks as it appears |
+| `saver.quality`    | `full` `auto` `eco` `still`        | `full`  | what videos play: as shipped, chosen for you, at up to 1080p and 30 fps, or a still frame |
 
-`auto` picks from your hardware and power: full video on a dedicated GPU with a decoder; the smaller copies on
-integrated graphics, on battery, without a video decoder driver or with less than 8 GB of memory; stills with the
-power-saver profile or without a GPU. The smaller copies are made once, in the background, when you pick a theme or a
-background. With several monitors only the focused one plays video (the others show its first frame), unless
-`saver.quality = "full"`. `darwan doctor` shows what it chose and why.
+`full` plays every video as shipped, on every monitor: the smoothest, and the most GPU work, power and memory. `auto`
+picks from your hardware and power: full video on a dedicated GPU with a decoder; the smaller copies on integrated
+graphics, on battery, without a video decoder driver or with less than 8 GB of memory; stills with the power-saver
+profile or without a GPU. The smaller copies are made once, in the background, when you pick a theme or a background.
+Except with `full`, only the focused monitor plays video (the others show its first frame). Both settings are also in
+the Screensaver window, and `darwan doctor` shows what was chosen and why.
 
 Try it without waiting: `darwan preview <theme> --saver` (or *Screensaver preview* in the GUI, `a` in the TUI).
 
@@ -481,8 +495,8 @@ show_ampm = false
 format = "ddd, MMM d"   # one of the presets below; unset, each theme keeps its own
 
 [saver]
-lock_after = 60         # seconds from the screensaver to the lock, or "never"; 0 locks at once
-quality = "auto"        # "auto" | "full" | "eco" | "still"
+lock_after = 10         # seconds from the screensaver to the lock, or "never"; 0 locks at once
+quality = "full"        # "full" | "auto" | "eco" | "still"
 
 [themes."clockwork/orbital"]
 themeMode = "light"

@@ -4,7 +4,6 @@ author = "Darkkal44"
 background = "color"
 
 [supports]
-screensaver = true
 clock_format = true
 date_format = true
 background = true

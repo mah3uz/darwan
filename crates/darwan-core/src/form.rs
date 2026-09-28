@@ -174,7 +174,6 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
         group: None,
     });
 
-    let no_saver = (!supports.screensaver).then(|| format!("{name} has no screensaver mode"));
     let (lock_after, lock_after_set) =
         current(&Key::SaverLockAfter, &LockAfter::DEFAULT.to_string());
     let mut after: Vec<(String, String)> = [
@@ -200,10 +199,10 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
         kind: FieldKind::Choice(after),
         value: lock_after,
         is_set: lock_after_set,
-        disabled: no_saver.clone(),
+        disabled: None,
         group: None,
     });
-    let (quality, quality_set) = current(&Key::SaverQuality, Quality::Auto.as_str());
+    let (quality, quality_set) = current(&Key::SaverQuality, Quality::DEFAULT.as_str());
     out.push(Field {
         key: Key::SaverQuality,
         label: "Screensaver videos".into(),
@@ -220,7 +219,7 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
         ),
         value: quality,
         is_set: quality_set,
-        disabled: no_saver,
+        disabled: None,
         group: None,
     });
     out
@@ -490,7 +489,7 @@ mod tests {
     }
 
     #[test]
-    fn saver_settings_keep_a_custom_delay_and_say_why_they_are_off() {
+    fn saver_settings_keep_a_custom_delay() {
         let cfg = UserConfig::parse("[saver]\nlock_after = 45\n").unwrap();
         let f = fields(&theme("pixel-rainyroom"), &cfg);
         let locks = field(&f, "Screensaver locks");
@@ -499,18 +498,11 @@ mod tests {
             matches!(&locks.kind, FieldKind::Choice(c) if c.iter().any(|(v, l)| v == "45" && l == "After 45 seconds")),
             "a value set by hand must still show as itself, not as a preset it isn't"
         );
-        assert_eq!(locks.disabled, None);
-        let mut plain = theme("pixel-rainyroom");
-        plain.manifest.supports.screensaver = false;
-        let f = fields(&plain, &UserConfig::default());
-        assert_eq!(
-            field(&f, "Screensaver videos").disabled.as_deref(),
-            Some("Rainy Room has no screensaver mode")
-        );
+        let f = fields(&theme("pixel-rainyroom"), &UserConfig::default());
         assert_eq!(
             field(&f, "Screensaver locks").value,
-            "0",
-            "the default locks at once"
+            "10",
+            "the default gives ten seconds to come back before it locks"
         );
     }
 

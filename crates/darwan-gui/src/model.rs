@@ -55,7 +55,6 @@ pub fn details(theme: &Theme, config: &UserConfig) -> Value {
     let is = |target| config.theme(target).ok().flatten() == Some(theme.id.as_str());
     json!({
         "isLock": is(Target::Lock),
-        "screensaver": m.supports.screensaver,
         "isSddm": is(Target::Sddm),
         "id": theme.id,
         "name": gallery::display_name(theme),
@@ -97,6 +96,8 @@ pub fn fields(
 ) -> Value {
     form::fields(theme, config)
         .into_iter()
+        // The Screensaver window holds these, next to hypridle's settings.
+        .filter(|f| !matches!(f.key, Key::SaverLockAfter | Key::SaverQuality))
         .map(|f| {
             let mut v = json!({
                 "key": f.key.to_string(),

@@ -6,6 +6,7 @@ pub mod form;
 pub mod gallery;
 pub mod hardware;
 pub mod host;
+pub mod hypridle;
 pub mod ini;
 pub mod lint;
 pub mod manifest;

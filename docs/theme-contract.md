@@ -118,7 +118,7 @@ Rules:
 
 ## Screensaver
 
-A theme with `screensaver = true` under `[supports]` can be the screensaver (`darwan saver`). It then has two looks:
+Every theme is also the screensaver (`darwan saver`), so every theme has two looks:
 **ambient**, only its background and ambient animation (rain, drifting particles, a turning dial), and **revealed**, the
 lock screen as usual. The saver starts ambient; the first key or click reveals the widgets, and a revealed lock settles
 back to ambient after 30 seconds without input while the password field is empty. Under SDDM there is no screensaver
@@ -140,7 +140,7 @@ readonly property real ui: intro * saver.wake            // what the widgets' op
 Rules:
 - **Hide widgets with opacity, and keep the password field focused.** The first printable key while ambient reveals the
   widgets and is typed into the focused field, so typing the password straight away works. `darwan check` unlocks each
-  screensaver theme from ambient this way.
+  theme from ambient this way, and the lint fails a theme that uses neither `Ambient` nor `darwan.ambient`.
 - **The background and its ambient effects stay.** A big clock is the theme's choice (Orbital keeps its dial).
 - **No Timer under 100 ms that always runs** (`running: true`): the saver runs for hours, and such a timer runs
   JavaScript on nearly every frame. Use a native animation (`NumberAnimation`, `FrameAnimation`) or a slower timer. The

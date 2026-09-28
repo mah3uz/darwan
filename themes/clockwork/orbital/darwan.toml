@@ -9,7 +9,6 @@ label = "Windup animation on unlock"
 type = "bool"
 
 [supports]
-screensaver = true
 clock_format = true
 date_format = true
 background = true

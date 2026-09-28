@@ -72,7 +72,8 @@ pub fn run(
     Ok(ExitCode::SUCCESS)
 }
 
-// The single-instance lock file. None when a supervisor already runs: with `hand_off` it is asked to lock.
+// The single-instance lock file. None when a supervisor already runs: it is asked to lock (`hand_off`), or else to
+// go back to the screensaver, since hypridle's next timeout finds a lock that someone woke and then left.
 pub fn acquire(
     wayland: &WaylandSession,
     replace: bool,
@@ -99,9 +100,14 @@ pub fn acquire(
     }
     match holder {
         Some(pid) if is_supervisor(pid) && !hand_off => {
+            let raw = Pid::from_raw(pid).ok_or("invalid pid")?;
+            kill_process(raw, Signal::USR2)
+                .map_err(|e| format!("cannot reach the running supervisor (pid {pid}): {e}"))?;
             println!(
                 "{}",
-                style::dim(format!("A saver or lock is already running (pid {pid})."))
+                style::dim(format!(
+                    "A lock is running (pid {pid}); it goes back to the screensaver."
+                ))
             );
         }
         Some(pid) if is_supervisor(pid) => {
@@ -206,7 +212,7 @@ fn tune(cmd: &mut Command) {
     let quality = UserConfig::load(&paths::config_file())
         .ok()
         .and_then(|c| c.saver_quality().ok().flatten())
-        .unwrap_or(Quality::Auto);
+        .unwrap_or(Quality::DEFAULT);
     let facts = hardware::probe();
     let (tier, _) = hardware::tier(quality, &facts);
     cmd.env("DARWAN_MEDIA_TIER", tier.as_str());

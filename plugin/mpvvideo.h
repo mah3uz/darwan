@@ -2,6 +2,7 @@
 
 #include <MpvQt/MpvAbstractItem>
 #include <QtQml/qqmlregistration.h>
+#include <QElapsedTimer>
 #include <QUrl>
 
 // A looping, silent background video played by libmpv, rendered on the GPU Qt renders with.
@@ -56,4 +57,5 @@ private:
     FillMode m_fillMode = PreserveAspectFit;
     QString m_tier = QStringLiteral("full");
     bool m_ready = false;
+    QElapsedTimer m_retry;
 };

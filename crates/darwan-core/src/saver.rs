@@ -9,8 +9,8 @@ pub enum LockAfter {
 }
 
 impl LockAfter {
-    // Locking as the saver appears is the safe default; a grace period or no lock is the user's choice.
-    pub const DEFAULT: Self = LockAfter::Secs(0);
+    // Ten seconds to come back without a password; 0 locks as the saver appears, "never" doesn't lock.
+    pub const DEFAULT: Self = LockAfter::Secs(10);
 
     // What lock_shell.qml reads from DARWAN_LOCK_AFTER: milliseconds, negative for never.
     pub fn millis(self) -> i64 {
@@ -52,6 +52,8 @@ pub enum Quality {
 }
 
 impl Quality {
+    // Videos as shipped unless the user trades them for less GPU, power or memory.
+    pub const DEFAULT: Self = Quality::Full;
     pub const ALL: [Quality; 4] = [Quality::Auto, Quality::Full, Quality::Eco, Quality::Still];
 
     pub fn as_str(self) -> &'static str {
@@ -90,65 +92,6 @@ impl fmt::Display for Quality {
     }
 }
 
-// The parts of hypridle.conf darwan relies on.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct Hypridle {
-    pub lock_cmd: Option<String>,
-    pub before_sleep_cmd: Option<String>,
-    pub after_sleep_cmd: Option<String>,
-    pub inhibit_sleep: Option<u32>,
-    // The timeout of the listener that starts `darwan saver`.
-    pub saver_timeout: Option<u32>,
-}
-
-pub fn parse_hypridle(text: &str) -> Hypridle {
-    let mut out = Hypridle::default();
-    let mut block = String::new();
-    let mut timeout: Option<u32> = None;
-    let mut runs_saver = false;
-    for raw in text.lines() {
-        let line = raw.split_once('#').map_or(raw, |(l, _)| l).trim();
-        if let Some(name) = line.strip_suffix('{') {
-            block = name.trim().to_string();
-            timeout = None;
-            runs_saver = false;
-            continue;
-        }
-        if line == "}" {
-            if block == "listener" && runs_saver {
-                out.saver_timeout = timeout;
-            }
-            block.clear();
-            continue;
-        }
-        let Some((key, value)) = line.split_once('=') else {
-            continue;
-        };
-        let (key, value) = (key.trim(), value.trim().to_string());
-        match (block.as_str(), key) {
-            ("general", "lock_cmd") => out.lock_cmd = Some(value),
-            ("general", "before_sleep_cmd") => out.before_sleep_cmd = Some(value),
-            ("general", "after_sleep_cmd") => out.after_sleep_cmd = Some(value),
-            ("general", "inhibit_sleep") => out.inhibit_sleep = value.parse().ok(),
-            ("listener", "timeout") => timeout = value.parse().ok(),
-            ("listener", "on-timeout") => runs_saver = runs_command(&value, "saver"),
-            _ => {}
-        }
-    }
-    out
-}
-
-// Whether a hypridle command runs `darwan <sub>`, alone or in a shell line.
-pub fn runs_command(cmd: &str, sub: &str) -> bool {
-    let words: Vec<&str> = cmd
-        .split(|c: char| c.is_whitespace() || matches!(c, ';' | '&' | '|'))
-        .filter(|w| !w.is_empty())
-        .collect();
-    words
-        .windows(2)
-        .any(|w| w[0].rsplit('/').next() == Some("darwan") && w[1] == sub)
-}
-
 // hypridle's idle timer pauses across sleep, so a saver that fires within one timeout of a wake means no input since
 // the wake (a lid opened and left): waking must never bring the saver back.
 pub fn declines_after_wake(since_wake: Option<Duration>, saver_timeout: Duration) -> bool {
@@ -173,8 +116,8 @@ mod tests {
         assert_eq!(LockAfter::Secs(5).millis(), 5000);
         assert_eq!(
             LockAfter::DEFAULT,
-            LockAfter::Secs(0),
-            "an unconfigured saver must not leave the session open"
+            LockAfter::Secs(10),
+            "an unconfigured saver locks, after a short grace"
         );
     }
 
@@ -184,43 +127,6 @@ mod tests {
             assert_eq!(q.as_str().parse(), Ok(q));
         }
         assert!("high".parse::<Quality>().is_err());
-    }
-
-    #[test]
-    fn hypridle_config_yields_the_saver_listener_and_the_general_commands() {
-        let conf = r#"
-# comment
-general {
-    lock_cmd = darwan lock          # lock
-    before_sleep_cmd = loginctl lock-session
-    after_sleep_cmd = darwan resumed; hyprctl dispatch dpms on
-    inhibit_sleep = 3
-}
-
-listener {
-    timeout = 150
-    on-timeout = brightnessctl -s set 10
-}
-
-listener {
-    timeout = 300
-    on-timeout = /usr/bin/darwan saver
-}
-"#;
-        let h = parse_hypridle(conf);
-        assert_eq!(h.lock_cmd.as_deref(), Some("darwan lock"));
-        assert_eq!(h.inhibit_sleep, Some(3));
-        assert_eq!(
-            h.saver_timeout,
-            Some(300),
-            "the brightness listener is not the saver's"
-        );
-        assert!(runs_command(
-            h.after_sleep_cmd.as_deref().unwrap(),
-            "resumed"
-        ));
-        assert!(!runs_command("darwan-gui saver", "saver"));
-        assert!(!runs_command("echo darwan", "saver"));
     }
 
     #[test]

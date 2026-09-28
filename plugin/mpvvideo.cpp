@@ -3,6 +3,7 @@
 #include <MpvQt/MpvController>
 
 #include <QDir>
+#include <QTimer>
 #include <QFileInfo>
 
 using namespace Qt::StringLiterals;
@@ -20,9 +21,17 @@ MpvVideo::MpvVideo(QQuickItem *parent)
     applyPause();
     applyFill();
 
+    // Moving to another window (the saver becoming the lock) takes the render context away for a moment, which mpv
+    // can report as a playback error: retry once before giving up on the file.
     connect(mpvController(), &MpvController::endFile, this, [this](const QString &reason) {
-        if (reason == u"error"_s)
-            Q_EMIT failed(u"cannot play "_s + m_source.toString());
+        if (reason != u"error"_s)
+            return;
+        if (!m_retry.isValid() || m_retry.hasExpired(5000)) {
+            m_retry.start();
+            QTimer::singleShot(300, this, [this] { load(); });
+            return;
+        }
+        Q_EMIT failed(u"cannot play "_s + m_source.toString());
     });
     connect(this, &MpvAbstractItem::ready, this, [this] {
         m_ready = true;

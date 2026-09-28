@@ -18,7 +18,6 @@ choices = [
 ]
 
 [supports]
-screensaver = true
 clock_format = true
 background = true
 fonts = ["text", "clock"]

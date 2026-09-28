@@ -206,14 +206,7 @@ fn check_one(
         .env("DARWAN_CHECK_FONTS", if opts.no_fonts { "1" } else { "0" })
         .env("DARWAN_USER", "traveler")
         .env("DARWAN_CHECK_LOGIN", "1")
-        .env(
-            "DARWAN_CHECK_SAVER",
-            if theme.manifest.supports.screensaver {
-                "1"
-            } else {
-                "0"
-            },
-        )
+        .env("DARWAN_CHECK_SAVER", "1")
         .stdin(Stdio::null())
         .stdout(log.try_clone().unwrap())
         .stderr(log);
@@ -251,11 +244,8 @@ fn check_one(
         Some(Some(0)) => String::new(),
         Some(Some(2)) => "theme failed to load; the fallback prompt was shown".into(),
         Some(Some(3)) => "text with no font family (missing font and no fallback)".into(),
-        Some(Some(4)) if theme.manifest.supports.screensaver => {
-            "cannot unlock from the screensaver: the first key while ambient, then the password and Return, did not log in".into()
-        }
         Some(Some(4)) => {
-            "cannot unlock: typing the password and pressing Return did not log in".into()
+            "cannot unlock from the screensaver: the first key while ambient, then the password and Return, did not log in".into()
         }
         Some(Some(5)) => "a key did not end the screensaver's ambient mode".into(),
         Some(Some(code)) => format!("quickshell exited with {code}"),

@@ -4,9 +4,10 @@ use std::process::{Command, ExitCode};
 use darwan_core::catalog::Catalog;
 use darwan_core::config::{Target, UserConfig};
 use darwan_core::hardware;
+use darwan_core::hypridle::{self, Hypridle, runs_command};
 use darwan_core::manifest::Background;
 use darwan_core::paths::Paths;
-use darwan_core::saver::{Hypridle, Quality, runs_command};
+use darwan_core::saver::Quality;
 
 use crate::sddm;
 use crate::session::WaylandSession;
@@ -72,9 +73,7 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
             None => r.warn("could not read Hyprland's misc:allow_session_lock_restore"),
         }
     }
-    let hypridle = std::fs::read_to_string(crate::saver::hypridle_config())
-        .ok()
-        .map(|t| darwan_core::saver::parse_hypridle(&t));
+    let hypridle = hypridle::read();
     if let Some(h) = &hypridle {
         match hypridle_advice(h) {
             Some(Ok(msg)) => r.ok(msg),
@@ -252,13 +251,20 @@ fn screensaver(r: &mut Report, paths: &Paths, catalog: &Catalog, hypridle: Optio
         ));
     }
 
-    if !on_path("hypridle") {
+    let setup = hypridle::setup();
+    if !setup.installed {
         r.warn("hypridle is not installed: nothing starts the screensaver when you're idle (pacman -S hypridle)");
+    } else if !setup.running {
+        r.warn(if setup.uwsm {
+            "hypridle is not running: systemctl --user enable --now hypridle.service (or the GUI's Screensaver window)"
+        } else {
+            "hypridle is not running: start it from your Hyprland config (or the GUI's Screensaver window)"
+        });
     }
     match hypridle.map(|h| (h, h.saver_timeout)) {
         None => r.warn(format!(
             "no {}: add a listener {{ timeout = 300; on-timeout = darwan saver }} to start the screensaver",
-            crate::saver::hypridle_config().display()
+            hypridle::config_path().display()
         )),
         Some((_, None)) => r.warn("no hypridle listener runs `darwan saver`: add listener { timeout = 300; on-timeout = darwan saver }"),
         Some((h, Some(secs))) => {
@@ -279,27 +285,11 @@ fn screensaver(r: &mut Report, paths: &Paths, catalog: &Catalog, hypridle: Optio
         .flatten()
         .and_then(|id| catalog.get(id))
     {
-        if theme.manifest.supports.screensaver {
-            r.ok(format!(
-                "the lock theme {} has a screensaver mode",
-                theme.id
-            ));
-        } else {
-            let adapted = catalog
-                .themes()
-                .iter()
-                .filter(|t| t.manifest.supports.screensaver)
-                .count();
-            r.warn(format!(
-                "the lock theme {} has no screensaver mode, so `darwan saver` declines; {adapted} themes have one",
-                theme.id
-            ));
-        }
         let quality = config
             .saver_quality()
             .ok()
             .flatten()
-            .unwrap_or(Quality::Auto);
+            .unwrap_or(Quality::DEFAULT);
         let facts = hardware::probe();
         let gpu = facts
             .gpu
@@ -339,7 +329,7 @@ mod tests {
 
     #[test]
     fn hypridle_must_wait_for_darwans_lock_before_sleep() {
-        let advice = |conf: &str| hypridle_advice(&darwan_core::saver::parse_hypridle(conf));
+        let advice = |conf: &str| hypridle_advice(&hypridle::parse(conf));
         let good = "general {\n    lock_cmd = darwan lock\n    inhibit_sleep = 3 # wait\n}\n";
         assert!(matches!(advice(good), Some(Ok(_))));
         let default_mode = "general {\n    lock_cmd = darwan lock\n}\n";

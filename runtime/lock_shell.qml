@@ -114,13 +114,22 @@ ShellRoot {
         ambientTimer.restart()
     }
 
+    // Every screen runs its own theme and the keyboard reaches only the focused one, so what is typed shows on all.
+    function mirror(from, text) {
+        for (const h of hosts) {
+            const f = h !== from && h.item ? h.item.field : null
+            if (f && typeof f.text === "string" && f.text !== text)
+                f.text = text
+        }
+    }
+
     function allReady() {
         return hosts.length > 0 && hosts.every(h => h.item && (h.item.themeReady || h.item.usingFallback))
     }
 
     function fieldHasText() {
         for (const h of hosts) {
-            const f = h.Window.activeFocusItem
+            const f = h.item ? h.item.field : null
             if (f && typeof f.text === "string" && f.text.length > 0)
                 return true
         }
@@ -242,6 +251,22 @@ ShellRoot {
             root.lockWanted = true
         }
 
+        // hypridle's timeout on a lock someone woke and left: back to ambient, forgetting a half-typed password.
+        function ambient(): string {
+            if (!root.lockWanted || !root.themeLoaded || root.authenticated || root.gateMissing)
+                return "ignored"
+            let cleared = 0
+            for (const h of root.hosts) {
+                const f = h.item ? h.item.field : null
+                if (f && typeof f.text === "string") {
+                    f.text = ""
+                    cleared++
+                }
+            }
+            root.ambient = true
+            return "ambient, " + cleared + " of " + root.hosts.length + " password fields cleared"
+        }
+
         // User activity the supervisor saw while the saver was still loading and not yet taking input. Once the saver
         // shows, its own surfaces judge input (pointer jitter included).
         function activity(): string {
@@ -305,6 +330,12 @@ ShellRoot {
             focus: true
             active: root.themeLoaded
             onParentChanged: if (parent) Qt.callLater(() => { if (item) item.refocus() })
+
+            Connections {
+                target: slotContent.item ? slotContent.item.field : null
+                ignoreUnknownSignals: true
+                function onTextEdited() { root.mirror(slotContent, target.text) }
+            }
 
             Component.onCompleted: root.hosts = root.hosts.concat([slotContent])
             Component.onDestruction: root.hosts = root.hosts.filter(h => h !== slotContent)

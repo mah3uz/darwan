@@ -48,7 +48,7 @@ Applying a theme to SDDM and importing fonts go through the privileged helper, w
 |:------------------------|:--------------------------------------------------------------------------------|
 | `just test`             | Rust, QML and theme-lint tests                                                  |
 | `just lint`             | `cargo fmt --check` and clippy with warnings as errors                          |
-| `just check`            | loads every theme offscreen, fails on any QML warning, and types the password; screensaver themes are also unlocked from ambient |
+| `just check`            | loads every theme offscreen, fails on any QML warning, and types the password, also from the screensaver's ambient mode |
 | `just check --no-fonts` | the same, with each theme's `font/` hidden, as on a fresh clone                 |
 
 Run all three before sending a change:

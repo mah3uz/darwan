@@ -31,7 +31,6 @@ choices = [
 enabled_when = { background_mode = "static" }
 
 [supports]
-screensaver = true
 clock_format = true
 date_format = true
 fonts = ["text", "clock"]

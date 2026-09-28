@@ -196,6 +196,10 @@ ApplicationWindow {
                 Tag { visible: window.details && window.details.isLock; text: "LOCK"; tint: Style.lock }
                 Tag { visible: window.details && window.details.isSddm; text: "LOGIN"; tint: Style.sddm }
                 ActionButton {
+                    text: "Screensaver"
+                    onActivated: screensaverDialog.open()
+                }
+                ActionButton {
                     text: "Doctor"
                     reason: window.busyReason
                     onActivated: window.runReport(["doctor"], "System check", "Checking the session, the themes and SDDM…")
@@ -274,7 +278,7 @@ ApplicationWindow {
                 }
                 ActionButton {
                     text: "Screensaver preview"
-                    reason: window.details && !window.details.screensaver ? "this theme has no screensaver mode" : window.need(window.avail.wayland, window.busyReason)
+                    reason: window.need(window.avail.wayland, window.busyReason)
                     onActivated: window.run(["preview", window.themeId, "--saver"], "Screensaver preview")
                     onRefused: r => window.say(r, false)
                 }
@@ -395,6 +399,16 @@ ApplicationWindow {
     ReportDialog {
         id: reportDialog
         backend: backend
+    }
+
+    ScreensaverDialog {
+        id: screensaverDialog
+        backend: backend
+        onSaid: (text, ok) => window.say(text, ok)
+        onPreview: {
+            close()
+            window.run(["preview", window.themeId, "--saver"], "Screensaver preview")
+        }
     }
 
     UnsavedDialog {
