@@ -29,7 +29,7 @@ optdepends=(
 # makepkg's -flto turns cxx-qt's C++ into GCC LTO objects that the Rust link can't resolve.
 options=('!lto')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('5f0beb1e8f008a21e7654326436f497e25f77df2c2f3a7c39dc8c5b23bd89827')
+sha256sums=('85188efc5c41ac86ed0ff3f6419fb48519323e1cadcb69120a6c01650d900b44')
 
 prepare() {
   cd "$pkgname-$pkgver"
