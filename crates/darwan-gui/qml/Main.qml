@@ -49,8 +49,30 @@ ApplicationWindow {
     readonly property string busyReason: backend.busy ? "wait for the running command to finish" : ""
 
     property string message: backend.status
+    property bool messageFades: backend.statusOk
+
+    // As in the TUI: a confirmation fades, a problem stays until something replaces it.
+    function say(text, fades) {
+        message = text
+        messageFades = fades
+        if (fades)
+            fade.restart()
+        else
+            fade.stop()
+    }
+
+    Timer {
+        id: fade
+        interval: 15000
+        onTriggered: backend.busy ? restart() : window.message = ""
+    }
     property string shownFields: ""
-    onThemeIdChanged: shownFields = backend.fields(themeId)
+    onThemeIdChanged: {
+        shownFields = backend.fields(themeId)
+        // As in the TUI, moving to another theme clears a problem that was about the last one.
+        if (!messageFades)
+            message = ""
+    }
     property bool quitting: false
 
     function need(...reasons) {
@@ -87,7 +109,7 @@ ApplicationWindow {
 
     Connections {
         target: backend
-        function onStatusChanged() { window.message = backend.status }
+        function onStatusChanged() { window.say(backend.status, backend.statusOk) }
         // Only a change to this theme's settings needs the preview reloaded.
         function onRevisionChanged() {
             const fields = backend.fields(window.themeId)
@@ -177,7 +199,7 @@ ApplicationWindow {
                     text: "Doctor"
                     reason: window.busyReason
                     onActivated: window.runReport(["doctor"], "System check", "Checking the session, the themes and SDDM…")
-                    onRefused: r => window.message = r
+                    onRefused: r => window.say(r, false)
                 }
             }
 
@@ -223,8 +245,8 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: Style.radius
-                onUnlocked: window.message = "Unlocked with the mock password"
-                onFailed: m => window.message = m
+                onUnlocked: window.say("Unlocked with the mock password", true)
+                onFailed: m => window.say(m, false)
             }
 
             Flow {
@@ -236,38 +258,38 @@ ApplicationWindow {
                     primary: !(window.details && window.details.isLock)
                     reason: window.details && window.details.isLock ? "already the lock theme" : ""
                     onActivated: backend.setValueNow("lock.theme", window.themeId)
-                    onRefused: r => window.message = r
+                    onRefused: r => window.say(r, false)
                 }
                 ActionButton {
                     text: "Lock now"
                     reason: window.need(window.avail.wayland, window.busyReason)
                     onActivated: window.run(["lock", window.themeId], "Lock now")
-                    onRefused: r => window.message = r
+                    onRefused: r => window.say(r, false)
                 }
                 ActionButton {
                     text: "Full-screen preview"
                     reason: window.need(window.avail.wayland, window.busyReason)
                     onActivated: window.run(["preview", window.themeId].concat(preview.mode === "sddm" ? ["--sddm"] : []), "Full-screen preview")
-                    onRefused: r => window.message = r
+                    onRefused: r => window.say(r, false)
                 }
                 ActionButton {
                     text: "Apply to SDDM"
                     reason: window.need(window.avail.helper, window.busyReason)
                     onActivated: window.run(["sddm", "apply", window.themeId], "Apply to SDDM")
-                    onRefused: r => window.message = r
+                    onRefused: r => window.say(r, false)
                 }
                 ActionButton {
                     text: "SDDM test mode"
                     reason: window.need(window.avail.sddmPreview, window.busyReason)
                     onActivated: window.run(["sddm", "preview", window.themeId], "SDDM test mode")
-                    onRefused: r => window.message = r
+                    onRefused: r => window.say(r, false)
                 }
                 ActionButton {
                     text: "Check"
                     reason: window.busyReason
                     onActivated: window.runReport(["check", window.themeId], "Theme check · " + window.details.name,
                                                   "Loading the theme offscreen, looking for QML errors and missing fonts, then typing the password to check it unlocks. This takes a few seconds.")
-                    onRefused: r => window.message = r
+                    onRefused: r => window.say(r, false)
                 }
             }
 
@@ -314,7 +336,7 @@ ApplicationWindow {
                                 fontPicker.fontFile = fontRow.modelData.file
                                 fontPicker.open()
                             }
-                            onRefused: r => window.message = r
+                            onRefused: r => window.say(r, false)
                         }
                     }
                 }
@@ -348,7 +370,7 @@ ApplicationWindow {
             Label {
                 Layout.fillWidth: true
                 text: window.message
-                color: Style.subtext
+                color: window.messageFades ? Style.subtext : Style.warn
                 elide: Text.ElideRight
             }
         }

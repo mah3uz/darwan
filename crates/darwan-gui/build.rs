@@ -8,6 +8,7 @@ fn main() {
         QmlFile::from("qml/LivePreview.qml"),
         QmlFile::from("qml/SettingsForm.qml"),
         QmlFile::from("qml/ActionButton.qml"),
+        QmlFile::from("qml/ColorPopover.qml"),
         QmlFile::from("qml/Tag.qml"),
         QmlFile::from("qml/StatusBadge.qml"),
         QmlFile::from("qml/ReportDialog.qml"),

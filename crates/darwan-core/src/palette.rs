@@ -85,8 +85,28 @@ fn role(s: &DynamicScheme, name: &str) -> Argb {
     }
 }
 
+// "#rgb", "#rrggbb" or "#aarrggbb", the forms the config accepts; alpha is dropped.
+fn argb(hex: &str) -> Option<Argb> {
+    let h = hex.strip_prefix('#')?;
+    let h = match h.len() {
+        3 => h.chars().flat_map(|c| [c, c]).collect(),
+        6 => h.to_string(),
+        8 => h[2..].to_string(),
+        _ => return None,
+    };
+    let n = u32::from_str_radix(&h, 16).ok()?;
+    Some(Argb::new(255, (n >> 16) as u8, (n >> 8) as u8, n as u8))
+}
+
 fn palette(source: Argb, dark: bool, request: &PaletteRequest) -> Palette {
-    let s = scheme(&request.scheme, source, dark, request.contrast);
+    let mut s = scheme(&request.scheme, source, dark, request.contrast);
+    // A picked accent leads the primary colours; the image still gives the surfaces and the rest.
+    if let Some(seed) = request.seed.as_deref().and_then(argb) {
+        let seeded = scheme(&request.scheme, seed, dark, request.contrast);
+        s.primary_palette = seeded.primary_palette;
+        s.source_color_argb = seeded.source_color_argb;
+        s.source_color_hct = seeded.source_color_hct;
+    }
     MATERIAL_ROLES
         .iter()
         .map(|r| {
@@ -103,11 +123,9 @@ pub fn from_rgba(rgba: image::RgbaImage, request: &PaletteRequest) -> Palette {
     palette(source, request.dark.unwrap_or(luminance < 0.5), request)
 }
 
-// A single picked colour as the seed, as Android does; "#rrggbb", validated by the caller.
+// A single picked colour as the seed, as Android does.
 pub fn from_seed(hex: &str, request: &PaletteRequest) -> Option<Palette> {
-    let n = u32::from_str_radix(hex.strip_prefix('#')?, 16).ok()?;
-    let seed = Argb::new(255, (n >> 16) as u8, (n >> 8) as u8, n as u8);
-    Some(palette(seed, request.dark.unwrap_or(false), request))
+    Some(palette(argb(hex)?, request.dark.unwrap_or(false), request))
 }
 
 // A frame one second in (the first frames are often black), falling back to the first.
@@ -157,6 +175,7 @@ fn cache_key(path: &Path, request: &PaletteRequest) -> Option<String> {
     request.scheme.hash(&mut h);
     request.dark.hash(&mut h);
     request.contrast.to_bits().hash(&mut h);
+    request.seed.hash(&mut h);
     Some(format!("{:016x}", h.finish()))
 }
 
@@ -190,6 +209,7 @@ mod tests {
             scheme: scheme.into(),
             dark,
             contrast: 0.0,
+            seed: None,
         }
     }
 
@@ -287,6 +307,30 @@ mod tests {
             );
         }
         assert!(from_seed("red", &request("scheme-tonal-spot", None)).is_none());
+    }
+
+    // Picking an accent while also generating must honour both, not silently drop one of them.
+    #[test]
+    fn a_picked_accent_leads_an_image_palette_and_the_image_keeps_the_rest() {
+        let image = from_rgba(sunset(), &request("scheme-tonal-spot", Some(false)));
+        let mut r = request("scheme-tonal-spot", Some(false));
+        r.seed = Some("#2f6fe0".into());
+        let both = from_rgba(sunset(), &r);
+        let h = hue(&both["primary"]);
+        assert!(
+            (220.0..300.0).contains(&h),
+            "primary hue {h} should be the blue accent"
+        );
+        assert_eq!(both["surface"], image["surface"]);
+        assert_eq!(both["secondary"], image["secondary"]);
+        assert_eq!(both["on_surface"], image["on_surface"]);
+    }
+
+    #[test]
+    fn short_and_alpha_hex_seed_the_colour_they_name() {
+        let r = request("scheme-tonal-spot", Some(false));
+        assert_eq!(from_seed("#f00", &r), from_seed("#ff0000", &r));
+        assert_eq!(from_seed("#80ff0000", &r), from_seed("#ff0000", &r));
     }
 
     #[test]

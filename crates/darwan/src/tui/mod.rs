@@ -55,6 +55,8 @@ pub struct App {
     previews: Previews,
     moved_at: Instant,
     quit: bool,
+    // R was pressed once in the settings; a second R resets the whole theme.
+    reset_armed: bool,
 }
 
 enum Move {
@@ -103,6 +105,7 @@ impl App {
             previews,
             moved_at: Instant::now(),
             quit: false,
+            reset_armed: false,
         }
     }
 
@@ -171,6 +174,17 @@ impl App {
         self.status = match result.and_then(|msg| settings_cmd::save(&self.config).map(|()| msg)) {
             Ok(msg) => format!("saved: {msg}"),
             Err(e) => e,
+        };
+    }
+
+    fn reset_theme(&mut self, id: &str) {
+        self.status = if !self.config.remove_theme(id) {
+            format!("{id} has no settings to reset")
+        } else {
+            match settings_cmd::save(&self.config) {
+                Ok(()) => format!("saved: every setting of {id} is back to its default"),
+                Err(e) => e,
+            }
         };
     }
 
@@ -368,12 +382,14 @@ impl App {
     }
 
     fn on_form(&mut self, k: KeyEvent) {
+        let armed = std::mem::take(&mut self.reset_armed);
         let Mode::Form { selected, editing } = &mut self.mode else {
             return;
         };
         let Some(theme) = theme_at(&self.catalog, &self.rows, self.list.selected()) else {
             return;
         };
+        let id = theme.id.clone();
         let fields = form::fields(theme, &self.config);
         let Some(field) = fields.get(*selected).cloned() else {
             return;
@@ -410,6 +426,12 @@ impl App {
                 *selected = (*selected + 1).min(fields.len().saturating_sub(1))
             }
             KeyCode::Up | KeyCode::Char('k') => *selected = selected.saturating_sub(1),
+            // Everything saves at once here, so a whole-theme reset asks for a second press.
+            KeyCode::Char('R') if armed => self.reset_theme(&id),
+            KeyCode::Char('R') => {
+                self.reset_armed = true;
+                self.status = format!("press R again to reset every setting of {id}");
+            }
             _ if field.disabled.is_some() => {
                 if !matches!(k.code, KeyCode::Down | KeyCode::Up) {
                     self.status =
@@ -657,6 +679,24 @@ mod tests {
         assert!(!a.quit);
         press(&mut a, KeyCode::Esc);
         assert!(matches!(a.mode, Mode::Browse));
+    }
+
+    // One stray key must not wipe a theme's settings: R asks, a second R does it.
+    #[test]
+    fn resetting_a_whole_theme_takes_two_presses_of_r() {
+        let mut a = app(no_sddm());
+        select(&mut a, "material-you");
+        press(&mut a, KeyCode::Enter);
+        press(&mut a, KeyCode::Char('R'));
+        assert!(a.status.starts_with("press R again"), "{}", a.status);
+        press(&mut a, KeyCode::Down);
+        press(&mut a, KeyCode::Char('R'));
+        assert!(
+            a.status.starts_with("press R again"),
+            "another key in between disarms it"
+        );
+        press(&mut a, KeyCode::Char('R'));
+        assert_eq!(a.status, "material-you has no settings to reset");
     }
 
     #[test]

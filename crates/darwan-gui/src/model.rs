@@ -1,13 +1,16 @@
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use serde_json::{Value, json};
 
 use darwan_core::catalog::{Catalog, Theme};
 use darwan_core::config::{Target, UserConfig};
+use darwan_core::custom;
 use darwan_core::environment::Environment;
 use darwan_core::form::{self, FieldKind};
 use darwan_core::gallery::{self, ListRow};
 use darwan_core::manifest::Background;
+use darwan_core::settings::Key;
 
 fn reason(r: &Result<(), String>) -> String {
     r.clone().err().unwrap_or_default()
@@ -68,7 +71,29 @@ pub fn details(theme: &Theme, config: &UserConfig) -> Value {
     })
 }
 
-pub fn fields(theme: &Theme, config: &UserConfig) -> Value {
+// The roles offered as "from your background" swatches: the palette's colourful ones, then its neutrals.
+const IMAGE_SWATCHES: &[(&str, &str)] = &[
+    ("primary", "Primary"),
+    ("secondary", "Secondary"),
+    ("tertiary", "Tertiary"),
+    ("inverse_primary", "Primary, light"),
+    ("primary_container", "Primary container"),
+    ("secondary_container", "Secondary container"),
+    ("tertiary_container", "Tertiary container"),
+    ("on_surface", "Text"),
+    ("on_surface_variant", "Soft text"),
+    ("surface_variant", "Surface"),
+    ("outline", "Outline"),
+];
+
+// `overlay` is what the preview gets, so a generated colour can be shown as the colour it became;
+// `image` is the palette the background gives, offered for picking.
+pub fn fields(
+    theme: &Theme,
+    config: &UserConfig,
+    overlay: &BTreeMap<String, String>,
+    image: Option<&custom::Palette>,
+) -> Value {
     form::fields(theme, config)
         .into_iter()
         .map(|f| {
@@ -103,6 +128,24 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Value {
                 FieldKind::Color { generate } => {
                     v["generate"] = generate.into();
                     v["swatches"] = swatches(theme).into();
+                    v["imageColours"] = image
+                        .filter(|_| generate)
+                        .map(|p| {
+                            IMAGE_SWATCHES
+                                .iter()
+                                .filter_map(|(role, label)| {
+                                    p.get(*role)
+                                        .map(|hex| json!({ "hex": hex, "label": label }))
+                                })
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default()
+                        .into();
+                    if let Key::Option { key, .. } = &f.key
+                        && let Some(hex) = overlay.get(custom::color_contract_key(key))
+                    {
+                        v["shown"] = hex.as_str().into();
+                    }
                     "color"
                 }
                 FieldKind::File(filters) => {
@@ -229,7 +272,12 @@ mod tests {
     #[test]
     fn a_disabled_field_carries_its_reason_so_the_form_can_show_it() {
         let cat = catalog();
-        let f = fields(cat.get("terraria").unwrap(), &UserConfig::default());
+        let f = fields(
+            cat.get("terraria").unwrap(),
+            &UserConfig::default(),
+            &BTreeMap::new(),
+            None,
+        );
         let fixed = f
             .as_array()
             .unwrap()
@@ -242,6 +290,40 @@ mod tests {
         assert_eq!(
             fixed["key"], "terraria.background_index",
             "keys are what settings::set parses"
+        );
+    }
+
+    // A colour set to Generate shows the colour it became, not an empty swatch.
+    #[test]
+    fn a_colour_shows_what_the_preview_gets() {
+        let cat = catalog();
+        let cfg = UserConfig::parse("[themes.material-you]\naccent = \"generate\"\n").unwrap();
+        let overlay = BTreeMap::from([("colorAccent".to_string(), "#87521c".to_string())]);
+        let image = custom::Palette::from([("primary".to_string(), "#8e4e00".to_string())]);
+        let f = fields(
+            cat.get("material-you").unwrap(),
+            &cfg,
+            &overlay,
+            Some(&image),
+        );
+        let row = |key: &str| {
+            f.as_array()
+                .unwrap()
+                .iter()
+                .find(|r| r["key"] == key)
+                .unwrap()
+                .clone()
+        };
+        let accent = row("material-you.accent");
+        assert_eq!(
+            (accent["value"].as_str(), accent["shown"].as_str()),
+            (Some("generate"), Some("#87521c"))
+        );
+        assert!(row("material-you.text_color").get("shown").is_none());
+        assert_eq!(
+            accent["imageColours"][0],
+            json!({ "hex": "#8e4e00", "label": "Primary" }),
+            "the background's colours are offered to pick from"
         );
     }
 
@@ -312,7 +394,7 @@ mod tests {
     fn customisations_carry_their_heading_and_colours_offer_the_themes_own_as_swatches() {
         let cat = catalog();
         let rainy = cat.get("pixel-rainyroom").unwrap();
-        let rows = fields(rainy, &UserConfig::default());
+        let rows = fields(rainy, &UserConfig::default(), &BTreeMap::new(), None);
         let rows = rows.as_array().unwrap();
         let accent = rows
             .iter()

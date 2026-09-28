@@ -233,6 +233,7 @@ darwan sddm reset
 | `darwan list`                                            | list the themes; `L` marks the lock theme, `S` the SDDM theme                     |
 | `darwan show <theme>`                                    | a theme's details, fonts and settings                                             |
 | `darwan get [key]` · `set <key> <value>` · `unset <key>` | read, change or reset a setting, e.g. `darwan set clock.format 12h`               |
+| `darwan unset <theme>`                                   | put every setting of one theme back to its default                                |
 | `darwan lock [theme]`                                    | lock the screen now (default: the `[lock]` theme)                                 |
 | `darwan preview [theme]`                                 | full-screen preview, no real lock ([details](#preview))                           |
 | `darwan check <theme>… \| --all`                         | headless test: QML errors, missing fonts, and whether typing the password unlocks |

@@ -222,7 +222,17 @@ pub fn set(paths: &Paths, key: &str, value: &str) -> Result<ExitCode, String> {
 }
 
 pub fn unset(paths: &Paths, key: &str) -> Result<ExitCode, String> {
-    let (_, mut config) = load(paths)?;
+    let (catalog, mut config) = load(paths)?;
+    // Theme ids never contain '.', so a bare id can't be mistaken for a setting.
+    if catalog.get(key).is_some() {
+        if config.remove_theme(key) {
+            save(&config)?;
+            println!("{} every setting is back to its default", style::id(key));
+        } else {
+            println!("{} has no settings", style::id(key));
+        }
+        return Ok(ExitCode::SUCCESS);
+    }
     let key = Key::parse(key)?;
     if settings::unset(&mut config, &key) {
         save(&config)?;

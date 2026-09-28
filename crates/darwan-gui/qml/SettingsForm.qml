@@ -26,6 +26,14 @@ Rectangle {
             backend.setValue(field.key, text)
     }
 
+    ColorPopover {
+        id: colorPopover
+        fields: form.fields
+        x: (form.width - width) / 2
+        y: Style.gap * 4
+        onChosen: (field, value) => form.commit(field, value)
+    }
+
     function fileUrlToPath(url) {
         return decodeURIComponent(url.toString().replace(/^file:\/\//, ""))
     }
@@ -35,11 +43,23 @@ Rectangle {
         anchors.margins: Style.gap
         spacing: Style.gap
 
-        Label {
-            text: "Settings"
-            color: Style.accent
-            font.bold: true
-            font.pixelSize: 16
+        RowLayout {
+            Layout.fillWidth: true
+            Label {
+                Layout.fillWidth: true
+                text: "Settings"
+                color: Style.accent
+                font.bold: true
+                font.pixelSize: 16
+            }
+            ActionButton {
+                text: "Reset theme"
+                reason: form.fields.some(f => f.isSet && f.key.startsWith(form.themeId + "."))
+                        ? "" : "every setting is already the theme's default"
+                ToolTip.visible: hovered
+                ToolTip.text: available ? "Every option and customisation of " + form.themeName + " back to its default; Discard undoes it until you save" : reason
+                onActivated: form.backend.resetTheme(form.themeId)
+            }
         }
         Label {
             Layout.fillWidth: true
@@ -172,58 +192,44 @@ Rectangle {
 
                             Component {
                                 id: colorEditor
-                                ColumnLayout {
-                                    id: colorBox
-                                    spacing: 6
+                                // The colour the preview uses and where it comes from; the popover changes it.
+                                Button {
+                                    id: chip
                                     readonly property bool generated: row.field.value === "generate"
-                                    RowLayout {
-                                        spacing: 8
+                                    readonly property string shown: generated ? (row.field.shown || "") : row.field.value
+                                    readonly property bool valid: /^#[0-9a-fA-F]{3,8}$/.test(shown)
+                                    hoverEnabled: true
+                                    onClicked: colorPopover.openFor(row.field.key)
+                                    background: Rectangle {
+                                        implicitHeight: 40
+                                        radius: 6
+                                        color: chip.hovered ? Qt.lighter(Style.surface, 1.2) : Style.surface
+                                        border.color: chip.visualFocus ? Style.accent : "transparent"
+                                        border.width: 2
+                                    }
+                                    contentItem: RowLayout {
+                                        spacing: 10
                                         Rectangle {
-                                            Layout.preferredWidth: 28
-                                            Layout.preferredHeight: 28
-                                            radius: 4
-                                            color: /^#[0-9a-fA-F]{3,8}$/.test(hex.text) ? hex.text : "transparent"
+                                            Layout.preferredWidth: 26
+                                            Layout.preferredHeight: 26
+                                            radius: 6
+                                            color: chip.valid ? chip.shown : "transparent"
                                             border.color: Style.border
-                                            TapHandler { onTapped: colorPicker.open() }
-                                            HoverHandler { cursorShape: Qt.PointingHandCursor }
                                         }
-                                        TextField {
-                                            id: hex
-                                            Layout.fillWidth: true
-                                            text: colorBox.generated ? "" : row.field.value
-                                            placeholderText: colorBox.generated ? "generated from an image" : "theme default"
-                                            onEditingFinished: if (text !== "") form.commit(row.field, text)
+                                        Label {
+                                            text: chip.valid ? chip.shown.toLowerCase()
+                                                : chip.generated ? "no image to generate from" : "the theme's own colours"
+                                            color: Style.text
+                                            font.family: chip.valid ? "monospace" : Qt.application.font.family
                                         }
-                                        ActionButton {
-                                            visible: row.field.generate
-                                            text: colorBox.generated ? "Generated ✓" : "Generate"
-                                            onActivated: form.commit(row.field, colorBox.generated ? "" : "generate")
+                                        Item { Layout.fillWidth: true }
+                                        // The form already says "theme default" and offers "reset"; only the source needs naming.
+                                        Label {
+                                            visible: chip.generated
+                                            text: "from your background"
+                                            color: Style.muted
+                                            font.pixelSize: 12
                                         }
-                                    }
-                                    Flow {
-                                        Layout.fillWidth: true
-                                        spacing: 6
-                                        visible: (row.field.swatches || []).length > 0
-                                        Repeater {
-                                            model: row.field.swatches || []
-                                            delegate: Rectangle {
-                                                required property string modelData
-                                                width: 20
-                                                height: 20
-                                                radius: 10
-                                                color: modelData
-                                                border.color: Style.border
-                                                ToolTip.visible: swatchHover.hovered
-                                                ToolTip.text: modelData
-                                                HoverHandler { id: swatchHover; cursorShape: Qt.PointingHandCursor }
-                                                TapHandler { onTapped: form.commit(row.field, modelData) }
-                                            }
-                                        }
-                                    }
-                                    ColorDialog {
-                                        id: colorPicker
-                                        selectedColor: hex.text !== "" ? hex.text : "#ffffff"
-                                        onAccepted: form.commit(row.field, selectedColor.toString())
                                     }
                                 }
                             }

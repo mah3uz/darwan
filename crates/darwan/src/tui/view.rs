@@ -515,6 +515,7 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             key("←→ space", "change", &ok),
             key("⏎", "edit", &ok),
             key("r", "reset to default", &ok),
+            key("R R", "reset the whole theme", &ok),
             key("esc", "back", &ok),
         ]
         .concat(),

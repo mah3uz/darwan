@@ -13,6 +13,7 @@ pub mod qobject {
         #[qproperty(bool, busy, READ, NOTIFY)]
         #[qproperty(bool, dirty, READ, NOTIFY)]
         #[qproperty(QString, status, READ, NOTIFY)]
+        #[qproperty(bool, status_ok, READ, NOTIFY)]
         #[qproperty(QString, runtime_dir, READ, CONSTANT)]
         #[qproperty(QString, overlay_path, READ, CONSTANT)]
         #[qproperty(QString, user_name, READ, CONSTANT)]
@@ -43,6 +44,9 @@ pub mod qobject {
 
         #[qinvokable]
         fn reset_value(self: Pin<&mut Backend>, key: &QString);
+
+        #[qinvokable]
+        fn reset_theme(self: Pin<&mut Backend>, id: &QString);
 
         #[qinvokable]
         fn set_value_now(self: Pin<&mut Backend>, key: &QString, value: &QString);
@@ -91,6 +95,8 @@ pub struct BackendRust {
     busy: bool,
     dirty: bool,
     status: QString,
+    // A confirmation, which fades; a problem stays until something replaces it.
+    status_ok: bool,
     runtime_dir: QString,
     overlay_path: QString,
     user_name: QString,
@@ -116,9 +122,11 @@ impl Default for BackendRust {
             busy: false,
             dirty: false,
             status: QString::default(),
+            status_ok: true,
         };
         if let Err(e) = this.load() {
             this.status = QString::from(e);
+            this.status_ok = false;
         }
         this
     }
@@ -169,7 +177,12 @@ impl qobject::Backend {
     fn fields(&self, id: &QString) -> QString {
         let r = self.rust();
         match r.catalog.get(&id.to_string()) {
-            Some(t) => json(model::fields(t, &r.config)),
+            Some(t) => {
+                let host = darwan_core::system::SystemHost::new();
+                let overlay = resolve::resolve(t, &r.config, &host).overlay;
+                let image = resolve::image_palette(t, &r.config, &host);
+                json(model::fields(t, &r.config, &overlay, image.as_ref()))
+            }
             None => QString::from("[]"),
         }
     }
@@ -215,8 +228,26 @@ impl qobject::Backend {
                 None => Ok(format!("{key} was already the default")),
             }
         });
+        let ok = result.is_ok();
         let status = result.unwrap_or_else(|e| e);
-        self.as_mut().set_status(QString::from(status));
+        self.as_mut().set_status(QString::from(status), ok);
+        self.as_mut().sync_dirty();
+        self.bump();
+    }
+
+    // Into the draft like any change, so Discard brings the theme's settings back.
+    fn reset_theme(mut self: Pin<&mut Self>, id: &QString) {
+        let id = id.to_string();
+        let removed = {
+            let mut r = self.as_mut().rust_mut();
+            r.config.remove_theme(&id)
+        };
+        let status = if removed {
+            format!("every setting of {id} is back to its default (not saved yet)")
+        } else {
+            format!("{id} has no settings to reset")
+        };
+        self.as_mut().set_status(QString::from(status), true);
         self.as_mut().sync_dirty();
         self.bump();
     }
@@ -231,8 +262,9 @@ impl qobject::Backend {
             settings::set(&mut r.config, &r.catalog, &key, &value)?;
             write(&r.saved).map(|()| format!("saved: {key} = {value}"))
         });
+        let ok = result.is_ok();
         let status = result.unwrap_or_else(|e| e);
-        self.as_mut().set_status(QString::from(status));
+        self.as_mut().set_status(QString::from(status), ok);
         self.as_mut().sync_dirty();
         self.bump();
     }
@@ -245,7 +277,7 @@ impl qobject::Backend {
         };
         let ok = result.is_ok();
         let status = result.map_or_else(|e| e, |()| "saved".to_string());
-        self.as_mut().set_status(QString::from(status));
+        self.as_mut().set_status(QString::from(status), ok);
         self.as_mut().sync_dirty();
         self.bump();
         ok
@@ -258,7 +290,7 @@ impl qobject::Backend {
             r.config = r.saved.clone();
         }
         self.as_mut()
-            .set_status(QString::from("unsaved changes discarded"));
+            .set_status(QString::from("unsaved changes discarded"), true);
         self.as_mut().sync_dirty();
         self.bump();
     }
@@ -280,7 +312,11 @@ impl qobject::Backend {
         self.revision_changed();
     }
 
-    fn set_status(mut self: Pin<&mut Self>, status: QString) {
+    fn set_status(mut self: Pin<&mut Self>, status: QString, ok: bool) {
+        if self.rust().status_ok != ok {
+            self.as_mut().rust_mut().status_ok = ok;
+            self.as_mut().status_ok_changed();
+        }
         self.as_mut().rust_mut().status = status;
         self.status_changed();
     }
@@ -311,7 +347,7 @@ impl qobject::Backend {
             (Ok(()), None) => None,
         };
         if let Some(p) = problem {
-            self.as_mut().set_status(QString::from(p));
+            self.as_mut().set_status(QString::from(p), false);
         }
         written.is_ok()
     }
@@ -324,14 +360,14 @@ impl qobject::Backend {
             Ok(a) => a,
             Err(e) => {
                 self.as_mut()
-                    .set_status(QString::from(format!("bad command: {e}")));
+                    .set_status(QString::from(format!("bad command: {e}")), false);
                 return;
             }
         };
         let command = format!("darwan {}", args.join(" "));
         self.as_mut().set_busy(true);
         self.as_mut()
-            .set_status(QString::from(format!("running {command}")));
+            .set_status(QString::from(format!("running {command}")), true);
         let thread = self.qt_thread();
         std::thread::spawn(move || {
             let (ok, output) = match Command::new(model::darwan_exe())
@@ -361,7 +397,9 @@ impl qobject::Backend {
                     (Ok(()), true) => format!("done: {command}"),
                     (Ok(()), false) => format!("failed: {command}"),
                 };
-                qobject.as_mut().set_status(QString::from(status));
+                qobject
+                    .as_mut()
+                    .set_status(QString::from(status), ok && reloaded.is_ok());
                 qobject.as_mut().sync_dirty();
                 qobject.as_mut().set_busy(false);
                 qobject.as_mut().bump();

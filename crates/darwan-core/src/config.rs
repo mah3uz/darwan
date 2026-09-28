@@ -186,6 +186,14 @@ impl UserConfig {
         removed
     }
 
+    // Every option and customisation of one theme; which theme the lock and SDDM use stays.
+    pub fn remove_theme(&mut self, id: &str) -> bool {
+        self.doc
+            .get_mut("themes")
+            .and_then(Item::as_table_like_mut)
+            .is_some_and(|themes| themes.remove(id).is_some())
+    }
+
     fn item(&self, table: &str, key: &str) -> Option<&Item> {
         self.doc.get(table).and_then(|t| t.get(key))
     }
@@ -210,6 +218,20 @@ impl std::fmt::Display for UserConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Starting a theme over must not touch other themes or which theme is in use.
+    #[test]
+    fn removing_a_theme_clears_only_that_theme() {
+        let mut cfg = UserConfig::parse(
+            "sddm = { theme = \"material-you\" }\n[themes.material-you]\naccent = \"generate\"\n[themes.\"clockwork/orbital\"]\nvariant = \"light\"\n",
+        )
+        .unwrap();
+        assert!(cfg.remove_theme("material-you"));
+        assert!(cfg.theme_values("material-you").is_empty());
+        assert_eq!(cfg.theme_values("clockwork/orbital").len(), 1);
+        assert_eq!(cfg.theme(Target::Sddm), Ok(Some("material-you")));
+        assert!(!cfg.remove_theme("material-you"), "nothing left to remove");
+    }
 
     #[test]
     fn missing_file_is_an_empty_config_not_an_error() {

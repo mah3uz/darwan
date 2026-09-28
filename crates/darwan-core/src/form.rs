@@ -347,14 +347,19 @@ fn standard_fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
     };
     let generating = colour_fields().any(|f| f.value == custom::GENERATE)
         || (sup.generate_by_default && !colour_fields().any(|f| f.is_set));
+    // A picked accent seeds a whole palette, so its scheme and contrast matter too.
+    let seeded = sup.material_palette && saved("accent").is_some_and(|v| custom::is_hex_color(&v));
     for f in &mut out {
         if let Key::Option { key, .. } = &f.key {
-            if matches!(
-                key.as_str(),
-                "color_source" | "color_scheme" | "color_contrast"
-            ) && !generating
-            {
+            if key == "color_source" && !generating {
                 f.disabled = Some("only when a colour is generated".into());
+            }
+            if matches!(key.as_str(), "color_scheme" | "color_contrast") && !generating && !seeded {
+                f.disabled = Some(if sup.material_palette {
+                    "only when the accent is picked or a colour is generated".into()
+                } else {
+                    "only when a colour is generated".into()
+                });
             }
             if matches!(key.as_str(), "background_fit" | "background_dim")
                 && saved("background").is_none()
@@ -394,6 +399,31 @@ mod tests {
         let f = fields(&theme("terraria"), &UserConfig::default());
         let mode = field(&f, "Background");
         assert_eq!((mode.value.as_str(), mode.is_set), ("random", false));
+    }
+
+    // On Material You a picked accent seeds the palette, so its scheme must stay changeable.
+    #[test]
+    fn scheme_and_contrast_stay_enabled_while_a_picked_accent_seeds_the_palette() {
+        let t = theme("material-you");
+        let disabled = |cfg: &str, label: &str| {
+            let cfg = UserConfig::parse(cfg).unwrap();
+            field(&fields(&t, &cfg), label).disabled.clone()
+        };
+        let picked = "[themes.material-you]\naccent = \"#e63946\"\n";
+        assert_eq!(disabled(picked, "Colour scheme"), None);
+        assert_eq!(disabled(picked, "Contrast"), None);
+        assert!(
+            disabled(picked, "Generate colours from").is_some(),
+            "no image is used until a colour is generated"
+        );
+        assert!(disabled("", "Colour scheme").is_some());
+        let cfg = UserConfig::parse("[themes.pixel-rainyroom]\naccent = \"#e63946\"\n").unwrap();
+        assert!(
+            field(&fields(&theme("pixel-rainyroom"), &cfg), "Colour scheme")
+                .disabled
+                .is_some(),
+            "elsewhere a picked accent is only a colour"
+        );
     }
 
     #[test]

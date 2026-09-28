@@ -54,9 +54,9 @@ enum Cmd {
         #[arg(add = ArgValueCompleter::new(completion::setting_values))]
         value: String,
     },
-    /// Put a setting back to its default
+    /// Put a setting back to its default, or every setting of a theme when KEY is its id
     Unset {
-        #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
+        #[arg(add = ArgValueCandidates::new(completion::unset_keys))]
         key: String,
     },
     /// Lock the session with a theme (default: [lock] theme from the config)

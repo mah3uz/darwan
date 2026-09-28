@@ -17,9 +17,12 @@ pub struct Resolved {
     pub issues: Vec<Issue>,
 }
 
-// Defaults are not copied: SDDM and the runtime layer the overlay over theme.conf.
-pub fn resolve(theme: &Theme, config: &UserConfig, host: &dyn Host) -> Resolved {
-    let mut r = Resolved::default();
+// The theme's own options go straight into the overlay; standard settings are returned for custom::apply.
+fn checked_values(
+    theme: &Theme,
+    config: &UserConfig,
+    r: &mut Resolved,
+) -> BTreeMap<String, String> {
     let issue_key = |key: &str| format!("themes.\"{}\".{key}", theme.id);
     let mut standard = BTreeMap::new();
     for (key, value) in config.theme_values(&theme.id) {
@@ -47,6 +50,29 @@ pub fn resolve(theme: &Theme, config: &UserConfig, host: &dyn Host) -> Resolved 
             }),
         }
     }
+    standard
+}
+
+// The palette the theme's image would give, whatever its colours are set to, for picking from.
+pub fn image_palette(
+    theme: &Theme,
+    config: &UserConfig,
+    host: &dyn Host,
+) -> Option<custom::Palette> {
+    if custom::unsupported(theme, "accent").is_some() {
+        return None;
+    }
+    let mut r = Resolved::default();
+    let mut standard = checked_values(theme, config, &mut r);
+    standard.insert("accent".into(), custom::GENERATE.into());
+    custom::apply(theme, &standard, host, &mut r.overlay, &mut Vec::new())
+}
+
+// Defaults are not copied: SDDM and the runtime layer the overlay over theme.conf.
+pub fn resolve(theme: &Theme, config: &UserConfig, host: &dyn Host) -> Resolved {
+    let mut r = Resolved::default();
+    let issue_key = |key: &str| format!("themes.\"{}\".{key}", theme.id);
+    let standard = checked_values(theme, config, &mut r);
     let mut issues = Vec::new();
     custom::apply(theme, &standard, host, &mut r.overlay, &mut issues);
     r.issues
@@ -182,6 +208,39 @@ mod tests {
 
     fn cfg(text: &str) -> UserConfig {
         UserConfig::parse(text).unwrap()
+    }
+
+    struct Image;
+    impl custom::Host for Image {
+        fn desktop_prefers_dark(&self) -> Option<bool> {
+            None
+        }
+        fn desktop_wallpaper(&self, _: Option<bool>) -> Option<custom::Wallpaper> {
+            None
+        }
+        fn palette(
+            &self,
+            _: &std::path::Path,
+            r: &custom::PaletteRequest,
+        ) -> Result<custom::Palette, String> {
+            let primary = r.seed.clone().unwrap_or_else(|| "#123456".into());
+            Ok(custom::Palette::from([("primary".to_string(), primary)]))
+        }
+    }
+
+    // The colour picker offers the image's own colours even while the user's accent is picked.
+    #[test]
+    fn the_image_palette_ignores_a_picked_accent() {
+        let mut t = theme("colors = true\nmaterial_palette = true");
+        t.preview = Some("/nonexistent/preview.jpg".into());
+        let c = cfg("[themes.\"clockwork/orbital\"]\naccent = \"#ff0000\"\n");
+        let p = image_palette(&t, &c, &Image).unwrap();
+        assert_eq!(p["primary"], "#123456");
+        assert_eq!(
+            image_palette(&theme(""), &c, &Image),
+            None,
+            "no colours, no palette"
+        );
     }
 
     #[test]

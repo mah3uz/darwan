@@ -384,6 +384,8 @@ pub struct PaletteRequest {
     // None: decided from the image's brightness.
     pub dark: Option<bool>,
     pub contrast: f64,
+    // A picked accent that leads the primary colours of a palette generated from an image.
+    pub seed: Option<String>,
 }
 
 // Material role name (primary, on_surface, …) → "#rrggbb".
@@ -410,14 +412,24 @@ impl Host for Offline {
     }
 }
 
+// The overlay key a colour setting ends up in.
+pub fn color_contract_key(key: &str) -> &str {
+    match key {
+        "accent" => "colorAccent",
+        "text_color" => "colorText",
+        role => role,
+    }
+}
+
 // Turns checked config values into theme contract keys; values arrive validated by check().
+// Returns the palette the colours came from, if one was made.
 pub fn apply(
     theme: &Theme,
     values: &BTreeMap<String, String>,
     host: &dyn Host,
     overlay: &mut BTreeMap<String, String>,
     issues: &mut Vec<(String, String)>,
-) {
+) -> Option<Palette> {
     let get = |k: &str| values.get(k).map(String::as_str);
     let sup = &theme.manifest.supports;
 
@@ -486,11 +498,23 @@ pub fn apply(
 
     // Colours: accent and text, then the theme's own roles, each a hex value or generated.
     let mut roles: Vec<(&str, &str, String)> = vec![
-        ("accent", "colorAccent", "primary".to_string()),
-        ("text_color", "colorText", "on_surface".to_string()),
+        (
+            "accent",
+            color_contract_key("accent"),
+            "primary".to_string(),
+        ),
+        (
+            "text_color",
+            color_contract_key("text_color"),
+            "on_surface".to_string(),
+        ),
     ];
     for c in &theme.manifest.colors {
-        roles.push((c.key.as_str(), c.key.as_str(), c.material.clone()));
+        roles.push((
+            c.key.as_str(),
+            color_contract_key(&c.key),
+            c.material.clone(),
+        ));
     }
     let user_colours = roles.iter().any(|(k, _, _)| get(k).is_some());
     let by_default = sup.generate_by_default && !user_colours;
@@ -501,6 +525,9 @@ pub fn apply(
         contrast: get("color_contrast")
             .and_then(|c| c.parse().ok())
             .unwrap_or(0.0),
+        seed: get("accent")
+            .filter(|v| sup.material_palette && is_hex_color(v))
+            .map(str::to_string),
     };
     let palette = if wants_palette {
         let source = match get("color_source").unwrap_or("background") {
@@ -588,6 +615,7 @@ pub fn apply(
     if get("reduce_motion") == Some("true") {
         overlay.insert("reduceMotion".into(), "true".into());
     }
+    palette
 }
 
 // The same rules for an overlay that arrives already built (the root helper). None: not a contract key.
@@ -696,7 +724,10 @@ mod tests {
         fn palette(&self, image: &Path, r: &PaletteRequest) -> Result<Palette, String> {
             let tag = format!("{}-{}", image.display(), r.dark == Some(true));
             let mut p = Palette::new();
-            p.insert("primary".into(), "#112233".into());
+            p.insert(
+                "primary".into(),
+                r.seed.clone().unwrap_or_else(|| "#112233".into()),
+            );
             p.insert("on_surface".into(), "#eeeeee".into());
             p.insert(
                 "tertiary".into(),
@@ -887,6 +918,57 @@ mod tests {
         for (k, v) in &overlay {
             assert_eq!(check_contract(&t, k, v), Some(Ok(())), "{k}");
         }
+    }
+
+    // Generating the text colour must not throw away the accent the user picked, nor the reverse.
+    #[test]
+    fn a_picked_accent_and_a_generated_colour_both_shape_the_palette() {
+        let t = theme(
+            "[supports]\ncolors = true\nmaterial_palette = true\nvariants = [\"light\", \"dark\"]\ndefault_variant = \"light\"\n",
+        );
+        let (mut overlay, mut issues) = (BTreeMap::new(), Vec::new());
+        apply(
+            &t,
+            &values(&[
+                ("accent", "#2f6fe0"),
+                ("text_color", GENERATE),
+                ("color_source", DESKTOP),
+            ]),
+            &Fake,
+            &mut overlay,
+            &mut issues,
+        );
+        let get = |k: &str| overlay.get(k).map(String::as_str);
+        assert_eq!(
+            get("material_primary"),
+            Some("#2f6fe0"),
+            "led by the accent"
+        );
+        assert_eq!(get("colorText"), Some("#eeeeee"), "from the image");
+        assert_eq!(get("colorAccent"), Some("#2f6fe0"));
+        assert!(issues.is_empty(), "{issues:?}");
+    }
+
+    #[test]
+    fn a_picked_accent_does_not_seed_a_theme_without_a_palette() {
+        let t = theme(
+            "[supports]\ncolors = true\n\n[[color]]\nkey = \"colorGlow\"\nlabel = \"Glow\"\nmaterial = \"primary\"\n",
+        );
+        let (mut overlay, mut issues) = (BTreeMap::new(), Vec::new());
+        apply(
+            &t,
+            &values(&[
+                ("accent", "#2f6fe0"),
+                ("colorGlow", GENERATE),
+                ("color_source", DESKTOP),
+            ]),
+            &Fake,
+            &mut overlay,
+            &mut issues,
+        );
+        let get = |k: &str| overlay.get(k).map(String::as_str);
+        assert_eq!(get("colorGlow"), Some("#112233"), "the image's own primary");
+        assert_eq!(get("colorAccent"), Some("#2f6fe0"));
     }
 
     #[test]

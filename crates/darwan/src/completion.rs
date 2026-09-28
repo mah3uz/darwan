@@ -99,6 +99,14 @@ pub fn setting_keys() -> Vec<CompletionCandidate> {
     keys_in(&catalog())
 }
 
+// A theme id resets that theme, so ids are offered next to the settings.
+pub fn unset_keys() -> Vec<CompletionCandidate> {
+    let (catalog, config) = (catalog(), config());
+    let mut out = keys_in(&catalog);
+    out.extend(theme_candidates(&catalog, &config));
+    out
+}
+
 fn keys_in(catalog: &Catalog) -> Vec<CompletionCandidate> {
     let mut out = vec![
         candidate("lock.theme", "Theme for the lockscreen"),
