@@ -2,7 +2,7 @@
 
 pkgname=darwan-bin
 _pkgname=darwan
-pkgver=0.2.1
+pkgver=0.3.0
 pkgrel=1
 pkgdesc='Themes for the SDDM login screen and the Quickshell lockscreen, with a CLI, TUI and GUI (prebuilt)'
 arch=('x86_64')
