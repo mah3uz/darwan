@@ -933,7 +933,7 @@ dependencies = [
 
 [[package]]
 name = "darwan"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "clap",
  "clap_complete",
@@ -952,7 +952,7 @@ dependencies = [
 
 [[package]]
 name = "darwan-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "image",
  "material-colors",
@@ -967,7 +967,7 @@ dependencies = [
 
 [[package]]
 name = "darwan-gui"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "cxx",
  "cxx-qt",
@@ -979,7 +979,7 @@ dependencies = [
 
 [[package]]
 name = "darwan-helper"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "darwan-core",
  "rustix 1.1.5",
