@@ -318,6 +318,94 @@ Pressing the keybind while already locked does nothing, because only one lockscr
 refuses to lock while `allow_session_lock_restore` is off. If the lockscreen crashes, for example when a monitor drops
 out during sleep, Darwan starts a new one by itself and it takes the lock back.
 
+<a id="desktop-shells"></a>
+
+#### 🧩 DESKTOP SHELLS
+
+Most Hyprland shells bring a lockscreen of their own. A lock starts from your keybind, from idle, or before sleep, and
+`loginctl lock-session` (which many power menus call) asks whoever listens for it. Send all of these to
+`darwan lock` and turn the shell's own lock off: Hyprland allows one lockscreen at a time, so when two answer, one
+fails. The [website](https://darwan.dev/docs/shells) has the full walk-through.
+
+| Shell                     | Its lockscreen                | What changes                                                | Login screen              |
+|:--------------------------|:------------------------------|:------------------------------------------------------------|:--------------------------|
+| DankMaterialShell         | its own                       | one setting                                                 | dank-greeter (greetd)     |
+| Noctalia 5                | its own                       | turn it off; idle in Noctalia; sleep in hypridle; a keybind | noctalia-greeter (greetd) |
+| Caelestia                 | its own                       | keybind, idle and sleep settings; sleep in hypridle         | none shipped              |
+| illogical-impulse (end-4) | its own, started by hypridle  | `lock_cmd` in hypridle                                      | none shipped              |
+| Omarchy 4                 | the Omarchy shell's           | keybind; idle and sleep to hypridle                         | SDDM, autologin           |
+| Omarchy 3                 | hyprlock, started by hypridle | hypridle and keybind                                        | SDDM, autologin           |
+
+**DankMaterialShell.** *Settings → Power & Sleep → Custom commands → Lock*: `darwan lock` (or
+`"customPowerActionLock": "darwan lock"` in `~/.config/DankMaterialShell/settings.json`). The lock keybind, idle lock,
+power menu and `loginctl lock-session` then all run Darwan. Keep *Lock before suspend* on: DMS locks through the same
+command and holds sleep for up to 4 seconds. Don't also give hypridle a `lock_cmd`.
+
+**Noctalia 5.** In `~/.config/noctalia/*.toml` (or *Settings → Security → Lock Screen*):
+
+```toml
+[lockscreen]
+enabled = false
+
+[idle.behavior.lock]
+timeout = 600
+action = "command"
+command = "darwan lock"
+enabled = true
+```
+
+Bind a key to `darwan lock`, and let hypridle lock before sleep with the `general` block shown above.
+
+**Caelestia** shows its own lock on every `loginctl lock-session`, with no setting to stop it, so call Darwan directly.
+In `~/.config/caelestia/hypr-vars.lua` set `kbLock = ""` and `kbRestoreLock = ""`, and bind `darwan lock` in
+`hypr-user.lua`. In `~/.config/caelestia/shell.json` set `general.idle.lockBeforeSleep` to `false` and make the idle
+lock `"idleAction": ["darwan", "lock"]`. For sleep, hypridle with only:
+
+```ini
+general {
+    before_sleep_cmd = darwan lock --for-sleep
+    inhibit_sleep = 3
+}
+```
+
+`--for-sleep` locks with a black screen at once and loads the theme after wake.
+
+**illogical-impulse** sends every lock through hypridle. In `~/.config/hypr/hypridle.conf`, set the `general` block to
+the one above (`lock_cmd = darwan lock`, dropping `after_sleep_cmd`), and restart hypridle.
+
+**Omarchy 4** keeps its lockscreen in its shell. Rebind in `~/.config/hypr/bindings.lua`:
+
+```lua
+hl.unbind("SUPER + CTRL + L")
+o.bind("SUPER + CTRL + L", "Lock system", "darwan lock")
+```
+
+then turn off its idle lock and sleep lock, and give both to hypridle (install it; Omarchy 4 doesn't ship it) with the
+`general` block above, plus a `listener` that runs `loginctl lock-session` after 300 seconds:
+
+```sh
+omarchy toggle idle stay-awake
+systemctl --user mask --now omarchy-sleep-lock.service
+```
+
+**Omarchy 3.** In `~/.config/hypr/hypridle.conf`, use the `general` block above and replace `omarchy-system-lock` in
+the listeners with `loginctl lock-session` (keep the screensaver from starting behind the lock with
+`pgrep -f '[d]arwan lock-supervisor' || omarchy-launch-screensaver`). In `~/.config/hypr/bindings.conf`:
+`unbind = SUPER CTRL, L` and `bindd = SUPER CTRL, L, Lock system, exec, darwan lock`. `omarchy-refresh-hypridle`
+undoes the hypridle change.
+
+**Starting hypridle.** Under uwsm, `systemctl --user enable --now hypridle.service`; otherwise start it from Hyprland
+(`hl.on("hyprland.start", function() hl.exec_cmd("hypridle") end)`, or `exec-once = hypridle`).
+
+**Login screen.** Darwan's login-screen themes need SDDM. Coming from greetd (DMS's and Noctalia's greeters):
+`sudo systemctl disable greetd.service && sudo systemctl enable sddm.service`, then `darwan sddm apply`. On Omarchy,
+`darwan sddm apply` wins over Omarchy's theme (`zz-darwan.conf` is read after its `10-theme.conf`), but Omarchy logs
+you in automatically, so you see the login screen after logging out, or at every boot once
+`/etc/sddm.conf.d/autologin.conf` is gone.
+
+Check the result with `darwan doctor`, then try the keybind, `loginctl lock-session`, idle and a suspend: each should
+show your Darwan theme, never the shell's own lockscreen.
+
 <br>
 <p align="center">━━━━━━━ ❖ ━━━━━━━</p>
 
