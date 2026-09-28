@@ -109,6 +109,62 @@ aur:
       rm -rf "$dir"
     done
 
+# The whole release: version bump, tag, GitHub Release and AUR, e.g. `just ship 0.2.1`
+ship version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    v={{version}}
+    old=$(sed -n 's/^pkgver=//p' packaging/aur/darwan/PKGBUILD)
+    fail() { echo "ship: $*" >&2; exit 1; }
+
+    [[ $v =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "version must look like 0.2.1, not $v"
+    [[ $(printf '%s\n%s\n' "$old" "$v" | sort -V | tail -1) == "$v" && $v != "$old" ]] || fail "$v is not newer than $old"
+    [[ $(git branch --show-current) == main ]] || fail "switch to main first"
+    [[ -z $(git status --porcelain) ]] || fail "commit or stash your changes first"
+    git fetch -q origin
+    [[ $(git rev-list --count HEAD..origin/main) == 0 ]] || fail "main is behind origin/main; pull first"
+    ! git rev-parse -q --verify "refs/tags/v$v" >/dev/null || fail "tag v$v already exists"
+    ! git ls-remote --exit-code --tags origin "v$v" >/dev/null || fail "tag v$v already exists on origin"
+    gh auth status >/dev/null 2>&1 || fail "gh is not logged in; run gh auth login"
+
+    echo "==> lint and tests"
+    just lint
+    just test
+
+    echo "==> version $old -> $v"
+    sed -i "0,/^version = \"$old\"/s//version = \"$v\"/" Cargo.toml
+    for p in packaging/aur/darwan/PKGBUILD packaging/aur/darwan-bin/PKGBUILD; do
+      sed -i "s/^pkgver=.*/pkgver=$v/; s/^pkgrel=.*/pkgrel=1/" "$p"
+    done
+    cargo update --workspace -q
+    git commit -q -am "Version $v"
+
+    # Everything after this is public and can't be taken back.
+    read -rp "Push v$v to origin, GitHub and the AUR? [y/N] " answer
+    if [[ $answer != [yY] ]]; then
+      echo "Stopped before pushing. To undo the version commit: git reset --hard HEAD~1"
+      exit 1
+    fi
+    trap 'echo "ship: stopped; finish the remaining steps in docs/releasing.md by hand" >&2' ERR
+
+    echo "==> tag and push"
+    git tag "v$v"
+    git push origin main "v$v"
+
+    echo "==> checksums and package"
+    DARWAN_SHIP=1 packaging/release.sh
+
+    echo "==> GitHub Release"
+    gh release create "v$v" "dist/darwan-$v-x86_64.pkg.tar.zst" --title "v$v" --generate-notes
+
+    echo "==> commit the checksums"
+    git commit -q -am "Release $v"
+    git push origin main
+
+    echo "==> AUR"
+    just aur
+    echo "Released $v."
+
 # Regenerate both AUR packages' .SRCINFO
 srcinfo:
     @for p in darwan darwan-bin; do (cd packaging/aur/$p && makepkg --printsrcinfo > .SRCINFO); done

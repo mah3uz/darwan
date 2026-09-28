@@ -33,6 +33,9 @@ for pkg in darwan darwan-bin; do
   (cd "$aur/$pkg" && makepkg --printsrcinfo > .SRCINFO)
 done
 
+# `just ship` runs the next steps itself.
+[[ -n ${DARWAN_SHIP:-} ]] && exit 0
+
 cat <<EOF
 
 Done. Next, by hand:

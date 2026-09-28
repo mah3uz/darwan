@@ -25,6 +25,19 @@ AUR commits carry your global git name and email and can't be changed after push
 
 ## A release
 
+One command does all of the steps below:
+
+```sh
+just ship 0.1.1
+```
+
+It first checks that you're on an up-to-date, clean `main`, that the version is new, that `gh` is logged in, and that
+`just lint` and `just test` pass. Then it commits the version bump and asks once before pushing anything, since from
+there on the release is public. If a later step fails, it stops and you finish the rest by hand, from the step below
+where it stopped.
+
+The steps it runs:
+
 **1. Set the version** in three places: `version` in [`Cargo.toml`](../Cargo.toml), and `pkgver` in
 [`packaging/aur/darwan/PKGBUILD`](../packaging/aur/darwan/PKGBUILD) and
 [`packaging/aur/darwan-bin/PKGBUILD`](../packaging/aur/darwan-bin/PKGBUILD). Reset both `pkgrel` to `1`. Commit it.
