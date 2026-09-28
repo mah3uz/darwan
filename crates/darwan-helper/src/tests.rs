@@ -82,12 +82,12 @@ fn apply_writes_overlay_symlink_and_conf() {
         "[General]\nthemeMode=light\n"
     );
     assert_eq!(
-        std::fs::read_link(f.roots.sddm_themes.join("darwan")).unwrap(),
+        std::fs::read_link(f.roots.sddm_themes.join("darwan-clockwork.orbital")).unwrap(),
         theme_dir(&f)
     );
     assert_eq!(
         std::fs::read_to_string(f.roots.conf_d.join("zz-darwan.conf")).unwrap(),
-        "[Theme]\nCurrent=darwan\n"
+        "[Theme]\nCurrent=darwan-clockwork.orbital\n"
     );
     let mode = std::fs::metadata(theme_dir(&f).join("theme.conf.user"))
         .unwrap()
@@ -96,8 +96,19 @@ fn apply_writes_overlay_symlink_and_conf() {
     assert_eq!(mode & 0o777, 0o644, "the sddm user must be able to read it");
 }
 
+fn sddm_links(f: &Fixture) -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(&f.roots.sddm_themes)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .collect();
+    names.sort();
+    names
+}
+
+// SDDM's greeter caches compiled QML by file path and mtime, and packaged themes share one mtime:
+// behind a single reused path, the greeter would run the previous theme's Main.qml.
 #[test]
-fn applying_again_repoints_the_symlink() {
+fn each_theme_is_loaded_from_its_own_path_and_old_links_go() {
     let f = fixture();
     let other = f.roots.themes.join("osu");
     std::fs::create_dir_all(&other).unwrap();
@@ -106,10 +117,31 @@ fn applying_again_repoints_the_symlink() {
     }
     apply(&f.roots, "clockwork/orbital", &mut req(b"{}").as_slice()).unwrap();
     apply(&f.roots, "osu", &mut req(b"{}").as_slice()).unwrap();
+    assert_eq!(sddm_links(&f), ["darwan-osu"]);
     assert_eq!(
-        std::fs::read_link(f.roots.sddm_themes.join("darwan")).unwrap(),
+        std::fs::read_link(f.roots.sddm_themes.join("darwan-osu")).unwrap(),
         other
     );
+    assert_eq!(
+        std::fs::read_to_string(f.roots.conf_d.join("zz-darwan.conf")).unwrap(),
+        "[Theme]\nCurrent=darwan-osu\n"
+    );
+}
+
+#[test]
+fn link_names_of_different_ids_never_collide() {
+    assert_ne!(
+        link_name("clockwork/orbital"),
+        link_name("clockwork-orbital")
+    );
+}
+
+#[test]
+fn the_single_darwan_link_of_older_versions_is_removed() {
+    let f = fixture();
+    std::os::unix::fs::symlink(theme_dir(&f), f.roots.sddm_themes.join("darwan")).unwrap();
+    apply(&f.roots, "clockwork/orbital", &mut req(b"{}").as_slice()).unwrap();
+    assert_eq!(sddm_links(&f), ["darwan-clockwork.orbital"]);
 }
 
 #[test]
@@ -189,16 +221,17 @@ fn an_oversized_overlay_is_rejected() {
 }
 
 #[test]
-fn a_real_directory_named_darwan_is_never_replaced() {
+fn a_real_directory_with_a_darwan_name_is_never_replaced() {
     let f = fixture();
-    std::fs::create_dir_all(f.roots.sddm_themes.join("darwan")).unwrap();
+    let dir = f.roots.sddm_themes.join("darwan-clockwork.orbital");
+    std::fs::create_dir_all(&dir).unwrap();
     assert!(
         apply(&f.roots, "clockwork/orbital", &mut req(b"{}").as_slice())
             .unwrap_err()
             .contains("not darwan's symlink")
     );
     assert!(reset(&f.roots).unwrap().contains("left"));
-    assert!(f.roots.sddm_themes.join("darwan").is_dir());
+    assert!(dir.is_dir());
 }
 
 #[test]
@@ -210,14 +243,9 @@ fn reset_removes_everything_apply_created() {
         &mut req(br#"{"themeMode":"light"}"#).as_slice(),
     )
     .unwrap();
+    std::os::unix::fs::symlink(theme_dir(&f), f.roots.sddm_themes.join("darwan")).unwrap();
     reset(&f.roots).unwrap();
-    assert!(
-        f.roots
-            .sddm_themes
-            .join("darwan")
-            .symlink_metadata()
-            .is_err()
-    );
+    assert!(sddm_links(&f).is_empty());
     assert!(!f.roots.conf_d.join("zz-darwan.conf").exists());
     assert!(!theme_dir(&f).join("theme.conf.user").exists());
     assert_eq!(reset(&f.roots).unwrap(), "nothing to reset");

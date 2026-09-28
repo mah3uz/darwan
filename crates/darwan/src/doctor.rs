@@ -164,9 +164,13 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
                 darwan_core::paths::HELPER
             ))
         }
-        let link = Path::new("/usr/share/sddm/themes/darwan");
-        let broken = std::fs::read_link(link).is_ok_and(|t| !t.join("Main.qml").is_file());
-        if let Ok(target) = std::fs::read_link(link)
+        let ours = sddm::darwan_current();
+        let link = ours
+            .as_ref()
+            .map(|n| Path::new(sddm::SDDM_THEMES).join(n))
+            .unwrap_or_default();
+        let broken = std::fs::read_link(&link).is_ok_and(|t| !t.join("Main.qml").is_file());
+        if let Ok(target) = std::fs::read_link(&link)
             && broken
         {
             r.fail(format!(
@@ -178,7 +182,7 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
         }
         let eff = sddm::effective_theme();
         match &eff.current {
-            Some((name, _)) if name == "darwan" => {
+            Some((name, _)) if Some(name) == ours.as_ref() => {
                 if !broken {
                     r.ok("SDDM uses darwan")
                 }

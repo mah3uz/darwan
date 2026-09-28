@@ -12,7 +12,7 @@ use crate::session::WaylandSession;
 use crate::style;
 
 pub const INSTALLED_THEMES: &str = "/usr/share/darwan/themes";
-const SDDM_THEMES: &str = "/usr/share/sddm/themes";
+pub const SDDM_THEMES: &str = "/usr/share/sddm/themes";
 
 struct Planned {
     theme: Theme,
@@ -235,6 +235,13 @@ pub fn effective_theme() -> Effective {
     Effective { current, files }
 }
 
+// The theme link darwan's own config file selects, even when another file overrides it.
+pub fn darwan_current() -> Option<String> {
+    std::fs::read_to_string("/etc/sddm.conf.d/zz-darwan.conf")
+        .ok()
+        .and_then(|t| theme_current(&t))
+}
+
 fn theme_current(text: &str) -> Option<String> {
     let mut in_theme = false;
     let mut found = None;
@@ -267,9 +274,12 @@ pub fn status() -> Result<ExitCode, String> {
             style::dim(format!("(set in {})", file.display()))
         ),
     }
-    let link = Path::new(SDDM_THEMES).join("darwan");
-    match std::fs::read_link(&link) {
-        Ok(target) if !target.join("Main.qml").is_file() => {
+    let ours = darwan_current();
+    match ours
+        .as_ref()
+        .map(|n| std::fs::read_link(Path::new(SDDM_THEMES).join(n)))
+    {
+        Some(Ok(target)) if !target.join("Main.qml").is_file() => {
             println!(
                 "{} {}",
                 style::bold("darwan theme:"),
@@ -282,7 +292,7 @@ pub fn status() -> Result<ExitCode, String> {
                 "  SDDM falls back to its built-in theme; run `darwan sddm reset` or apply another theme"
             );
         }
-        Ok(target) => {
+        Some(Ok(target)) => {
             let id = target
                 .strip_prefix(INSTALLED_THEMES)
                 .map(|p| p.display().to_string())
@@ -299,7 +309,7 @@ pub fn status() -> Result<ExitCode, String> {
             if eff
                 .current
                 .as_ref()
-                .is_some_and(|(name, _)| name != "darwan")
+                .is_some_and(|(name, _)| Some(name) != ours.as_ref())
             {
                 println!(
                     "{} darwan is set up, but another config file overrides it (see `darwan doctor`)",
@@ -307,7 +317,7 @@ pub fn status() -> Result<ExitCode, String> {
                 );
             }
         }
-        Err(_) => println!(
+        _ => println!(
             "{} {}",
             style::bold("darwan theme:"),
             style::dim("not applied")

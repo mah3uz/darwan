@@ -17,7 +17,6 @@ const MEDIA_KEYS: [(&str, &str); 3] = [
     ("fontClockFile", "fontClock"),
 ];
 pub const ATTACHMENT: &str = "@attachment";
-const LINK_NAME: &str = "darwan";
 const CONF_NAME: &str = "zz-darwan.conf";
 
 pub struct Roots {
@@ -85,7 +84,8 @@ pub fn apply(roots: &Roots, id: &str, input: &mut dyn BufRead) -> Result<String,
     let text = ini::write_general(&overlay).map_err(|e| e.to_string())?;
     store_attachments(roots, &planned, input)?;
 
-    let link = roots.sddm_themes.join(LINK_NAME);
+    let name = link_name(id);
+    let link = roots.sddm_themes.join(&name);
     if let Ok(meta) = link.symlink_metadata()
         && !meta.file_type().is_symlink()
     {
@@ -102,8 +102,40 @@ pub fn apply(roots: &Roots, id: &str, input: &mut dyn BufRead) -> Result<String,
     std::fs::rename(&staged, &link).map_err(|e| format!("{}: {e}", link.display()))?;
     std::fs::create_dir_all(&roots.conf_d)
         .map_err(|e| format!("{}: {e}", roots.conf_d.display()))?;
-    write_atomic(&roots.conf_d.join(CONF_NAME), b"[Theme]\nCurrent=darwan\n")?;
+    write_atomic(
+        &roots.conf_d.join(CONF_NAME),
+        format!("[Theme]\nCurrent={name}\n").as_bytes(),
+    )?;
+    for (path, is_link) in darwan_entries(roots) {
+        if is_link && path != link {
+            std::fs::remove_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        }
+    }
     Ok(format!("SDDM now uses {id}"))
+}
+
+// SDDM's greeter caches compiled QML by file path and mtime, and packaged themes all share one mtime,
+// so a path reused for another theme would run the previous theme's code. Ids never contain '.'.
+fn link_name(id: &str) -> String {
+    format!("darwan-{}", id.replace('/', "."))
+}
+
+// Names darwan uses in SDDM's themes folder: `darwan-<id>`, and `darwan` from before per-theme links.
+fn darwan_entries(roots: &Roots) -> Vec<(PathBuf, bool)> {
+    let Ok(entries) = std::fs::read_dir(&roots.sddm_themes) else {
+        return Vec::new();
+    };
+    let mut found: Vec<(PathBuf, bool)> = entries
+        .filter_map(Result::ok)
+        .filter(|e| {
+            e.file_name()
+                .to_str()
+                .is_some_and(|n| n == "darwan" || n.starts_with("darwan-"))
+        })
+        .map(|e| (e.path(), e.file_type().is_ok_and(|t| t.is_symlink())))
+        .collect();
+    found.sort();
+    found
 }
 
 fn allowed(key: &str, ext: &str) -> Option<u64> {
@@ -255,17 +287,16 @@ pub fn reset(roots: &Roots) -> Result<String, String> {
         std::fs::remove_file(&conf).map_err(|e| format!("{}: {e}", conf.display()))?;
         done.push(format!("removed {}", conf.display()));
     }
-    let link = roots.sddm_themes.join(LINK_NAME);
-    match link.symlink_metadata() {
-        Ok(m) if m.file_type().is_symlink() => {
-            std::fs::remove_file(&link).map_err(|e| format!("{}: {e}", link.display()))?;
-            done.push(format!("removed {}", link.display()));
+    for (path, is_link) in darwan_entries(roots) {
+        if is_link {
+            std::fs::remove_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            done.push(format!("removed {}", path.display()));
+        } else {
+            done.push(format!(
+                "left {} alone: it is not darwan's symlink",
+                path.display()
+            ));
         }
-        Ok(_) => done.push(format!(
-            "left {} alone: it is not darwan's symlink",
-            link.display()
-        )),
-        Err(_) => {}
     }
     let mut overlays = Vec::new();
     find_overlays(&roots.themes, &mut overlays);

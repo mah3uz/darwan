@@ -457,10 +457,10 @@ The SDDM greeter runs as its own user and can't read your home folder, so `apply
 
 | File                                               | Purpose                                     |
 |:---------------------------------------------------|:--------------------------------------------|
-| `/usr/share/sddm/themes/darwan`                    | points at the chosen theme                  |
+| `/usr/share/sddm/themes/darwan-<theme>`            | points at the chosen theme                  |
 | `/usr/share/darwan/themes/<theme>/theme.conf.user` | your options, in SDDM's own override format |
 | `/var/lib/darwan/sddm/media/`                      | copies of your background and font files    |
-| `/etc/sddm.conf.d/zz-darwan.conf`                  | `[Theme] Current=darwan`                    |
+| `/etc/sddm.conf.d/zz-darwan.conf`                  | `[Theme] Current=darwan-<theme>`            |
 | `/usr/share/darwan/themes/<theme>/font/<file>`     | fonts you import                            |
 
 > [!TIP]
