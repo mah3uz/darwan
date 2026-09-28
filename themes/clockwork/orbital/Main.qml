@@ -21,6 +21,8 @@ Rectangle {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
 
     Custom { id: kit }
+    // Screensaver: the dial keeps turning; the login panel and actions hide.
+    Ambient { id: saver; duration: kit.dur(700) }
     Background { id: userBg; anchors.fill: parent }
 
     // Config
@@ -193,7 +195,7 @@ Rectangle {
 
     // HUD
     Item {
-        id: hudContainer; anchors.fill: parent; opacity: root.uiOpacity * (root.boomOpacity > 0 ? 0 : 1)
+        id: hudContainer; anchors.fill: parent; opacity: root.uiOpacity * saver.wake * (root.boomOpacity > 0 ? 0 : 1)
         Row {
             anchors.right: parent.right; anchors.rightMargin: root.marginR; anchors.top: parent.top; anchors.topMargin: 50 * s; spacing: 25 * s
             CwAction { visible: !root.isQuickshell; label: (sessionHelper.currentItem ? sessionHelper.currentItem.sName : "Session"); onClicked: { if (typeof sessionModel !== "undefined") root.sessionIndex = (root.sessionIndex + 1) % sessionModel.rowCount() } }

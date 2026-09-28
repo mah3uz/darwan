@@ -23,7 +23,7 @@ pub fn command(paths: &Paths, shell: &str, wrapper: &[String]) -> Command {
 pub fn runtime_env(cmd: &mut Command, paths: &Paths) {
     cmd.current_dir(paths.runtime())
         .env("QML_XHR_ALLOW_FILE_READ", "1")
-        .env("QML2_IMPORT_PATH", paths.runtime().join("imports"));
+        .env("QML2_IMPORT_PATH", paths.qml_import_path());
 }
 
 pub fn theme_env(cmd: &mut Command, theme: &Theme, theme_dir: &Path, overlay: Option<&Path>) {

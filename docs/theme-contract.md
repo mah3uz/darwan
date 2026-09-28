@@ -116,6 +116,39 @@ Rules:
 - The kit files in `darwan/` must stay identical to `runtime/theme-kit` (a test checks); change the kit there and
   run `just theme-kit` to refresh every theme.
 
+## Screensaver
+
+A theme with `screensaver = true` under `[supports]` can be the screensaver (`darwan saver`). It then has two looks:
+**ambient**, only its background and ambient animation (rain, drifting particles, a turning dial), and **revealed**, the
+lock screen as usual. The saver starts ambient; the first key or click reveals the widgets, and a revealed lock settles
+back to ambient after 30 seconds without input while the password field is empty. Under SDDM there is no screensaver
+and themes stay revealed.
+
+Use the kit's `Ambient` (copied in by `just theme-kit`). Its `wake` is 1 while revealed and 0 in ambient, animated both
+ways; multiply the widgets' opacity by it and keep the theme's own intro:
+
+```qml
+Custom { id: kit }
+Ambient { id: saver; duration: kit.dur(700) }
+
+property real intro: 0                                   // the theme's intro animates this from 0 to 1
+readonly property real ui: intro * saver.wake            // what the widgets' opacity follows
+```
+
+`saver.active` (or the host's `darwan.ambient`) is the plain flag, for themes that change more than opacity.
+
+Rules:
+- **Hide widgets with opacity, and keep the password field focused.** The first printable key while ambient reveals the
+  widgets and is typed into the focused field, so typing the password straight away works. `darwan check` unlocks each
+  screensaver theme from ambient this way.
+- **The background and its ambient effects stay.** A big clock is the theme's choice (Orbital keeps its dial).
+- **No Timer under 100 ms that always runs** (`running: true`): the saver runs for hours, and such a timer runs
+  JavaScript on nearly every frame. Use a native animation (`NumberAnimation`, `FrameAnimation`) or a slower timer. The
+  lint checks this.
+- **Videos play through `MediaPlayer` and `VideoOutput`** as before. Under darwan's hosts they play through libmpv on the
+  GPU that renders, silent and looping; the user's `saver.quality` picks the tier: `full`, `eco` (a copy at up to 1080p
+  and 30 fps, made when the theme is picked) or `still` (the first frame). A hidden `VideoOutput` pauses.
+
 ## Rules the checks enforce
 
 `darwan check --all` fails a theme on any QML warning or error. `darwan check --all --no-fonts` hides `font/` and fails on any visible text whose `font.family` is empty.

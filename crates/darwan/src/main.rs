@@ -3,9 +3,11 @@ mod completion;
 mod doctor;
 mod font;
 mod lock;
+mod media_cmd;
 mod overlay;
 mod preview;
 mod qs;
+mod saver;
 mod sddm;
 mod session;
 mod settings_cmd;
@@ -47,7 +49,7 @@ enum Cmd {
         #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
         key: Option<String>,
     },
-    /// Change a setting: lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, or <theme-id>.<option> for a theme's options and customisations (background, accent, variant, motion_speed, …)
+    /// Change a setting: lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.quality, or <theme-id>.<option> for a theme's options and customisations (background, accent, variant, motion_speed, …)
     Set {
         #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
         key: String,
@@ -73,6 +75,13 @@ enum Cmd {
         #[arg(long)]
         for_sleep: bool,
     },
+    /// Start the screensaver: the lock theme's background, then the lock (for hypridle's on-timeout)
+    Saver,
+    /// Record a wake from sleep, so the saver doesn't return before any input (for hypridle's after_sleep_cmd)
+    Resumed,
+    /// Internal: make the eco copies of the lock theme's videos; started when the lock theme or background changes
+    #[command(name = "prepare-media", hide = true)]
+    PrepareMedia,
     /// Internal: keeps the lock alive; started by `darwan lock`
     #[command(name = "lock-supervisor", hide = true)]
     LockSupervisor,
@@ -200,6 +209,9 @@ fn main() -> ExitCode {
             unlock_after,
             for_sleep,
         } => lock::run(&paths, id.as_deref(), replace, unlock_after, for_sleep),
+        Cmd::Saver => saver::run(&paths),
+        Cmd::Resumed => saver::resumed(),
+        Cmd::PrepareMedia => media_cmd::run(&paths),
         Cmd::LockSupervisor => return supervise::run(),
         Cmd::Preview {
             id,

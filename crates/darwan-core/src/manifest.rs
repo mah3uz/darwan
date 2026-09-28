@@ -78,6 +78,9 @@ pub struct Supports {
     // Colours are generated unless the user picks their own.
     #[serde(default)]
     pub generate_by_default: bool,
+    // The theme hides its widgets on darwan.ambient, so it can be the screensaver.
+    #[serde(default)]
+    pub screensaver: bool,
 }
 
 // A colour beyond accent and text that a theme lets the user change; `material` names the generated role it follows.

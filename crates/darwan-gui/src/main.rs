@@ -19,9 +19,11 @@ fn main() {
     QGuiApplication::set_desktop_file_name(&QString::from("darwan"));
     let mut engine = QQmlApplicationEngine::new();
     if let Some(mut engine) = engine.as_mut() {
-        engine.as_mut().add_import_path(&QString::from(
-            paths.runtime().join("imports").display().to_string(),
-        ));
+        for dir in [paths.runtime().join("imports"), paths.qml_modules.clone()] {
+            engine
+                .as_mut()
+                .add_import_path(&QString::from(dir.display().to_string()));
+        }
         engine.load(&QUrl::from("qrc:/qt/qml/org/darwan/qml/Main.qml"));
     }
     if let Some(app) = app.as_mut() {

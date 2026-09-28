@@ -19,9 +19,12 @@ Rectangle {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
-    property real ui: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real ui: intro * saver.wake
 
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property color lamp: kit.color("accent", "#e6bb5c")
     readonly property color rainBlue: kit.color("colorRain", "#2f9eff")
     readonly property color textColor: kit.color("text", "white")
@@ -38,7 +41,7 @@ Rectangle {
     Timer { interval: 300; running: true; onTriggered: pwd.forceActiveFocus() }
 
     Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: kit.dur(2000); easing.type: kit.ease(Easing.OutSine) }
+    NumberAnimation { id: fadeAnim; target: root; property: "intro"; from: 0; to: 1; duration: kit.dur(2000); easing.type: kit.ease(Easing.OutSine) }
 
     Background { id: userBg; anchors.fill: parent }
     Loader { anchors.fill: parent; active: !userBg.active; source: "BackgroundVideo.qml" }

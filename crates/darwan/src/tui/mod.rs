@@ -172,7 +172,10 @@ impl App {
             }),
         };
         self.status = match result.and_then(|msg| settings_cmd::save(&self.config).map(|()| msg)) {
-            Ok(msg) => format!("saved: {msg}"),
+            Ok(msg) => {
+                settings_cmd::prepare_media(key, &self.config);
+                format!("saved: {msg}")
+            }
             Err(e) => e,
         };
     }

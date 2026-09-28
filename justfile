@@ -8,8 +8,10 @@ ver := `sed -n 's/^pkgver=//p' packaging/aur/darwan/PKGBUILD`
 default:
     @just --list --unsorted
 
-# Build every binary
+# Build every binary and the QML plugin
 build:
+    cmake -S plugin -B target/plugin -DCMAKE_BUILD_TYPE=Release -Wno-dev >/dev/null
+    cmake --build target/plugin --parallel
     cargo build --release --workspace
 
 # Rust, QML and theme-lint tests

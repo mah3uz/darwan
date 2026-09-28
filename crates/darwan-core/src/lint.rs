@@ -68,6 +68,26 @@ pub fn lint(theme: &Theme) -> Vec<String> {
         problems.push("supports.date_format but no QML reads config.dateFormat".into());
     }
 
+    if m.supports.screensaver {
+        // The vendored kit reads darwan.ambient itself, so only the theme's own QML counts.
+        let own = qml_text_except(&theme.dir, "darwan");
+        if !own.contains("Ambient {") && !own.contains("darwan.ambient") {
+            problems.push(
+                "supports.screensaver but the theme uses neither Ambient nor darwan.ambient".into(),
+            );
+        }
+        // A saver runs for hours: a short Timer that always runs is JavaScript on nearly every frame, which an
+        // animation isn't. One that runs only during an effect (a login windup) costs nothing while ambient.
+        for ms in always_running_timers(&qml)
+            .into_iter()
+            .filter(|ms| *ms < 100)
+        {
+            problems.push(format!(
+                "supports.screensaver but a Timer always runs every {ms} ms; use an animation or a slower timer"
+            ));
+        }
+    }
+
     let sup = &m.supports;
     // The kit's own files don't count as the theme using it.
     let own_qml = qml_text_except(&theme.dir, "darwan");
@@ -238,6 +258,40 @@ fn qml_text(dir: &std::path::Path) -> String {
     out
 }
 
+// The literal intervals of Timers declared with `running: true`.
+fn always_running_timers(qml: &str) -> Vec<u32> {
+    let mut out = Vec::new();
+    for (start, _) in qml.match_indices("Timer {") {
+        let body = &qml[start + "Timer {".len()..];
+        let mut depth = 1;
+        let end = body
+            .char_indices()
+            .find_map(|(i, c)| {
+                match c {
+                    '{' => depth += 1,
+                    '}' => depth -= 1,
+                    _ => {}
+                }
+                (depth == 0).then_some(i)
+            })
+            .unwrap_or(body.len());
+        let body = &body[..end];
+        if !body.contains("running: true") {
+            continue;
+        }
+        let interval = body.split_once("interval:").and_then(|(_, rest)| {
+            let digits: String = rest
+                .trim_start()
+                .chars()
+                .take_while(char::is_ascii_digit)
+                .collect();
+            digits.parse::<u32>().ok()
+        });
+        out.extend(interval);
+    }
+    out
+}
+
 fn metadata(text: &str) -> Vec<(String, String)> {
     let mut sectionless = String::from("[General]\n");
     for line in text.lines().filter(|l| !l.trim_start().starts_with('[')) {
@@ -356,6 +410,28 @@ mod tests {
         assert!(
             problems.iter().any(|p| p.contains("darwan/Custom.qml")),
             "colours need the kit: {problems:?}"
+        );
+    }
+
+    #[test]
+    fn a_screensaver_theme_must_hide_on_ambient_and_keep_timers_slow() {
+        let (root, cat) = theme_with("[supports]\nscreensaver = true\n", "[General]\n");
+        let dir = root.path().join("t");
+        assert_eq!(
+            lint(&cat.themes()[0]),
+            ["supports.screensaver but the theme uses neither Ambient nor darwan.ambient"]
+        );
+        std::fs::write(
+            dir.join("Main.qml"),
+            "Item { opacity: darwan.ambient ? 0 : 1\n Timer { interval: 16; running: true; repeat: true }\n Timer { interval: 16; running: root.windup }\n Timer { interval: 1000; running: true }\n Timer { interval: root.x; running: true } }",
+        )
+        .unwrap();
+        let (cat, _) = Catalog::load(root.path()).unwrap();
+        assert_eq!(
+            lint(&cat.themes()[0]),
+            [
+                "supports.screensaver but a Timer always runs every 16 ms; use an animation or a slower timer"
+            ]
         );
     }
 

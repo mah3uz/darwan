@@ -14,6 +14,10 @@ Item {
     property var sessionList: []
     property QtObject authBackend
     property int loadTimeout: 8000
+    // Screensaver: the theme shows only its background and ambient animation. Unset under SDDM, where themes stay revealed.
+    property bool ambient: false
+    // "full", "eco" or "still": what darwan's VideoOutput plays (docs/theme-contract.md, "Screensaver").
+    property string mediaTier: "full"
 
     readonly property bool themeReady: themeLoader.status === Loader.Ready
     readonly property bool usingFallback: (configReady && themePath === "") || themeLoader.status === Loader.Error || loadTimer.expired
@@ -30,6 +34,39 @@ Item {
 
     function unload() {
         unloading = true
+    }
+
+    function inTheme(f) {
+        const item = themeLoader.item
+        while (f && f !== item)
+            f = f.parent
+        return item !== null && f === item
+    }
+
+    // Themes that mark their own field `focus: true` keep it, as they do under SDDM. After the host moves to another
+    // window (saver to lock), the field the theme had focused gets it back.
+    function refocus() {
+        const item = themeLoader.item
+        if (!item || inTheme(themeLoader.Window.activeFocusItem))
+            return
+        if (lastFocus && inTheme(lastFocus))
+            lastFocus.forceActiveFocus()
+        else
+            item.forceActiveFocus()
+    }
+
+    property Item lastFocus: null
+    Connections {
+        target: themeLoader.Window.window
+        function onActiveFocusItemChanged() {
+            const f = themeLoader.Window.activeFocusItem
+            if (f && host.inTheme(f))
+                host.lastFocus = f
+        }
+    }
+
+    readonly property QtObject darwan: QtObject {
+        readonly property bool ambient: host.ambient
     }
 
     readonly property QtObject sddm: QtObject {
@@ -180,14 +217,7 @@ Item {
         focus: true
         active: host.configReady && !host.unloading && host.themePath !== ""
         source: active ? "file://" + host.themePath + "/Main.qml" : ""
-        // Themes that mark their own field `focus: true` keep it, as they do under SDDM.
-        onLoaded: Qt.callLater(() => {
-            let f = themeLoader.Window.activeFocusItem
-            while (f && f !== item)
-                f = f.parent
-            if (item && f !== item)
-                item.forceActiveFocus()
-        })
+        onLoaded: Qt.callLater(host.refocus)
         onStatusChanged: {
             if (status === Loader.Error)
                 console.error("darwan: failed to load " + source)

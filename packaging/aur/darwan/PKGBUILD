@@ -10,6 +10,7 @@ license=('GPL-3.0-only')
 depends=(
   'gcc-libs'
   'glibc'
+  'mpvqt'
   'polkit'
   'qt6-5compat'
   'qt6-base'
@@ -19,7 +20,7 @@ depends=(
   'quickshell'
   'ttf-jetbrains-mono-nerd'
 )
-makedepends=('cargo' 'librsvg' 'lld')
+makedepends=('cargo' 'cmake' 'librsvg' 'lld')
 optdepends=(
   'sddm: use the themes on the login screen'
   'libfaketime: darwan preview --at'
@@ -43,6 +44,8 @@ build() {
   # cxx-qt's headers use __FILE__; keep the build directory out of the binary.
   export CXXFLAGS+=" -ffile-prefix-map=$srcdir=/usr/src/debug/$pkgname"
   cargo build --frozen --release --workspace
+  cmake -S plugin -B target/plugin -DCMAKE_BUILD_TYPE=None -Wno-dev
+  cmake --build target/plugin
 }
 
 check() {
@@ -57,6 +60,8 @@ package() {
   cd "$pkgname-$pkgver"
   install -Dm755 target/release/darwan target/release/darwan-gui -t "$pkgdir/usr/bin"
   install -Dm755 target/release/darwan-helper -t "$pkgdir/usr/lib/darwan"
+  install -Dm755 target/plugin/qml/Darwan/libdarwanplugin.so -t "$pkgdir/usr/lib/darwan/qml/Darwan"
+  install -Dm644 target/plugin/qml/Darwan/{qmldir,darwanplugin.qmltypes} -t "$pkgdir/usr/lib/darwan/qml/Darwan"
   install -d "$pkgdir/usr/share/darwan"
   cp -r --no-preserve=ownership runtime themes "$pkgdir/usr/share/darwan/"
   install -Dm644 packaging/arch/org.darwan.policy -t "$pkgdir/usr/share/polkit-1/actions"

@@ -11,6 +11,7 @@ background = true
 colors = true
 fonts = ["text", "clock"]
 motion = true
+screensaver = true
 
 [[color]]
 key = "colorRain"

@@ -149,11 +149,17 @@ impl BackendRust {
     }
 }
 
+// Every save may have changed the lock theme or its background; `darwan prepare-media` has nothing to do otherwise.
 fn write(config: &UserConfig) -> Result<(), String> {
     let path = paths::config_file();
     config
         .save(&path)
-        .map_err(|e| format!("{}: {e}", path.display()))
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    let darwan = std::env::current_exe()
+        .map(|exe| exe.with_file_name("darwan"))
+        .unwrap_or_else(|_| "darwan".into());
+    darwan_core::media::spawn_prepare(&darwan);
+    Ok(())
 }
 
 fn json(v: serde_json::Value) -> QString {

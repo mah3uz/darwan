@@ -5,8 +5,11 @@ use std::path::Path;
 use std::process::{Command, ExitCode, Stdio};
 use std::time::{Duration, Instant};
 
+use darwan_core::config::UserConfig;
+use darwan_core::hardware;
 use darwan_core::host;
 use darwan_core::paths::{self, Paths};
+use darwan_core::saver::Quality;
 use rustix::fs::{FlockOperation, flock};
 use rustix::io::{FdFlags, fcntl_setfd};
 use rustix::process::{Pid, Signal, kill_process, kill_process_group};
@@ -16,6 +19,23 @@ use crate::style;
 use crate::{overlay, qs};
 
 pub const SUPERVISOR_ARG: &str = "lock-supervisor";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Start {
+    Lock,
+    Saver,
+    Sleep,
+}
+
+impl Start {
+    fn env(self) -> &'static str {
+        match self {
+            Start::Lock => "lock",
+            Start::Saver => "saver",
+            Start::Sleep => "sleep",
+        }
+    }
+}
 
 pub fn run(
     paths: &Paths,
@@ -29,7 +49,35 @@ pub fn run(
     }
     let wayland = WaylandSession::discover()?;
     let prepared = overlay::prepare(paths, id, "lock.conf")?;
+    let Some(pid_file) = acquire(&wayland, replace, true)? else {
+        return Ok(ExitCode::SUCCESS);
+    };
+    let mut env = Vec::new();
+    if let Some(secs) = unlock_after {
+        env.push(("DARWAN_UNLOCK_AFTER", secs.to_string()));
+        eprintln!("Test lock: it unlocks by itself after {secs} s.");
+    }
+    let start = if for_sleep { Start::Sleep } else { Start::Lock };
+    let pid = spawn(paths, &wayland, &prepared, pid_file, start, &env)?;
+    println!(
+        "{} {} with {} {}",
+        style::ok("Locked"),
+        wayland.display,
+        style::id(&prepared.theme.id),
+        style::dim(format!("(supervisor pid {pid}).")),
+    );
+    if std::env::var_os("WAYLAND_DISPLAY").is_none() {
+        println!("Switch back to your graphical session to unlock.");
+    }
+    Ok(ExitCode::SUCCESS)
+}
 
+// The single-instance lock file. None when a supervisor already runs: with `hand_off` it is asked to lock.
+pub fn acquire(
+    wayland: &WaylandSession,
+    replace: bool,
+    hand_off: bool,
+) -> Result<Option<File>, String> {
     let dir = wayland.runtime_dir.join("darwan");
     std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     let pid_path = dir.join("lock.pid");
@@ -41,19 +89,56 @@ pub fn run(
         .open(&pid_path)
         .map_err(|e| format!("{}: {e}", pid_path.display()))?;
 
-    if flock(&pid_file, FlockOperation::NonBlockingLockExclusive).is_err() {
-        let holder = read_pid(&mut pid_file);
-        if !replace {
+    if flock(&pid_file, FlockOperation::NonBlockingLockExclusive).is_ok() {
+        return Ok(Some(pid_file));
+    }
+    let holder = read_pid(&mut pid_file);
+    if replace {
+        take_over(&pid_file, holder)?;
+        return Ok(Some(pid_file));
+    }
+    match holder {
+        Some(pid) if is_supervisor(pid) && !hand_off => {
+            println!(
+                "{}",
+                style::dim(format!("A saver or lock is already running (pid {pid})."))
+            );
+        }
+        Some(pid) if is_supervisor(pid) => {
+            let raw = Pid::from_raw(pid).ok_or("invalid pid")?;
+            kill_process(raw, Signal::USR1)
+                .map_err(|e| format!("cannot reach the running supervisor (pid {pid}): {e}"))?;
+            println!(
+                "{} {}",
+                style::ok("Locked"),
+                style::dim(format!("(handed to the running supervisor, pid {pid}).")),
+            );
+        }
+        _ => {
             let who = holder.map(|p| format!(" (pid {p})")).unwrap_or_default();
             println!(
                 "Already locked{who}. {}",
                 style::dim("Use --replace to take over a hung lock.")
             );
-            return Ok(ExitCode::SUCCESS);
         }
-        take_over(&pid_file, holder)?;
     }
+    Ok(None)
+}
 
+pub fn is_supervisor(pid: i32) -> bool {
+    let cmdline = std::fs::read(format!("/proc/{pid}/cmdline")).unwrap_or_default();
+    locker_kind(&cmdline) == Some(Locker::Supervisor)
+}
+
+// Starts the supervisor, which holds the lock file from here on; returns its pid.
+pub fn spawn(
+    paths: &Paths,
+    wayland: &WaylandSession,
+    prepared: &overlay::Prepared,
+    mut pid_file: File,
+    start: Start,
+    extra_env: &[(&str, String)],
+) -> Result<u32, String> {
     if let Some(sig) = &wayland.hyprland {
         ensure_lock_restore(sig)?;
     }
@@ -71,14 +156,12 @@ pub fn run(
         Some(&prepared.overlay),
     );
     wayland.apply(&mut cmd);
-    if let Some(secs) = unlock_after {
-        cmd.env("DARWAN_UNLOCK_AFTER", secs.to_string());
-        eprintln!("Test lock: it unlocks by itself after {secs} s.");
+    for (k, v) in extra_env {
+        cmd.env(k, v);
     }
-    if for_sleep {
-        cmd.env("DARWAN_FOR_SLEEP", "1");
-    }
-    cmd.env("DARWAN_USER", host::user_name())
+    tune(&mut cmd);
+    cmd.env("DARWAN_START", start.env())
+        .env("DARWAN_USER", host::user_name())
         .env("DARWAN_SESSIONS", host::sessions_json())
         .stdin(Stdio::null())
         .stdout(log.try_clone().map_err(|e| e.to_string())?)
@@ -100,6 +183,10 @@ pub fn run(
 
     std::thread::sleep(Duration::from_millis(1500));
     if let Ok(Some(status)) = child.try_wait() {
+        // A saver that ended by itself this quickly was cancelled by the user or the outputs, which is fine.
+        if start == Start::Saver && status.success() {
+            return Ok(child.id());
+        }
         let log = std::fs::read_to_string(&log_path).unwrap_or_default();
         let tail: Vec<&str> = log.lines().rev().take(8).collect();
         return Err(format!(
@@ -108,17 +195,33 @@ pub fn run(
             tail.into_iter().rev().collect::<Vec<_>>().join("\n")
         ));
     }
-    println!(
-        "{} {} with {} {}",
-        style::ok("Locked"),
-        wayland.display,
-        style::id(&prepared.theme.id),
-        style::dim(format!("(supervisor pid {}).", child.id()))
-    );
-    if std::env::var_os("WAYLAND_DISPLAY").is_none() {
-        println!("Switch back to your graphical session to unlock.");
+    Ok(child.id())
+}
+
+// What the probe says this machine can afford (saver.quality), and Qt's shader cache so the first frames don't compile.
+fn tune(cmd: &mut Command) {
+    let quality = UserConfig::load(&paths::config_file())
+        .ok()
+        .and_then(|c| c.saver_quality().ok().flatten())
+        .unwrap_or(Quality::Auto);
+    let facts = hardware::probe();
+    let (tier, _) = hardware::tier(quality, &facts);
+    cmd.env("DARWAN_MEDIA_TIER", tier.as_str());
+    // Qt keeps NVIDIA on its single-threaded loop over an old resize bug; lock and saver surfaces never resize, and
+    // the threaded loop keeps rendering and video uploads off the thread that handles the waking input.
+    if facts
+        .gpu
+        .as_ref()
+        .is_some_and(|g| g.vendor == hardware::Vendor::Nvidia)
+    {
+        cmd.env("QSG_RENDER_LOOP", "threaded");
     }
-    Ok(ExitCode::SUCCESS)
+    let cache = paths::cache_dir();
+    if std::fs::create_dir_all(&cache).is_ok() {
+        let file = cache.join("pipeline-cache.bin");
+        cmd.env("QSG_RHI_PIPELINE_CACHE_SAVE", &file)
+            .env("QSG_RHI_PIPELINE_CACHE_LOAD", &file);
+    }
 }
 
 // Without this option a crashed locker leaves the session locked with no way back in.

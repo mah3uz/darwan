@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Window
 import QtTest
 import Quickshell
+import Darwan
 import "contract"
 
 ShellRoot {
@@ -11,6 +12,8 @@ ShellRoot {
     readonly property bool checkFonts: Quickshell.env("DARWAN_CHECK_FONTS") === "1"
     readonly property int settleMs: parseInt(Quickshell.env("DARWAN_SETTLE_MS")) || 3000
     readonly property bool checkLogin: Quickshell.env("DARWAN_CHECK_LOGIN") === "1"
+    // Screensaver themes also unlock from ambient, the first key revealing the widgets and landing in the field.
+    readonly property bool checkSaver: Quickshell.env("DARWAN_CHECK_SAVER") === "1"
 
     Window {
         id: win
@@ -35,6 +38,13 @@ ShellRoot {
                     root.done(0)
                 }
             }
+        }
+
+        // The saver's gate: while ambient, a printable key reveals and goes on to the focused field.
+        InputGate {
+            active: host.ambient
+            passText: true
+            onActivity: host.ambient = false
         }
 
         // Real key events, so each theme submits the way it does for a person.
@@ -64,10 +74,42 @@ ShellRoot {
     Timer {
         id: typeTimer
         interval: 1000
+        property var sequence: [Qt.Key_T, Qt.Key_E, Qt.Key_S, Qt.Key_T, Qt.Key_Return]
         onTriggered: {
-            for (const k of [Qt.Key_T, Qt.Key_E, Qt.Key_S, Qt.Key_T, Qt.Key_Return])
+            for (const k of sequence)
                 keys.keyClick(k)
             loginTimer.start()
+        }
+    }
+
+    function tryAmbientLogin() {
+        host.ambient = true
+        ambientTimer.start()
+    }
+
+    // Long enough for the widgets to finish hiding, so the key arrives the way it does in a sleeping saver.
+    Timer {
+        id: ambientTimer
+        interval: 2000
+        onTriggered: {
+            const type = () => {
+                keys.keyClick(Qt.Key_T)
+                if (host.ambient) {
+                    console.error("darwan: a key did not end ambient mode")
+                    root.done(5)
+                    return
+                }
+                typeTimer.sequence = [Qt.Key_E, Qt.Key_S, Qt.Key_T, Qt.Key_Return]
+                typeTimer.start()
+            }
+            if (root.shotPath === "") {
+                type()
+                return
+            }
+            win.contentItem.grabToImage(result => {
+                result.saveToFile(root.shotPath.replace(/\.png$/, "-ambient.png"))
+                type()
+            })
         }
     }
 
@@ -97,7 +139,7 @@ ShellRoot {
                 code = 3
             }
         }
-        const next = () => (code === 0 && checkLogin) ? tryLogin() : done(code)
+        const next = () => code !== 0 || !checkLogin ? done(code) : checkSaver ? tryAmbientLogin() : tryLogin()
         if (shotPath === "") {
             next()
             return

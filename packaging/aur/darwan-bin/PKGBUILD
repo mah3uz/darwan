@@ -11,6 +11,7 @@ license=('GPL-3.0-only')
 depends=(
   'gcc-libs'
   'glibc'
+  'mpvqt'
   'polkit'
   'qt6-5compat'
   'qt6-base'

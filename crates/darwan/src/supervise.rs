@@ -12,16 +12,18 @@ use crate::qs;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Outcome {
     Authenticated,
+    // The unlocked saver ended on input, or before it showed.
+    Dismissed,
     Failed,
 }
 
 impl Outcome {
-    // lock_shell.qml quits with 0 only after a successful authentication.
+    // lock_shell.qml quits with 0 only after a successful authentication, and with 4 when an unlocked saver ends.
     fn of(status: ExitStatus) -> Self {
-        if status.success() {
-            Self::Authenticated
-        } else {
-            Self::Failed
+        match status.code() {
+            Some(0) => Self::Authenticated,
+            Some(4) => Self::Dismissed,
+            _ => Self::Failed,
         }
     }
 }
@@ -41,9 +43,20 @@ const STABLE_RUN: Duration = Duration::from_secs(30);
 pub struct Policy {
     failures: u32,
     pub ever_secure: bool,
+    // Started as the screensaver rather than as a lock.
+    pub saver: bool,
+    // The saver locks by itself after saver.lock_after.
+    pub saver_locks: bool,
+    // `darwan lock` (or loginctl lock-session) asked a running saver to lock.
+    pub lock_requested: bool,
 }
 
 impl Policy {
+    // Whether the session is, or may by now be, locked: then nothing may end without authentication.
+    pub fn locking(&self) -> bool {
+        !self.saver || self.saver_locks || self.lock_requested
+    }
+
     pub fn after_exit(
         &mut self,
         outcome: Outcome,
@@ -51,8 +64,12 @@ impl Policy {
         session_open: bool,
         compositor_alive: bool,
     ) -> Decision {
-        if outcome == Outcome::Authenticated {
-            return Decision::Done;
+        match outcome {
+            Outcome::Authenticated => return Decision::Done,
+            // A lock asked for as the saver was leaving must still happen; a lock never ends by dismissal.
+            Outcome::Dismissed if self.saver && !self.lock_requested => return Decision::Done,
+            Outcome::Failed if !self.locking() => return Decision::Done,
+            _ => {}
         }
         if !session_open {
             return Decision::GiveUp("the login session has ended");
@@ -64,7 +81,7 @@ impl Policy {
             self.failures = 0;
         }
         self.failures += 1;
-        if !self.ever_secure && self.failures > TRIES_BEFORE_SECURE {
+        if !self.ever_secure && !self.saver && self.failures > TRIES_BEFORE_SECURE {
             return Decision::GiveUp("the lock never took hold");
         }
         Decision::Restart(backoff(self.failures))
@@ -150,11 +167,14 @@ enum Event {
     SleepStart(Sender<()>),
     SleepEnd,
     OutputOn,
+    OutputsOff,
+    LockRequest,
+    Activity,
 }
 
 #[derive(Clone, Copy, PartialEq)]
 enum Check {
-    // Right after start: only learns whether the lock took hold.
+    // Right after the lock starts: only learns whether the lock took hold.
     Startup(u8),
     // After outputs came on or wake: a failed second check restarts the locker.
     Wake(u8),
@@ -170,17 +190,31 @@ pub fn run() -> ExitCode {
     };
     let paths = Paths::detect();
     let (tx, rx) = mpsc::channel::<Event>();
+    signals::watch(tx.clone());
     logind::watch_sleep(tx.clone(), log);
     outputs::watch(tx.clone(), log);
 
-    let mut policy = Policy::default();
+    let saver = std::env::var("DARWAN_START").as_deref() == Ok("saver");
+    let lock_after = std::env::var("DARWAN_LOCK_AFTER")
+        .ok()
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(0);
+    if saver {
+        idle::watch(tx.clone(), log);
+    }
+    let mut policy = Policy {
+        saver,
+        saver_locks: lock_after >= 0,
+        ..Policy::default()
+    };
     let mut first = true;
     loop {
         let mut cmd = qs::command(&paths, "lock_shell.qml", &[]);
+        // A restart is always a lock, showing its widgets: the saver or the sleep lock were the first run's.
         if !first {
-            cmd.env_remove("DARWAN_FOR_SLEEP");
+            cmd.env("DARWAN_START", "lock");
         }
-        first = false;
+        signals::unblock_in_child(&mut cmd);
         let mut child = match cmd.stdin(Stdio::null()).spawn() {
             Ok(c) => c,
             Err(e) => {
@@ -198,22 +232,55 @@ pub fn run() -> ExitCode {
             }
         });
 
-        let mut check = Some((Instant::now() + Duration::from_secs(1), Check::Startup(0)));
+        // The saver locks on its own lock_after timer, so its lock is checked a moment after that.
+        let first_check = match (first && saver, lock_after) {
+            (false, _) => Some(Duration::from_secs(1)),
+            (true, ms) if ms >= 0 => Some(Duration::from_millis(ms as u64 + 3000)),
+            (true, _) => None,
+        };
+        first = false;
+        let mut check = first_check.map(|d| (Instant::now() + d, Check::Startup(0)));
         let status = loop {
             let wait = check.map_or(Duration::from_secs(3600), |(at, _)| {
                 at.saturating_duration_since(Instant::now())
             });
             match rx.recv_timeout(wait) {
                 Ok(Event::Exited(status)) => break status,
-                Ok(Event::OutputOn) => {
-                    ipc(pid, "resetFrames");
-                    check = Some((Instant::now() + Duration::from_secs(3), Check::Wake(0)));
+                Ok(Event::LockRequest) => {
+                    log("lock requested".into());
+                    policy.lock_requested = true;
+                    ipc(pid, "lock");
+                    check = Some((Instant::now() + Duration::from_secs(1), Check::Startup(0)));
+                }
+                Ok(Event::Activity) => {
+                    let answer = ipc(pid, "activity").unwrap_or_default();
+                    log(format!("activity while loading: {}", answer.trim()));
+                }
+                Ok(Event::OutputsOff) | Ok(Event::SleepStart(_)) if !policy.locking() => {
+                    // Nothing to protect: waking shows the desktop, never the saver.
+                    log("outputs off or sleep with an unlocked saver; ending it".into());
+                    if let Some(p) = Pid::from_raw(pid as i32) {
+                        let _ = kill_process(p, Signal::TERM);
+                    }
+                    policy.saver_locks = false;
+                }
+                Ok(Event::OutputsOff) => {
+                    log("outputs off: locking and unloading the theme".into());
+                    ipc(pid, "lock");
+                    ipc(pid, "unloadTheme");
+                    check = None;
                 }
                 Ok(Event::SleepStart(ack)) => {
+                    ipc(pid, "lock");
                     ipc(pid, "unloadTheme");
                     let _ = ack.send(());
                     check = None;
                 }
+                Ok(Event::OutputOn) if policy.locking() => {
+                    ipc(pid, "resetFrames");
+                    check = Some((Instant::now() + Duration::from_secs(3), Check::Wake(0)));
+                }
+                Ok(Event::OutputOn) => {}
                 Ok(Event::SleepEnd) => {
                     ipc(pid, "loadTheme");
                     ipc(pid, "resetFrames");
@@ -273,7 +340,10 @@ pub fn run() -> ExitCode {
             compositor_alive(),
         ) {
             Decision::Done => {
-                log("unlocked".into());
+                log(match outcome {
+                    Outcome::Authenticated => "unlocked".into(),
+                    _ => "the saver ended".into(),
+                });
                 return ExitCode::SUCCESS;
             }
             Decision::GiveUp(why) => {
@@ -282,6 +352,7 @@ pub fn run() -> ExitCode {
             }
             Decision::Restart(delay) => {
                 log(format!("restarting in {} ms", delay.as_millis()));
+                policy.saver = false;
                 std::thread::sleep(delay);
             }
         }
@@ -425,6 +496,7 @@ mod outputs {
         manager: Option<ZwlrOutputPowerManagerV1>,
         pending: Vec<wl_output::WlOutput>,
         on: HashMap<u32, bool>,
+        all_off: bool,
     }
 
     impl Dispatch<wl_registry::WlRegistry, ()> for State {
@@ -494,7 +566,8 @@ mod outputs {
         }
     }
 
-    // The first report for an output only records its state; later transitions to On are events.
+    // The first report for an output only records its state; later transitions to On are events, and so is the moment
+    // every output is off (a saver starting on dark outputs included).
     impl Dispatch<ZwlrOutputPowerV1, u32> for State {
         fn event(
             s: &mut Self,
@@ -510,6 +583,11 @@ mod outputs {
                 if now_on && was_on == Some(false) {
                     let _ = s.tx.send(Event::OutputOn);
                 }
+                let all_off = s.on.values().all(|on| !on);
+                if all_off && !s.all_off {
+                    let _ = s.tx.send(Event::OutputsOff);
+                }
+                s.all_off = all_off;
             }
         }
     }
@@ -528,6 +606,7 @@ mod outputs {
                 manager: None,
                 pending: Vec::new(),
                 on: HashMap::new(),
+                all_off: false,
             };
             if queue.roundtrip(&mut state).is_err() {
                 return;
@@ -539,6 +618,142 @@ mod outputs {
                 );
             }
             while queue.blocking_dispatch(&mut state).is_ok() {}
+        });
+    }
+}
+
+mod signals {
+    use std::os::unix::process::CommandExt;
+    use std::process::Command;
+    use std::sync::mpsc::Sender;
+
+    use super::Event;
+
+    fn usr1() -> libc::sigset_t {
+        unsafe {
+            let mut set: libc::sigset_t = std::mem::zeroed();
+            libc::sigemptyset(&mut set);
+            libc::sigaddset(&mut set, libc::SIGUSR1);
+            set
+        }
+    }
+
+    // `darwan lock` sends SIGUSR1 to hand a lock request to a running saver. Called before any other thread starts,
+    // so every thread inherits the block and only this one takes the signal.
+    pub fn watch(tx: Sender<Event>) {
+        let set = usr1();
+        unsafe {
+            libc::pthread_sigmask(libc::SIG_BLOCK, &set, std::ptr::null_mut());
+        }
+        std::thread::spawn(move || {
+            loop {
+                let mut sig = 0;
+                if unsafe { libc::sigwait(&set, &mut sig) } != 0 {
+                    return;
+                }
+                if tx.send(Event::LockRequest).is_err() {
+                    return;
+                }
+            }
+        });
+    }
+
+    // Children inherit the blocked mask; Quickshell must not.
+    pub fn unblock_in_child(cmd: &mut Command) {
+        unsafe {
+            cmd.pre_exec(|| {
+                let set = usr1();
+                libc::pthread_sigmask(libc::SIG_UNBLOCK, &set, std::ptr::null_mut());
+                Ok(())
+            });
+        }
+    }
+}
+
+// The first input after the saver started, seen by the compositor. The saver's surfaces take no input while its theme
+// loads, so this is how a user who comes straight back cancels it.
+mod idle {
+    use std::sync::mpsc::Sender;
+
+    use wayland_client::protocol::{wl_registry, wl_seat};
+    use wayland_client::{Connection, Dispatch, QueueHandle};
+    use wayland_protocols::ext::idle_notify::v1::client::{
+        ext_idle_notification_v1::{self, ExtIdleNotificationV1},
+        ext_idle_notifier_v1::ExtIdleNotifierV1,
+    };
+
+    use super::Event;
+
+    #[derive(Default)]
+    struct State {
+        notifier: Option<ExtIdleNotifierV1>,
+        seat: Option<wl_seat::WlSeat>,
+        resumed: bool,
+    }
+
+    impl Dispatch<wl_registry::WlRegistry, ()> for State {
+        fn event(
+            s: &mut Self,
+            reg: &wl_registry::WlRegistry,
+            ev: wl_registry::Event,
+            _: &(),
+            _: &Connection,
+            qh: &QueueHandle<Self>,
+        ) {
+            if let wl_registry::Event::Global {
+                name, interface, ..
+            } = ev
+            {
+                match interface.as_str() {
+                    "ext_idle_notifier_v1" => s.notifier = Some(reg.bind(name, 1, qh, ())),
+                    "wl_seat" if s.seat.is_none() => s.seat = Some(reg.bind(name, 1, qh, ())),
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    impl Dispatch<ExtIdleNotificationV1, ()> for State {
+        fn event(
+            s: &mut Self,
+            _: &ExtIdleNotificationV1,
+            ev: ext_idle_notification_v1::Event,
+            _: &(),
+            _: &Connection,
+            _: &QueueHandle<Self>,
+        ) {
+            if matches!(ev, ext_idle_notification_v1::Event::Resumed) {
+                s.resumed = true;
+            }
+        }
+    }
+
+    wayland_client::delegate_noop!(State: ignore ExtIdleNotifierV1);
+    wayland_client::delegate_noop!(State: ignore wl_seat::WlSeat);
+
+    pub fn watch(tx: Sender<Event>, log: impl Fn(String) + Send + 'static) {
+        std::thread::spawn(move || {
+            let Ok(conn) = Connection::connect_to_env() else {
+                return;
+            };
+            let mut queue = conn.new_event_queue();
+            let qh = queue.handle();
+            conn.display().get_registry(&qh, ());
+            let mut state = State::default();
+            if queue.roundtrip(&mut state).is_err() {
+                return;
+            }
+            let (Some(notifier), Some(seat)) = (&state.notifier, &state.seat) else {
+                return log("the compositor has no idle notifications; the saver can't be cancelled while it loads".into());
+            };
+            let notification = notifier.get_idle_notification(0, seat, &qh, ());
+            while !state.resumed {
+                if queue.blocking_dispatch(&mut state).is_err() {
+                    return;
+                }
+            }
+            notification.destroy();
+            let _ = tx.send(Event::Activity);
         });
     }
 }
@@ -555,6 +770,7 @@ mod tests {
     #[test]
     fn only_a_clean_exit_counts_as_an_authenticated_unlock() {
         assert_eq!(Outcome::of(exit_code(0)), Outcome::Authenticated);
+        assert_eq!(Outcome::of(exit_code(4)), Outcome::Dismissed);
         assert_eq!(Outcome::of(exit_code(3)), Outcome::Failed);
         assert_eq!(Outcome::of(exit_code(255)), Outcome::Failed);
     }
@@ -566,6 +782,61 @@ mod tests {
             p.after_exit(Outcome::Authenticated, Duration::ZERO, true, true),
             Decision::Done
         );
+    }
+
+    #[test]
+    fn a_saver_that_never_locks_ends_quietly_even_when_it_crashes() {
+        let mut p = Policy {
+            saver: true,
+            ..Policy::default()
+        };
+        assert!(!p.locking());
+        assert_eq!(
+            p.after_exit(Outcome::Dismissed, Duration::ZERO, true, true),
+            Decision::Done
+        );
+        assert_eq!(
+            p.after_exit(Outcome::Failed, Duration::ZERO, true, true),
+            Decision::Done,
+            "an unlocked saver protected nothing, so it isn't brought back"
+        );
+    }
+
+    #[test]
+    fn a_saver_that_may_have_locked_is_restarted_as_a_lock_after_a_crash() {
+        // It may have locked on its own timer just before dying; guessing "unlocked" would open the session.
+        let mut p = Policy {
+            saver: true,
+            saver_locks: true,
+            ..Policy::default()
+        };
+        assert!(p.locking());
+        assert!(matches!(
+            p.after_exit(Outcome::Failed, Duration::ZERO, true, true),
+            Decision::Restart(_)
+        ));
+    }
+
+    #[test]
+    fn a_lock_requested_while_the_saver_was_leaving_still_happens() {
+        let mut p = Policy {
+            saver: true,
+            lock_requested: true,
+            ..Policy::default()
+        };
+        assert!(matches!(
+            p.after_exit(Outcome::Dismissed, Duration::ZERO, true, true),
+            Decision::Restart(_)
+        ));
+    }
+
+    #[test]
+    fn a_lock_never_ends_by_dismissal() {
+        let mut p = Policy::default();
+        assert!(matches!(
+            p.after_exit(Outcome::Dismissed, Duration::ZERO, true, true),
+            Decision::Restart(_)
+        ));
     }
 
     #[test]

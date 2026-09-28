@@ -9,6 +9,7 @@ use darwan_core::catalog::{Catalog, Theme};
 use darwan_core::config::{Target, UserConfig};
 use darwan_core::form::{self, Field, FieldKind};
 use darwan_core::paths::{self, Paths};
+use darwan_core::saver::Quality;
 use darwan_core::settings::{DATE_PRESETS, Key};
 
 pub const VAR: &str = "DARWAN_COMPLETE";
@@ -114,6 +115,14 @@ fn keys_in(catalog: &Catalog) -> Vec<CompletionCandidate> {
         candidate("clock.format", "12h or 24h, for themes that support it"),
         candidate("clock.show_ampm", "Show AM/PM with the 12-hour clock"),
         candidate("date.format", "Date format, for themes that support it"),
+        candidate(
+            "saver.lock_after",
+            "Seconds from the screensaver to the lock, or never",
+        ),
+        candidate(
+            "saver.quality",
+            "Screensaver video quality: auto, full, eco or still",
+        ),
     ];
     // The same fields the GUI and `darwan show` list: the theme's own options and the customisations it supports.
     for t in catalog.themes() {
@@ -223,6 +232,15 @@ fn values_for(catalog: &Catalog, config: &UserConfig, key: &str) -> Vec<Completi
         Key::DateFormat => DATE_PRESETS
             .iter()
             .map(|p| candidate(p.format, p.label))
+            .collect(),
+        Key::SaverLockAfter => vec![
+            candidate("0", "lock as the saver appears"),
+            candidate("60", "a minute of grace"),
+            candidate("never", "the saver never locks"),
+        ],
+        Key::SaverQuality => Quality::ALL
+            .iter()
+            .map(|q| candidate(q.as_str(), q.describe()))
             .collect(),
         Key::Option { theme, .. } => {
             let Some(t) = catalog.get(&theme) else {

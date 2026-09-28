@@ -4,6 +4,7 @@ use std::path::Path;
 use toml_edit::{DocumentMut, Item, Table, Value};
 
 use crate::manifest::OptionKind;
+use crate::saver::{LockAfter, Quality};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
@@ -102,6 +103,23 @@ impl UserConfig {
                 .map(Some)
                 .ok_or_else(|| "clock.show_ampm must be true or false".into()),
         }
+    }
+
+    pub fn saver_lock_after(&self) -> Result<Option<LockAfter>, String> {
+        match self.item("saver", "lock_after") {
+            None => Ok(None),
+            Some(item) => match (item.as_integer(), item.as_str()) {
+                (Some(n), _) => u32::try_from(n)
+                    .map(|n| Some(LockAfter::Secs(n)))
+                    .map_err(|_| format!("saver.lock_after must be 0 or more seconds, got {n}")),
+                (_, Some(s)) => s.parse().map(Some),
+                _ => Err("saver.lock_after must be a number of seconds or \"never\"".into()),
+            },
+        }
+    }
+
+    pub fn saver_quality(&self) -> Result<Option<Quality>, String> {
+        self.string("saver", "quality")?.map(str::parse).transpose()
     }
 
     pub fn date_format(&self) -> Result<Option<&str>, String> {
@@ -296,6 +314,26 @@ mod tests {
         let mut cfg = UserConfig::parse("[themes.osu]\ngameMode = \"menu\"\n").unwrap();
         assert!(cfg.remove_theme_value("osu", "gameMode"));
         assert!(!cfg.to_string().contains("osu"), "{cfg}");
+    }
+
+    #[test]
+    fn saver_settings_read_numbers_and_never_and_reject_the_rest() {
+        let cfg = UserConfig::parse("[saver]\nlock_after = 60\nquality = \"eco\"\n").unwrap();
+        assert_eq!(cfg.saver_lock_after(), Ok(Some(LockAfter::Secs(60))));
+        assert_eq!(cfg.saver_quality(), Ok(Some(Quality::Eco)));
+        let never = UserConfig::parse("[saver]\nlock_after = \"never\"\n").unwrap();
+        assert_eq!(never.saver_lock_after(), Ok(Some(LockAfter::Never)));
+        for bad in [
+            "lock_after = -1",
+            "lock_after = true",
+            "quality = \"ultra\"",
+        ] {
+            let cfg = UserConfig::parse(&format!("[saver]\n{bad}\n")).unwrap();
+            assert!(
+                cfg.saver_lock_after().is_err() || cfg.saver_quality().is_err(),
+                "{bad}"
+            );
+        }
     }
 
     #[test]

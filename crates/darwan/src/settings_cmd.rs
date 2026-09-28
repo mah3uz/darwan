@@ -217,6 +217,7 @@ pub fn set(paths: &Paths, key: &str, value: &str) -> Result<ExitCode, String> {
     let key = Key::parse(key)?;
     settings::set(&mut config, &catalog, &key, value)?;
     save(&config)?;
+    prepare_media(&key, &config);
     println!("{} = {}", style::id(key.to_string()), style::value(value));
     Ok(ExitCode::SUCCESS)
 }
@@ -236,11 +237,19 @@ pub fn unset(paths: &Paths, key: &str) -> Result<ExitCode, String> {
     let key = Key::parse(key)?;
     if settings::unset(&mut config, &key) {
         save(&config)?;
+        prepare_media(&key, &config);
         println!("{} is back to its default", style::id(key.to_string()));
     } else {
         println!("{} was not set", style::id(key.to_string()));
     }
     Ok(ExitCode::SUCCESS)
+}
+
+pub fn prepare_media(key: &Key, config: &UserConfig) {
+    if darwan_core::media::affects(key, config) {
+        let exe = std::env::current_exe().unwrap_or_else(|_| "darwan".into());
+        darwan_core::media::spawn_prepare(&exe);
+    }
 }
 
 pub fn save(config: &UserConfig) -> Result<(), String> {
