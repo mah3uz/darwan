@@ -16,6 +16,7 @@ Rectangle {
     // One palette per variant, exactly as designed; generated Material colours replace it role by role.
     readonly property bool isDark: config.colorScheme === "dark"
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     QtObject {
         id: pal
         function pick(lightRole, darkRole, light, dark) {
@@ -54,6 +55,7 @@ Rectangle {
     Image {
         anchors.fill: parent
         source: root.isDark ? "bg-dark.png" : "bg.png"
+        sourceSize: Qt.size(Screen.width, Screen.height)
         fillMode: Image.PreserveAspectCrop
         visible: !userBg.active
     }
@@ -162,7 +164,7 @@ Rectangle {
         id: mainLayout
         anchors.centerIn: parent
         spacing: 96 * s
-        opacity: root.ui1
+        opacity: (root.ui1) * saver.wake
         scale: 0.96 + (0.04 * root.ui1)
         transform: Translate { y: (1 - root.ui1) * 30 * s }
 

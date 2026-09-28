@@ -7,6 +7,7 @@ import "darwan"
 
 Item {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -87,6 +88,7 @@ Item {
     }
 
     Item {
+        id: hud; opacity: saver.wake
         anchors.fill: parent
 
         // Clock

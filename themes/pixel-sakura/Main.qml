@@ -6,6 +6,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     id: root
 
@@ -13,7 +14,9 @@ Rectangle {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex: (typeof userModel !== "undefined" && userModel.lastIndex >= 0) ? userModel.lastIndex : 0
-    property real ui: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real ui: intro * saver.wake
     property bool sessionMenuOpen: false
 
     // Colors
@@ -86,7 +89,7 @@ Rectangle {
     NumberAnimation {
         id: entryAnim
         target: root
-        property: "ui"
+        property: "intro"
         from: 0
         to: 1
         duration: kit.dur(1600)

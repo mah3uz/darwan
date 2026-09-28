@@ -10,6 +10,7 @@ license = "Free for personal use (Arterfak Project)"
 url = "https://www.dafont.com/the-last-shuriken.font"
 
 [supports]
+screensaver = true
 clock_format = true
 date_format = true
 background = true

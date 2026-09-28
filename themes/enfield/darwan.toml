@@ -4,6 +4,7 @@ background = "video"
 background_file = "bg.mp4"
 
 [supports]
+screensaver = true
 clock_format = true
 date_format = true
 background = true

@@ -7,6 +7,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     // Wayland Cursor Fix
     MouseArea {
         anchors.fill: parent
@@ -22,7 +23,9 @@ Rectangle {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
 
     property real bootProgress: 0
-    property real uiOpacity: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real uiOpacity: intro * saver.wake
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property string activeUser: userModel.lastUser
 
@@ -229,7 +232,7 @@ Rectangle {
 
         SequentialAnimation {
             id: startupAnim; PauseAnimation { duration: kit.dur(300) }
-            ParallelAnimation { NumberAnimation { target: root; property: "uiOpacity"; from: 0; to: 1; duration: kit.dur(800); easing.type: kit.ease(Easing.OutQuad) } NumberAnimation { target: layoutCol; property: "scale"; from: 0.95; to: 1.0; duration: kit.dur(800); easing.type: kit.ease(Easing.OutBack) } }
+            ParallelAnimation { NumberAnimation { target: root; property: "intro"; from: 0; to: 1; duration: kit.dur(800); easing.type: kit.ease(Easing.OutQuad) } NumberAnimation { target: layoutCol; property: "scale"; from: 0.95; to: 1.0; duration: kit.dur(800); easing.type: kit.ease(Easing.OutBack) } }
         }
 
         Column {

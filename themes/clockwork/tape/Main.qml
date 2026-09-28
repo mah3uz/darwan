@@ -7,6 +7,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     // Wayland Cursor Fix
     MouseArea {
         anchors.fill: parent
@@ -37,7 +38,8 @@ Rectangle {
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex:    (typeof userModel   !== "undefined" && userModel.lastIndex   >= 0) ? userModel.lastIndex   : 0
     property bool userMenuOpen: false
-    property real uiOpacity: 0
+    // The scene's intro; the screensaver hides only the HUD (Ambient), the reels keep turning.
+    property real intro: 0
     readonly property real marginR: 80 * s
 
     // Time Logic
@@ -77,7 +79,7 @@ Rectangle {
     }
 
     Component.onCompleted: { syncClock(); fadeIn.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeIn; target: root; property: "uiOpacity"; to: 1; duration: kit.dur(400); easing.type: kit.ease(Easing.OutCubic) }
+    NumberAnimation { id: fadeIn; target: root; property: "intro"; to: 1; duration: kit.dur(400); easing.type: kit.ease(Easing.OutCubic) }
 
     // Font Loading
     FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
@@ -99,12 +101,12 @@ Rectangle {
     readonly property real h_f: (curM === 59 && curS === 59 && s_f > 0.8) ? (function(){ var p = (s_f - 0.8) * 5.0; return p * p * (3 - 2 * p) })() : 0
     readonly property real fracHour: (((curH % 12) + h_f) / 12.0)
 
-    Background { id: userBg; anchors.fill: parent; opacity: root.uiOpacity }
+    Background { id: userBg; anchors.fill: parent; opacity: root.intro }
 
     // Scene
     Item {
         id: sceneRoot
-        anchors.fill: parent; opacity: root.uiOpacity
+        anchors.fill: parent; opacity: root.intro
 
         // Film Strips
         component AmbientStrip: Item {
@@ -213,7 +215,7 @@ Rectangle {
         }
 
         Item {
-            id: hudContainer; anchors.fill: parent
+            id: hudContainer; anchors.fill: parent; opacity: saver.wake
             // HUD Bar
             Row {
                 anchors.right: parent.right; anchors.rightMargin: root.marginR; anchors.top: parent.top; anchors.topMargin: 50 * s; spacing: 25 * s

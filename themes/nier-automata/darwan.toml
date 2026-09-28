@@ -9,6 +9,7 @@ license = "Commercial (Fontworks)"
 url = "https://fonts.adobe.com/fonts/fot-rodin-pron"
 
 [supports]
+screensaver = true
 clock_format = true
 date_format = true
 colors = true

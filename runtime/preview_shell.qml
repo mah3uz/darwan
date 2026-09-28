@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import Quickshell
+import Darwan
 import "contract"
 
 ShellRoot {
@@ -8,6 +9,8 @@ ShellRoot {
 
     readonly property bool usePam: Quickshell.env("DARWAN_AUTH") === "pam"
     readonly property string shotPath: Quickshell.env("DARWAN_SHOT") || ""
+    // The screensaver's look: ambient until input, back to ambient after 30 s idle with an empty field.
+    readonly property bool saver: Quickshell.env("DARWAN_PREVIEW_SAVER") === "1"
 
     Window {
         id: win
@@ -40,6 +43,7 @@ ShellRoot {
             machineName: Quickshell.env("DARWAN_HOSTNAME") || ""
             sessionList: JSON.parse(Quickshell.env("DARWAN_SESSIONS") || "[]")
             authBackend: root.usePam ? pamLoader.item : mock
+            ambient: root.saver
             onUnlocked: {
                 console.log("darwan: unlocked")
                 unload()
@@ -48,6 +52,16 @@ ShellRoot {
             onPowerOffRequested: console.log("darwan: power off requested (ignored in preview)")
             onRebootRequested: console.log("darwan: reboot requested (ignored in preview)")
             onSuspendRequested: console.log("darwan: suspend requested (ignored in preview)")
+        }
+
+        InputGate {
+            active: host.ambient
+            passText: true
+            onActivity: {
+                host.ambient = false
+                if (root.saver)
+                    idle.restart()
+            }
         }
 
         onClosing: {
@@ -66,6 +80,19 @@ ShellRoot {
             host.unload()
             Qt.callLater(() => Qt.quit())
         }, Qt.size(1280, 720))
+    }
+
+    Timer {
+        id: idle
+        interval: 30000
+        running: root.saver && !host.ambient
+        onTriggered: {
+            const f = win.activeFocusItem
+            if (f && typeof f.text === "string" && f.text.length > 0)
+                restart()
+            else
+                host.ambient = true
+        }
     }
 
     MockAuth {

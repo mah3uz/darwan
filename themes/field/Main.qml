@@ -7,6 +7,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -26,7 +27,9 @@ Rectangle {
 
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex:    (typeof userModel    !== "undefined" && userModel.lastIndex    >= 0) ? userModel.lastIndex    : 0
-    property real ui: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real ui: intro * saver.wake
 
     FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
     FontLoader      { id: mainFont;   source: fontFolder.count > 0 ? "font/" + fontFolder.get(0, "fileName") : "" }
@@ -38,17 +41,17 @@ Rectangle {
 
     Timer { interval: 300; running: true; onTriggered: pwd.forceActiveFocus() }
     Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: kit.dur(1400); easing.type: kit.ease(Easing.OutCubic) }
+    NumberAnimation { id: fadeAnim; target: root; property: "intro"; from: 0; to: 1; duration: kit.dur(1400); easing.type: kit.ease(Easing.OutCubic) }
 
     // Background
     Image {
         anchors.fill: parent; source: "bg.png"; visible: !userBg.active
-        fillMode: Image.PreserveAspectCrop; asynchronous: true; opacity: root.ui
+        fillMode: Image.PreserveAspectCrop; asynchronous: true; opacity: root.intro
     }
-    Background { id: userBg; anchors.fill: parent; opacity: root.ui }
+    Background { id: userBg; anchors.fill: parent; opacity: root.intro }
     Rectangle {
-        anchors.fill: parent; visible: root.ui < 1.0
-        opacity: 1.0 - root.ui; color: "#3a6370"; z: 100
+        anchors.fill: parent; visible: root.intro < 1.0
+        opacity: 1.0 - root.intro; color: "#3a6370"; z: 100
     }
 
     // Clock

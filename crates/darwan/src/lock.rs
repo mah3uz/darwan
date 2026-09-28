@@ -160,6 +160,9 @@ pub fn spawn(
         cmd.env(k, v);
     }
     tune(&mut cmd);
+    if let Some(output) = wayland.hyprland.as_deref().and_then(focused_output) {
+        cmd.env("DARWAN_PRIMARY_OUTPUT", output);
+    }
     cmd.env("DARWAN_START", start.env())
         .env("DARWAN_USER", host::user_name())
         .env("DARWAN_SESSIONS", host::sessions_json())
@@ -207,6 +210,13 @@ fn tune(cmd: &mut Command) {
     let facts = hardware::probe();
     let (tier, _) = hardware::tier(quality, &facts);
     cmd.env("DARWAN_MEDIA_TIER", tier.as_str());
+    // Every output decodes its own copy, so only the one the user looks at plays video unless they asked for full.
+    let secondary = if quality == Quality::Full {
+        tier
+    } else {
+        hardware::Tier::Still
+    };
+    cmd.env("DARWAN_SECONDARY_TIER", secondary.as_str());
     // Qt keeps NVIDIA on its single-threaded loop over an old resize bug; lock and saver surfaces never resize, and
     // the threaded loop keeps rendering and video uploads off the thread that handles the waking input.
     if facts
@@ -222,6 +232,20 @@ fn tune(cmd: &mut Command) {
         cmd.env("QSG_RHI_PIPELINE_CACHE_SAVE", &file)
             .env("QSG_RHI_PIPELINE_CACHE_LOAD", &file);
     }
+}
+
+fn focused_output(signature: &str) -> Option<String> {
+    let out = Command::new("hyprctl")
+        .args(["--instance", signature, "-j", "monitors"])
+        .output()
+        .ok()?;
+    let monitors: serde_json::Value = serde_json::from_slice(&out.stdout).ok()?;
+    monitors
+        .as_array()?
+        .iter()
+        .find(|m| m.get("focused").and_then(serde_json::Value::as_bool) == Some(true))
+        .and_then(|m| m.get("name")?.as_str())
+        .map(str::to_string)
 }
 
 // Without this option a crashed locker leaves the session locked with no way back in.

@@ -8,6 +8,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     id: root
     readonly property real s: (Screen.height / 768) * 0.75
@@ -42,7 +43,9 @@ Rectangle {
     }
 
     // State
-    property real uiOpacity: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real uiOpacity: intro * saver.wake
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex: (typeof userModel !== "undefined" && userModel.lastIndex >= 0) ? userModel.lastIndex : 0
     property string activeUser: ""
@@ -167,7 +170,7 @@ Rectangle {
         id: mainUI
         anchors.fill: parent
         opacity: root.uiOpacity
-        NumberAnimation { running: true; target: root; property: "uiOpacity"; from: 0; to: 1; duration: kit.dur(1200); easing.type: kit.ease(Easing.OutCubic) }
+        NumberAnimation { running: true; target: root; property: "intro"; from: 0; to: 1; duration: kit.dur(1200); easing.type: kit.ease(Easing.OutCubic) }
 
         // Username
         Row {
@@ -342,7 +345,8 @@ Rectangle {
                             cursorVisible: false; cursorDelegate: Item { width: 0; height: 0 }
                             selectionColor: root.gGold
                             property bool wasClicked: false
-                            onTextEdited: errText.text = ""
+                            // Typing on the start screen (the screensaver's first key) opens the form, so Return then logs in.
+                            onTextEdited: { errText.text = ""; if (text.length > 0) root.loginFormVisible = true }
                             
                             Text {
                                 text: "ENTER PASSWORD"

@@ -7,6 +7,7 @@ import "darwan"
 
 Item {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -34,7 +35,9 @@ Item {
     property int  sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property bool loginError:   false
     property bool userMenuOpen: false
-    property bool isLoaded:     false
+    // The widgets show once loaded, and hide again while the screensaver is ambient (Ambient).
+    property bool loaded: false
+    readonly property bool isLoaded: loaded && !saver.active
     property string displayUserName: ""
 
     // Fonts
@@ -111,7 +114,7 @@ Item {
         running: true
         onTriggered: {
             passInput.forceActiveFocus()
-            root.isLoaded = true
+            root.loaded = true
         }
     }
 
@@ -142,10 +145,11 @@ Item {
     }
     Background { id: userBg; anchors.fill: parent; z: -1000 }
 
-    // Overlay
+    // Overlay: shades the side the widgets sit on, so it hides with them
     Rectangle {
         anchors.fill: parent
         z: -800
+        opacity: saver.wake
         gradient: Gradient {
             orientation: Gradient.Horizontal
             GradientStop { position: 0; color: "#cc0a0a09" }

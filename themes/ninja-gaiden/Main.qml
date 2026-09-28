@@ -6,6 +6,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -131,6 +132,7 @@ Rectangle {
 
     // Header
     Item {
+        id: header; opacity: saver.wake
         anchors.top: parent.top;    anchors.topMargin:   50 * s
         anchors.right: parent.right; anchors.rightMargin: 50 * s
         width: 320 * s
@@ -227,6 +229,7 @@ Rectangle {
 
     // Interface
     Item {
+        id: hud; opacity: saver.wake
         anchors.bottom: parent.bottom; anchors.bottomMargin: 40 * s
         anchors.right:  parent.right;  anchors.rightMargin:  50 * s
         width: 240 * s
@@ -309,7 +312,7 @@ Rectangle {
 
     // Modal
     Item {
-        id: mainMenuContainer
+        id: mainMenuContainer; opacity: saver.wake
         width: 600 * s
         height: 5 * 32 * s
         anchors.right:        parent.right

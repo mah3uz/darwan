@@ -9,6 +9,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -229,13 +230,15 @@ Rectangle {
     Timer { interval: 300; running: true; onTriggered: passField.forceActiveFocus() }
 
     // Fade In
-    property real uiOpacity: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real uiOpacity: intro * saver.wake
     Component.onCompleted: {
         fadeIn.start()
         keyboard.numLock = true
     }
     NumberAnimation {
-        id: fadeIn; target: root; property: "uiOpacity"
+        id: fadeIn; target: root; property: "intro"
         from: 0; to: 1; duration: kit.dur(300); easing.type: kit.ease(Easing.OutCubic)
     }
 
@@ -244,6 +247,7 @@ Rectangle {
         id: bgImage
         anchors.fill: parent
         source: root.bgFiles[root.bgIndex]
+        sourceSize: Qt.size(Screen.width, Screen.height)
         visible: !userBg.active
         fillMode: Image.PreserveAspectCrop
         asynchronous: true

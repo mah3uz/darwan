@@ -9,6 +9,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     id: root
     readonly property real s: Screen.height / 768
     width: Screen.width
@@ -41,7 +42,9 @@ Rectangle {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex: (typeof userModel !== "undefined" && userModel.lastIndex >= 0) ? userModel.lastIndex : 0
-    property real uiOpacity: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real uiOpacity: intro * saver.wake
     readonly property real marginR: 80 * s
 
     // Time Engine
@@ -103,7 +106,7 @@ Rectangle {
     // Logic
     Timer { interval: 300; running: true; onTriggered: passInput.forceActiveFocus() }
     Component.onCompleted: { syncClock(); fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "uiOpacity"; from: 0; to: 1; duration: kit.dur(1200); easing.type: kit.ease(Easing.OutCubic) }
+    NumberAnimation { id: fadeAnim; target: root; property: "intro"; from: 0; to: 1; duration: kit.dur(1200); easing.type: kit.ease(Easing.OutCubic) }
 
     // Background Image
     Image {
@@ -111,26 +114,26 @@ Rectangle {
         source: "bg.png"
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
-        opacity: root.uiOpacity
+        opacity: root.intro
         visible: !root.isDark && !userBg.active
     }
     // The light background is only a gradient, so the dark one is drawn: aubergine into midnight.
     Rectangle {
         anchors.fill: parent
-        opacity: root.uiOpacity
+        opacity: root.intro
         visible: root.isDark && !userBg.active
         gradient: Gradient {
             GradientStop { position: 0.0; color: "#2a1f3d" }
             GradientStop { position: 1.0; color: "#1d1530" }
         }
     }
-    Background { id: userBg; anchors.fill: parent; opacity: root.uiOpacity }
+    Background { id: userBg; anchors.fill: parent; opacity: root.intro }
 
     // Layout Container
     Item {
         id: blastContainer
         anchors.fill: parent
-        opacity: root.uiOpacity
+        opacity: root.intro
 
         // Clock Section
         Item {

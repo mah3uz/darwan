@@ -4,6 +4,7 @@ background = "image"
 background_file = "bg.png"
 
 [supports]
+screensaver = true
 background = true
 colors = true
 fonts = ["text"]

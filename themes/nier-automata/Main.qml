@@ -7,6 +7,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -145,9 +146,10 @@ Rectangle {
 
     // Left decorative technical bar
     Rectangle {
+        id: leftRule
         anchors.left: parent.left; anchors.leftMargin: 20 * s
         anchors.top: topBar.bottom; anchors.bottom: botBar.top
-        width: 1; color: root.nierBorder; opacity: 0.3
+        width: 1; color: root.nierBorder; opacity: (0.3) * saver.wake
     }
 
     // ── Animated floating data particles ─────────────────────────────────────
@@ -214,7 +216,7 @@ Rectangle {
 
     // ── TOP HEADER BAR ───────────────────────────────────────────────────────
     Rectangle {
-        id: topBar
+        id: topBar; opacity: saver.wake
         width: parent.width; height: 40 * s
         color: root.nierDarker
 
@@ -300,7 +302,7 @@ Rectangle {
 
     // ── BOTTOM STATUS BAR ────────────────────────────────────────────────────
     Rectangle {
-        id: botBar
+        id: botBar; opacity: saver.wake
         width: parent.width; height: 36 * s
         anchors.bottom: parent.bottom
         color: root.nierDarker
@@ -387,7 +389,7 @@ Rectangle {
         anchors.bottom: botBar.top
         anchors.left:   parent.left
         anchors.right:  parent.right
-        opacity: root.uiOpacity
+        opacity: (root.uiOpacity) * saver.wake
 
         SequentialAnimation { running: true;
             PauseAnimation  { duration: kit.dur(400) }
@@ -929,9 +931,10 @@ Rectangle {
                 radius: width/2; color: "transparent"
                 border.color: root.nierBorder; border.width: 1; opacity: 0.15
                 
-                Timer {
-                    interval: 50; running: true; repeat: true
-                    onTriggered: parent.rotation += 0.2
+                // 4° a second as a native animation, not a script every 50 ms; still while the HUD is hidden.
+                RotationAnimation on rotation {
+                    from: 0; to: 360; duration: 90000; loops: Animation.Infinite
+                    running: !saver.active && !kit.reduceMotion
                 }
             }
             
@@ -952,9 +955,10 @@ Rectangle {
                     ctx.stroke()
                 }
 
-                Timer {
-                    interval: 50; running: true; repeat: true
-                    onTriggered: parent.rotation -= 0.4
+                RotationAnimation on rotation {
+                    from: 0; to: -360; duration: 45000; loops: Animation.Infinite
+                    direction: RotationAnimation.Counterclockwise
+                    running: !saver.active && !kit.reduceMotion
                 }
             }
 
@@ -1018,7 +1022,7 @@ Rectangle {
                 }
             }
 
-            // YoRHa emblem — pulsing compass circle
+            // YoRHa emblem — pulsing compass circle; a Canvas repaints on the CPU, so it rests while the HUD is hidden
             Canvas {
                 id: emblem
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -1028,7 +1032,7 @@ Rectangle {
                 property real pulse: 0
                 SequentialAnimation on pulse {
                     loops: Animation.Infinite
-                    running: !kit.reduceMotion
+                    running: !kit.reduceMotion && !saver.active
                     NumberAnimation { from: 0; to: 1; duration: kit.dur(2400); easing.type: kit.ease(Easing.InOutSine) }
                     NumberAnimation { from: 1; to: 0; duration: kit.dur(2400); easing.type: kit.ease(Easing.InOutSine) }
                 }
@@ -1038,7 +1042,7 @@ Rectangle {
                 property real rot: 0
                 SequentialAnimation on rot {
                     loops: Animation.Infinite
-                    running: !kit.reduceMotion
+                    running: !kit.reduceMotion && !saver.active
                     NumberAnimation { from: 0; to: 360; duration: 40000; easing.type: Easing.Linear }
                 }
                 transform: Rotation {

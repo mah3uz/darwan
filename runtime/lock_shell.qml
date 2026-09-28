@@ -21,6 +21,10 @@ ShellRoot {
         return isNaN(v) ? 0 : v
     }
     readonly property string mediaTier: Quickshell.env("DARWAN_MEDIA_TIER") || "full"
+    // The other outputs show a still unless the user asked for full video everywhere; without a known primary, the
+    // first screen plays.
+    readonly property string secondaryTier: Quickshell.env("DARWAN_SECONDARY_TIER") || mediaTier
+    readonly property string primaryOutput: Quickshell.env("DARWAN_PRIMARY_OUTPUT") || (Quickshell.screens.length > 0 ? Quickshell.screens[0].name : "")
 
     // Only a successful authentication may end the lock; anything else locks again.
     property bool authenticated: false
@@ -299,7 +303,7 @@ ShellRoot {
                 sessionList: root.sessions
                 authBackend: PamAuth {}
                 ambient: root.ambient && !root.warming
-                mediaTier: root.mediaTier
+                mediaTier: slotContent.screenName === root.primaryOutput ? root.mediaTier : root.secondaryTier
                 // Unload before quitting: a playing video crashes Qt's FFmpeg backend on exit.
                 onUnlocked: {
                     unload()

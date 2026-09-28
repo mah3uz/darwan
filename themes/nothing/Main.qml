@@ -7,6 +7,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property bool clock12: config.clockFormat === "12h"
     function clockHour(d) { return clock12 ? String(d.getHours() % 12 || 12).padStart(2, "0") : Qt.formatTime(d, "HH") }
     function withAmPm(d, text) { return clock12 && config.clockShowAmPm === "true" ? text + " · " + (d.getHours() < 12 ? "AM" : "PM") : text }
@@ -128,6 +129,7 @@ Rectangle {
 
     // Logo
     Text {
+        id: logo
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.margins: 40 * s
@@ -135,7 +137,7 @@ Rectangle {
         font.family: pfDotFamily
         font.pixelSize: 24 * s
         color: root.isDark ? "#e8e8e8" : "#111111"
-        opacity: root.ui1
+        opacity: (root.ui1) * saver.wake
         transform: Translate { y: (1 - root.ui1) * -20 * s }
     }
 
@@ -143,9 +145,11 @@ Rectangle {
     Row {
         id: widgetGrid
         anchors.centerIn: parent
+        // In the screensaver the clock card slides to the centre as the others fade.
+        anchors.horizontalCenterOffset: (width - 280 * s) / 2 * (1 - saver.wake)
         spacing: 24 * s
 
-        // Clock
+        // Clock: stays in the screensaver
         Rectangle {
             width: 280 * s
             height: 280 * s
@@ -235,7 +239,7 @@ Rectangle {
             color: root.cardColor
             border.width: root.isDark ? 1 : 0
             border.color: "#262626"
-            opacity: root.ui2
+            opacity: (root.ui2) * saver.wake
             scale: 0.95 + (0.05 * root.ui2)
             transform: [
                 Translate { id: shakeTranslate },
@@ -436,13 +440,14 @@ Rectangle {
 
         // Actions
         Rectangle {
+            id: actionsWidget
             width: 280 * s
             height: 280 * s
             radius: 48 * s
             color: root.cardColor
             border.width: root.isDark ? 1 : 0
             border.color: "#262626"
-            opacity: root.ui3
+            opacity: (root.ui3) * saver.wake
             scale: 0.95 + (0.05 * root.ui3)
             transform: Translate { y: (1 - root.ui3) * 40 * s }
 

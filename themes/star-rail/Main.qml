@@ -8,6 +8,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -39,7 +40,9 @@ Rectangle {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
 
     // State
-    property real uiOpacity: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real uiOpacity: intro * saver.wake
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex: (typeof userModel !== "undefined" && userModel.lastIndex >= 0) ? userModel.lastIndex : 0
     property bool sessionPopupOpen: false
@@ -134,7 +137,7 @@ Rectangle {
     // Interface
     Item {
         id: mainUI; anchors.fill: parent; opacity: root.uiOpacity
-        NumberAnimation { running: true; target: root; property: "uiOpacity"; from: 0; to: 1; duration: kit.dur(1600); easing.type: kit.ease(Easing.OutCubic) }
+        NumberAnimation { running: true; target: root; property: "intro"; from: 0; to: 1; duration: kit.dur(1600); easing.type: kit.ease(Easing.OutCubic) }
 
         Item {
             id: userProfile

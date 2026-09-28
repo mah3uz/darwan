@@ -4,6 +4,7 @@ background = "image"
 background_file = "background.png"
 
 [supports]
+screensaver = true
 clock_format = true
 date_format = true
 background = true

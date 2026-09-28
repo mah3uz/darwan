@@ -101,6 +101,9 @@ enum Cmd {
         /// Save a 1280x720 PNG of the theme once it has settled, then close
         #[arg(long, value_name = "FILE")]
         shot: Option<PathBuf>,
+        /// Show the screensaver: ambient until a key or click, back to ambient after 30 s idle
+        #[arg(long)]
+        saver: bool,
     },
     /// Set up the SDDM login screen
     Sddm {
@@ -219,6 +222,7 @@ fn main() -> ExitCode {
             pam,
             at,
             shot,
+            saver,
         } => preview::run(
             &paths,
             preview::Options {
@@ -227,6 +231,7 @@ fn main() -> ExitCode {
                 pam,
                 at,
                 shot,
+                saver,
             },
         ),
         Cmd::Sddm { command } => match command {

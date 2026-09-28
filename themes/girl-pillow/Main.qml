@@ -8,6 +8,7 @@ import "darwan"
 // Theme
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -30,7 +31,9 @@ Rectangle {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex: (typeof userModel !== "undefined" && userModel.lastIndex >= 0) ? userModel.lastIndex : 0
-    property real ui: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real ui: intro * saver.wake
 
     // Assets
     FolderListModel { showDirs: false; id: fontFolder; folder: Qt.resolvedUrl("font"); nameFilters: ["*.ttf", "*.otf"] }
@@ -46,23 +49,24 @@ Rectangle {
     // Logic
     Timer { interval: 300; running: true; onTriggered: pwd.forceActiveFocus() }
     Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: kit.dur(1500); easing.type: kit.ease(Easing.OutCubic) }
+    NumberAnimation { id: fadeAnim; target: root; property: "intro"; from: 0; to: 1; duration: kit.dur(1500); easing.type: kit.ease(Easing.OutCubic) }
 
     // Background
     Image {
         anchors.fill: parent
         source: "bg.png"
+        sourceSize: Qt.size(Screen.width, Screen.height)
         visible: !userBg.active
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
-        opacity: root.ui
+        opacity: root.intro
     }
-    Background { id: userBg; anchors.fill: parent; opacity: root.ui }
+    Background { id: userBg; anchors.fill: parent; opacity: root.intro }
 
 
     // Shadow
     Rectangle {
-        anchors.fill: parent; visible: root.ui < 1.0; opacity: 1.0 - root.ui; color: "#ccd4da"; z: 100
+        anchors.fill: parent; visible: root.intro < 1.0; opacity: 1.0 - root.intro; color: "#ccd4da"; z: 100
     }
 
     // Header

@@ -8,6 +8,7 @@ import "darwan"
 // Pixel Emerald
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     MouseArea { anchors.fill: parent; cursorShape: Qt.ArrowCursor; z: -1 }
 
@@ -17,7 +18,9 @@ Rectangle {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
-    property real ui: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real ui: intro * saver.wake
     property bool sessionMenuOpen: false
 
     // Colors
@@ -45,12 +48,12 @@ Rectangle {
     Component.onCompleted: { entryAnim.start(); keyboard.numLock = true }
     ParallelAnimation {
         id: entryAnim
-        NumberAnimation { target: root; property: "ui"; from: 0; to: 1; duration: kit.dur(1200); easing.type: kit.ease(Easing.OutCubic) }
+        NumberAnimation { target: root; property: "intro"; from: 0; to: 1; duration: kit.dur(1200); easing.type: kit.ease(Easing.OutCubic) }
     }
 
     Background { id: userBg; anchors.fill: parent }
 
-    Loader { anchors.fill: parent; active: !userBg.active; source: "BackgroundVideo.qml"; opacity: root.ui }
+    Loader { anchors.fill: parent; active: !userBg.active; source: "BackgroundVideo.qml"; opacity: root.intro }
 
     // Clock
     Item {

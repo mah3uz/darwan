@@ -8,6 +8,7 @@ import "darwan"
 // Theme
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -21,7 +22,9 @@ Rectangle {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
-    property real ui: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real ui: intro * saver.wake
     // Palette
     // Dark changes only the card, to frosted glass over the untouched illustration.
     readonly property bool isDark: config.colorScheme === "dark"
@@ -105,7 +108,7 @@ Rectangle {
         id: fadeAnim
 
         target: root
-        property: "ui"
+        property: "intro"
         from: 0
         to: 1
         duration: kit.dur(1200)

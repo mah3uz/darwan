@@ -32,6 +32,7 @@ choices = [
 enabled_when = { background_mode = "static" }
 
 [supports]
+screensaver = true
 colors = true
 fonts = ["text"]
 motion = true

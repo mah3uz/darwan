@@ -8,6 +8,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property bool clock12: config.clockFormat === "12h"
     function clockHour(d) { return clock12 ? String(d.getHours() % 12 || 12).padStart(2, "0") : Qt.formatTime(d, "HH") }
     function withAmPm(d, text) { return clock12 && config.clockShowAmPm === "true" ? text + " · " + (d.getHours() < 12 ? "AM" : "PM") : text }
@@ -96,7 +97,7 @@ Rectangle {
 
     // Clock
     Item {
-        id: clockWidget
+        id: clockWidget; opacity: saver.wake
         anchors.right: parent.right; anchors.rightMargin: 100 * s
         anchors.top: parent.top; anchors.topMargin: 100 * s
         width: 450 * s; height: 250 * s
@@ -147,7 +148,7 @@ Rectangle {
 
     // Identity
     Column {
-        id: identityStack
+        id: identityStack; opacity: saver.wake
         anchors.right: parent.right; anchors.rightMargin: 100 * s
         anchors.bottom: parent.bottom; anchors.bottomMargin: 100 * s
         spacing: 12 * s; width: 450 * s
@@ -252,6 +253,7 @@ Rectangle {
 
     // Logistics
     Column {
+        id: logistics; opacity: saver.wake
         anchors.left: parent.left; anchors.leftMargin: 100 * s; anchors.bottom: parent.bottom; anchors.bottomMargin: 100 * s
         spacing: 15 * s; z: 1000
 

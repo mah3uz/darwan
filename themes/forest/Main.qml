@@ -10,6 +10,7 @@ import "darwan"
 
 Item {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -31,7 +32,9 @@ Item {
     // State
     property int userIndex: (typeof userModel !== "undefined" && userModel.lastIndex >= 0) ? userModel.lastIndex : 0
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
-    property real uiOpacity: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real uiOpacity: intro * saver.wake
     property bool sessionPopupOpen: false
     property bool userPopupOpen: false
     property bool loginError: false
@@ -84,8 +87,9 @@ Item {
 
 
     // Glass
-    ShaderEffectSource { id: baseVideoSource; sourceItem: backdrop; visible: false; live: true; recursive: false }
-    // Only the glass panels sample this; drawing it too would cost a full-screen pass hidden under the video.
+    // Only the glass panels sample this, so it stops updating while the screensaver hides them.
+    ShaderEffectSource { id: baseVideoSource; sourceItem: backdrop; visible: false; live: saver.wake > 0; recursive: false }
+    // Drawing it too would cost a full-screen pass hidden under the video.
     FastBlur { id: globalGlassBlur; anchors.fill: parent; source: baseVideoSource; radius: 96; z: -1000; visible: false }
 
     component LiquidGlass: Item {
@@ -102,7 +106,7 @@ Item {
         Rectangle { id: maskRect; anchors.fill: parent; radius: lg.glassRadius; visible: false }
 
         ShaderEffectSource {
-            id: localBlur; sourceItem: globalGlassBlur; visible: false
+            id: localBlur; sourceItem: globalGlassBlur; visible: false; live: saver.wake > 0
             sourceRect: {
                 var pos = lg.mapToItem(root, 0, 0);
                 return Qt.rect(pos.x, pos.y, lg.width, lg.height);
@@ -384,6 +388,6 @@ Item {
     ListView { id: userHelper; model: typeof userModel !== "undefined" ? userModel : null; currentIndex: root.userIndex; opacity: 0; width: 1; height: 1; z: -100; delegate: Item { property string uName: model.realName || model.name || ""; property string uLogin: model.name || "" } }
     
     // Boot
-    NumberAnimation { id: fadeIn; target: root; property: "uiOpacity"; to: 1; duration: kit.dur(2500); easing.type: kit.ease(Easing.OutCubic) }
+    NumberAnimation { id: fadeIn; target: root; property: "intro"; to: 1; duration: kit.dur(2500); easing.type: kit.ease(Easing.OutCubic) }
     Component.onCompleted: { fadeIn.start(); keyboard.numLock = true }
 }

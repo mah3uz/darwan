@@ -8,6 +8,7 @@ import "darwan"
 
 Item {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -85,7 +86,7 @@ Item {
         anchors.left: parent.left; anchors.leftMargin: 80 * s
         anchors.top: parent.top; anchors.topMargin: 60 * s
         width: 300 * s; height: 80 * s; z: 1000
-        opacity: root.interactionMode ? 0.3 : 1.0
+        opacity: (root.interactionMode ? 0.3 : 1.0) * saver.wake
         Behavior on opacity { NumberAnimation { duration: kit.dur(600) } }
         
         Row {
@@ -114,13 +115,13 @@ Item {
         id: mainLogo
         source: "logo.png"
         width: 650 * s; fillMode: Image.PreserveAspectFit; anchors.centerIn: parent
-        opacity: root.interactionMode ? 0.15 : 1.0; z: 100
+        opacity: (root.interactionMode ? 0.15 : 1.0) * saver.wake; z: 100
         Behavior on opacity { NumberAnimation { duration: kit.dur(600); easing.type: kit.ease(Easing.InOutQuad) } }
     }
 
     // Interface
     Item {
-        id: promptZone
+        id: promptZone; opacity: saver.wake
         anchors.bottom: parent.bottom; anchors.bottomMargin: 150 * s
         anchors.horizontalCenter: parent.horizontalCenter
         width: 800 * s; height: 260 * s; z: 200
@@ -221,7 +222,7 @@ Item {
         anchors.left: parent.left; anchors.leftMargin: 100 * s
         anchors.bottom: parent.bottom; anchors.bottomMargin: 80 * s
         width: 350 * s; height: 50 * s; z: 2000; visible: !root.isQuickshell
-        opacity: root.interactionMode ? 0.3 : 1.0
+        opacity: (root.interactionMode ? 0.3 : 1.0) * saver.wake
         Behavior on opacity { NumberAnimation { duration: kit.dur(600) } }
 
         Item {
@@ -283,7 +284,7 @@ Item {
         anchors.right: parent.right; anchors.rightMargin: 100 * s
         anchors.bottom: parent.bottom; anchors.bottomMargin: 80 * s
         spacing: 60 * s; z: 1000
-        opacity: root.interactionMode ? 0.3 : 1.0
+        opacity: (root.interactionMode ? 0.3 : 1.0) * saver.wake
         Behavior on opacity { NumberAnimation { duration: kit.dur(600) } }
 
         Repeater {
@@ -327,6 +328,7 @@ Item {
     focus: true
     Keys.onReturnPressed: (event) => { if (!root.interactionMode) { startInteraction(); event.accepted = true } }
     Keys.onEnterPressed: (event) => { if (!root.interactionMode) { startInteraction(); event.accepted = true } }
-    Keys.onPressed: (event) => { if (!root.interactionMode) { if (event.text.length > 0 && event.text[0].match(/[a-z0-9]/i)) { startInteraction(); event.accepted = true } } }
+    // The key that opens the prompt is kept, so a password typed straight away (the screensaver's first key) is whole.
+    Keys.onPressed: (event) => { if (!root.interactionMode) { if (event.text.length > 0 && event.text[0].match(/[a-z0-9]/i)) { startInteraction(); passInput.insert(passInput.cursorPosition, event.text); event.accepted = true } } }
     Component.onCompleted: keyboard.numLock = true
 }

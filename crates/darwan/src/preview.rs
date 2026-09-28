@@ -14,11 +14,17 @@ pub struct Options {
     pub pam: bool,
     pub at: Option<String>,
     pub shot: Option<PathBuf>,
+    pub saver: bool,
 }
 
 pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
     if opts.pam && opts.at.is_some() {
         return Err("--at works only with the mock login (\"test\"), not --pam".into());
+    }
+    if opts.saver && (opts.sddm || opts.at.is_some()) {
+        return Err(
+            "--saver shows the lock's screensaver; it can't be combined with --sddm or --at".into(),
+        );
     }
     if opts.shot.is_some() && opts.at.is_some() {
         return Err("--shot can't be combined with --at".into());
@@ -47,7 +53,8 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
                 &prepared.theme.dir,
                 Some(&prepared.overlay),
             );
-            cmd.env("DARWAN_MODE", mode)
+            cmd.env("DARWAN_PREVIEW_SAVER", if opts.saver { "1" } else { "0" })
+                .env("DARWAN_MODE", mode)
                 .env("DARWAN_AUTH", if opts.pam { "pam" } else { "mock" })
                 .env("DARWAN_USER", host::user_name())
                 .env("DARWAN_HOSTNAME", host::host_name())

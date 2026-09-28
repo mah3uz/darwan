@@ -9,6 +9,7 @@ license = "Nothing brand use only"
 url = ""
 
 [supports]
+screensaver = true
 clock_format = true
 date_format = true
 background = true

@@ -3,6 +3,7 @@ author = "Darkkal44"
 background = "image"
 
 [supports]
+screensaver = true
 clock_format = true
 date_format = true
 background = true

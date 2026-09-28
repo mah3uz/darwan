@@ -5,6 +5,7 @@ background_file = "bg.png"
 background_file_dark = "bg-dark.png"
 
 [supports]
+screensaver = true
 clock_format = true
 date_format = true
 background = true

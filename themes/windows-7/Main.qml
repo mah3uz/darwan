@@ -7,6 +7,7 @@ import "darwan"
 
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property string clockFmt: config.clockFormat === "12h" ? (config.clockShowAmPm === "true" ? "h:mm AP" : "h:mm") : "HH:mm"
     // Wayland Cursor Fix
     MouseArea {
@@ -25,7 +26,9 @@ Rectangle {
     // State
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int currentUserIndex: (typeof userModel !== "undefined" && userModel.lastIndex >= 0) ? userModel.lastIndex : 0
-    property real fadeIn: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real fadeIn: intro * saver.wake
 
     TextConstants { id: textConstants }
 
@@ -59,14 +62,14 @@ Rectangle {
 
     Timer { interval: 300; running: true; onTriggered: inputFocus.forceActiveFocus() }
 
-    NumberAnimation { id: bootAnim; target: root; property: "fadeIn"; from: 0; to: 1; duration: kit.dur(700); easing.type: kit.ease(Easing.OutCubic) }
+    NumberAnimation { id: bootAnim; target: root; property: "intro"; from: 0; to: 1; duration: kit.dur(700); easing.type: kit.ease(Easing.OutCubic) }
 
     // Visuals
-    Image { id: bg; anchors.fill: parent; source: "background.png"; visible: !userBg.active; fillMode: Image.PreserveAspectCrop; opacity: root.fadeIn }
-    Background { id: userBg; anchors.fill: parent; opacity: root.fadeIn }
+    Image { id: bg; anchors.fill: parent; source: "background.png"; visible: !userBg.active; fillMode: Image.PreserveAspectCrop; opacity: root.intro }
+    Background { id: userBg; anchors.fill: parent; opacity: root.intro }
 
     RadialGradient {
-        anchors.fill: parent; opacity: 0.35 * root.fadeIn
+        anchors.fill: parent; opacity: 0.35 * root.intro
         gradient: Gradient { GradientStop { position: 0.0; color: "transparent" } GradientStop { position: 1.0; color: "#1a0d1a30" } }
     }
 

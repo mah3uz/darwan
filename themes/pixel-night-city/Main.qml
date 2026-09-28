@@ -7,6 +7,7 @@ import "darwan"
 // Night City
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     readonly property color textColor: kit.color("text", "#ffffff")
     readonly property bool clock12: config.clockFormat === "12h"
     function clockHour(d) { return clock12 ? String(d.getHours() % 12 || 12).padStart(2, "0") : Qt.formatTime(d, "HH") }
@@ -23,7 +24,9 @@ Rectangle {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
-    property real ui: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real ui: intro * saver.wake
 
     readonly property color signTeal: kit.color("accent", "#50c8d8")
     readonly property color signPink: kit.color("colorSign", "#d06880")
@@ -41,7 +44,7 @@ Rectangle {
     Timer { interval: 300; running: true; onTriggered: pwd.forceActiveFocus() }
 
     Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: kit.dur(1500); easing.type: kit.ease(Easing.OutSine) }
+    NumberAnimation { id: fadeAnim; target: root; property: "intro"; from: 0; to: 1; duration: kit.dur(1500); easing.type: kit.ease(Easing.OutSine) }
 
     Background { id: userBg; anchors.fill: parent }
 

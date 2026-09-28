@@ -9,6 +9,7 @@ import "darwan"
 // Root setup
 Rectangle {
     Custom { id: kit }
+    Ambient { id: saver; duration: kit.dur(700) }
     id: root
     width: Screen.width; height: Screen.height
     readonly property real s: height / 768
@@ -26,7 +27,9 @@ Rectangle {
     property bool isQuickshell: typeof sddm === "undefined" || sddm.hostName === undefined
     property int sessionIndex: (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
     property int userIndex: (typeof userModel !== "undefined" && userModel.lastIndex >= 0) ? userModel.lastIndex : 0
-    property real ui: 0
+    // The widgets' intro, and the screensaver hiding them (Ambient); the background stays.
+    property real intro: 0
+    readonly property real ui: intro * saver.wake
 
     // Key navigation
     property int activeMenuIndex: -1
@@ -76,7 +79,7 @@ Rectangle {
 
     // Entry animation
     Component.onCompleted: { fadeAnim.start(); keyboard.numLock = true }
-    NumberAnimation { id: fadeAnim; target: root; property: "ui"; from: 0; to: 1; duration: kit.dur(1500); easing.type: kit.ease(Easing.OutCubic) }
+    NumberAnimation { id: fadeAnim; target: root; property: "intro"; from: 0; to: 1; duration: kit.dur(1500); easing.type: kit.ease(Easing.OutCubic) }
 
     // Backdrop image
     Image {
@@ -85,9 +88,9 @@ Rectangle {
         visible: !userBg.active
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
-        opacity: root.ui
+        opacity: root.intro
     }
-    Background { id: userBg; anchors.fill: parent; opacity: root.ui }
+    Background { id: userBg; anchors.fill: parent; opacity: root.intro }
 
     // Side vignette
     Rectangle {
@@ -104,7 +107,7 @@ Rectangle {
 
     // Intro overlay
     Rectangle {
-        anchors.fill: parent; visible: root.ui < 1.0; opacity: 1.0 - root.ui; color: "#050608"; z: 100
+        anchors.fill: parent; visible: root.intro < 1.0; opacity: 1.0 - root.intro; color: "#050608"; z: 100
     }
 
     // Title logo
@@ -340,7 +343,15 @@ Rectangle {
         function onLoginFailed() { err.text = "AUTHENTICATION FAILED"; pwd.text = ""; pwd.focus = true }
     }
 
-    // Keyboard capture
+    // Keyboard capture. Typing starts the password, so the screensaver's first key isn't lost on the menu.
+    Keys.onPressed: event => {
+        if (!pwd.activeFocus && event.text.length > 0 && event.text.charCodeAt(0) >= 32 && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier))) {
+            root.activeMenuIndex = 1
+            pwd.forceActiveFocus()
+            pwd.insert(pwd.cursorPosition, event.text)
+            event.accepted = true
+        }
+    }
     Keys.onUpPressed: root.decrementMenu()
     Keys.onDownPressed: root.incrementMenu()
     Keys.onReturnPressed: root.activateMenu()
