@@ -34,6 +34,12 @@ All. An online picture is downloaded into your folder first. Once it is set, *Us
 theme show your desktop wallpaper. When your wallpaper tool can only change by restarting (swaybg, for one), Darwan
 asks first: just this time, or always.
 
+**Colours from the wallpaper.** When a shell makes your colours from the wallpaper (DMS, Caelestia, Noctalia),
+Darwan sets the wallpaper through it, so the colours follow as they do from the shell's own settings, and runs
+nothing else. When a plain wallpaper tool draws it and you use matugen, pywal, wallust or hellwal, *Colours* on the
+Wallpapers page (or `wallpaper.colours`) runs it after each change; pywal is told not to set the wallpaper itself, and
+a matugen set up to change the wallpaper is left alone.
+
 `darwan wallpaper set <file>` sets the desktop wallpaper through whatever draws it on your desktop: DMS, Noctalia,
 Caelestia, Omarchy, KDE Plasma, GNOME, Cinnamon, MATE, Xfce, sway, waypaper, hyprpaper, awww/swww, wpaperd,
 mpvpaper, gSlapper, swaybg or wbg. Name screens with `-o DP-1`. Darwan checks the result by asking the tool what it

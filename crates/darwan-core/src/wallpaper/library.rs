@@ -87,6 +87,17 @@ fn seconds(t: std::io::Result<std::time::SystemTime>) -> u64 {
         .map_or(0, |d| d.as_secs())
 }
 
+// One file as the scan would list it, for a file set from elsewhere.
+pub fn item(path: &Path) -> Option<Item> {
+    let meta = std::fs::metadata(path).ok()?;
+    Some(Item {
+        path: path.to_path_buf(),
+        kind: Kind::of(path)?,
+        bytes: meta.len(),
+        modified: seconds(meta.modified()),
+    })
+}
+
 // Every image and video in the folder and its subfolders (three levels, hidden ones skipped), newest first.
 pub fn scan(folder: &Path) -> Vec<Item> {
     let mut out = Vec::new();

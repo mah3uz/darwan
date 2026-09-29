@@ -234,12 +234,25 @@ pub fn online(v: &OnlineView) -> Value {
     })
 }
 
-// What draws the wallpaper, for the page's header and the display pop-up.
-pub fn owner(owner: Option<&Owner>, restart_ok: &[String]) -> Value {
+// What draws the wallpaper, for the page's header and the display pop-up; with the colour generators found, each
+// with its switch or the reason it can't run here.
+pub fn owner(
+    owner: Option<&Owner>,
+    restart_ok: &[String],
+    generators: &[darwan_core::wallpaper::colours::Found],
+    enabled: &[String],
+) -> Value {
+    let gens: Vec<Value> = generators
+        .iter()
+        .map(|g| json!({ "id": g.generator.id(), "on": enabled.iter().any(|e| e == g.generator.id()), "reason": g.reason }))
+        .collect();
     match owner {
-        None => {
-            json!({ "found": false, "name": "", "note": "Nothing draws a desktop wallpaper in this session. Start your wallpaper tool, then refresh." })
-        }
+        None => json!({
+            "found": false,
+            "name": "",
+            "generators": gens,
+            "note": "Nothing draws a desktop wallpaper in this session. Start your wallpaper tool, then refresh.",
+        }),
         Some(o) => {
             let c = o.caps();
             json!({
@@ -251,6 +264,7 @@ pub fn owner(owner: Option<&Owner>, restart_ok: &[String]) -> Value {
                 "persists": c.persists,
                 "shell": o.shell.map(|s| s.name()),
                 "restartOk": restart_ok.iter().any(|t| t == o.tool.name()),
+                "generators": gens,
                 "note": if c.themes {
                     format!("Set through {}, which can make your colours from the wallpaper", o.tool.name())
                 } else if c.persists {

@@ -136,6 +136,14 @@ fn keys_in(catalog: &Catalog) -> Vec<CompletionCandidate> {
             "Online groups you allow: people, anime, games, series, war, gore, horror",
         ),
         candidate(
+            "wallpaper.restart",
+            "Wallpaper tools Darwan may restart to change the wallpaper",
+        ),
+        candidate(
+            "wallpaper.colours",
+            "Colour generators to run after a wallpaper change: matugen, pywal, wallust, hellwal",
+        ),
+        candidate(
             "gui.look",
             "The GUI's look: darwan, or system to follow your Qt theme",
         ),
@@ -263,6 +271,10 @@ fn values_for(catalog: &Catalog, config: &UserConfig, key: &str) -> Vec<Completi
             .map(|q| candidate(q.as_str(), q.describe()))
             .collect(),
         Key::WallpaperFolder => Vec::new(),
+        Key::WallpaperColours => darwan_core::wallpaper::colours::Generator::ALL
+            .iter()
+            .map(|g| candidate(g.id(), "run after each wallpaper change"))
+            .collect(),
         Key::WallpaperRestart => darwan_core::wallpaper::set::RESTARTED
             .iter()
             .map(|t| candidate(t.name(), "may be restarted to change the wallpaper"))

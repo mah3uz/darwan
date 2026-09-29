@@ -3,6 +3,7 @@ use std::process::{Command, Stdio};
 
 use crate::custom::Wallpaper;
 
+pub mod colours;
 pub mod filter;
 pub mod library;
 pub mod online;

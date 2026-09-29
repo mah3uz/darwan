@@ -124,6 +124,43 @@ FocusScope {
         }
     }
 
+    // Colour generators set up on this machine, run after each change when the wallpaper tool doesn't make colours.
+    Popover {
+        id: colourMenu
+        width: 340
+        contentItem: Column {
+            spacing: 2
+            Label {
+                width: parent.width
+                leftPadding: 10
+                topPadding: 8
+                bottomPadding: 4
+                text: "Colours from the wallpaper"
+                font.family: Style.family
+                font.pixelSize: Style.body
+                font.weight: Font.DemiBold
+                color: Style.text
+            }
+            Repeater {
+                model: page.owner ? page.owner.generators : []
+                delegate: SettingRow {
+                    required property var modelData
+                    required property int index
+                    width: 340 - 12
+                    first: index === 0
+                    label: "Run " + modelData.id + " after each change"
+                    sub: modelData.reason
+                    off: modelData.reason !== ""
+                    Toggle {
+                        on: modelData.on && modelData.reason === ""
+                        enabled: modelData.reason === ""
+                        onFlipped: v => page.backend.wallColours(modelData.id, v)
+                    }
+                }
+            }
+        }
+    }
+
     component Chip: AbstractButton {
         id: chip
         property bool on: false
@@ -460,6 +497,20 @@ FocusScope {
                     ToolTip.visible: ownerHover.hovered && page.owner !== null
                     ToolTip.text: page.owner ? page.owner.note : ""
                     ToolTip.delay: 400
+                }
+            }
+            ActionButton {
+                id: colourButton
+                anchors.verticalCenter: parent.verticalCenter
+                visible: page.owner !== null && page.owner.generators !== undefined && page.owner.generators.length > 0
+                glyph: "colour"
+                flat: true
+                tip: "Colour generators to run after a change"
+                onActivated: {
+                    colourMenu.parent = colourButton
+                    colourMenu.x = colourButton.width - colourMenu.width
+                    colourMenu.y = colourButton.height + 8
+                    colourMenu.open()
                 }
             }
             TextField {

@@ -63,6 +63,7 @@ pub enum Key {
     WallpaperFolder,
     WallpaperAllow,
     WallpaperRestart,
+    WallpaperColours,
     Option { theme: String, key: String },
 }
 
@@ -81,10 +82,11 @@ impl Key {
             "wallpaper.folder" => Key::WallpaperFolder,
             "wallpaper.allow" => Key::WallpaperAllow,
             "wallpaper.restart" => Key::WallpaperRestart,
+            "wallpaper.colours" => Key::WallpaperColours,
             _ => {
                 let (theme, key) = s.rsplit_once('.').filter(|(t, k)| valid_id(t) && !k.is_empty()).ok_or_else(|| {
                     format!(
-                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look, wallpaper.folder, wallpaper.allow, wallpaper.restart or <theme-id>.<option>"
+                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look, wallpaper.folder, wallpaper.allow, wallpaper.restart, wallpaper.colours or <theme-id>.<option>"
                     )
                 })?;
                 Key::Option {
@@ -110,6 +112,7 @@ impl fmt::Display for Key {
             Key::WallpaperFolder => f.write_str("wallpaper.folder"),
             Key::WallpaperAllow => f.write_str("wallpaper.allow"),
             Key::WallpaperRestart => f.write_str("wallpaper.restart"),
+            Key::WallpaperColours => f.write_str("wallpaper.colours"),
             Key::Option { theme, key } => write!(f, "{theme}.{key}"),
         }
     }
@@ -132,6 +135,9 @@ pub fn get(config: &UserConfig, key: &Key) -> Result<Option<String>, String> {
         Key::WallpaperAllow => config.wallpaper_allow().map(|v| v.map(|l| l.join(","))),
         Key::WallpaperRestart => {
             Ok(Some(config.wallpaper_restart().join(",")).filter(|s| !s.is_empty()))
+        }
+        Key::WallpaperColours => {
+            Ok(Some(config.wallpaper_colours().join(",")).filter(|s| !s.is_empty()))
         }
         Key::Option { theme, key } => config
             .theme_values(theme)
@@ -218,6 +224,23 @@ pub fn set(
             }
             config.set_global("wallpaper", "allow", toml_edit::value(list))
         }
+        Key::WallpaperColours => {
+            let ids: Vec<&str> = crate::wallpaper::colours::Generator::ALL
+                .iter()
+                .map(|g| g.id())
+                .collect();
+            let mut list = toml_edit::Array::new();
+            for id in value.split(',').map(str::trim).filter(|v| !v.is_empty()) {
+                if !ids.contains(&id) {
+                    return Err(format!(
+                        "wallpaper.colours takes {}, not {id:?}",
+                        ids.join(", ")
+                    ));
+                }
+                list.push(id);
+            }
+            config.set_global("wallpaper", "colours", toml_edit::value(list))
+        }
         Key::WallpaperRestart => {
             let tools = crate::wallpaper::set::RESTARTED;
             let mut list = toml_edit::Array::new();
@@ -302,6 +325,7 @@ pub fn unset(config: &mut UserConfig, key: &Key) -> bool {
         Key::WallpaperFolder => config.remove_global("wallpaper", "folder"),
         Key::WallpaperAllow => config.remove_global("wallpaper", "allow"),
         Key::WallpaperRestart => config.remove_global("wallpaper", "restart"),
+        Key::WallpaperColours => config.remove_global("wallpaper", "colours"),
         Key::Option { theme, key } => config.remove_theme_value(theme, key),
     }
 }
@@ -332,6 +356,7 @@ mod tests {
             "wallpaper.folder",
             "wallpaper.allow",
             "wallpaper.restart",
+            "wallpaper.colours",
             "clockwork/orbital.themeMode",
         ] {
             assert_eq!(Key::parse(s).unwrap().to_string(), s);
@@ -368,6 +393,7 @@ mod tests {
             ("wallpaper.folder", ""),
             ("wallpaper.allow", "anime,nsfw"),
             ("wallpaper.restart", "hyprpaper"),
+            ("wallpaper.colours", "wal"),
         ] {
             assert!(
                 set(&mut cfg, &cat, &Key::parse(k).unwrap(), v).is_err(),

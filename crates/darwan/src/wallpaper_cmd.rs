@@ -115,6 +115,21 @@ pub fn set_file(file: &Path, chosen: &[String], allow_restart: bool) -> Result<E
             style::dim("(it can't be asked what it shows)")
         ),
     }
+    let enabled = UserConfig::load(&paths::config_file())
+        .map(|c| c.wallpaper_colours())
+        .unwrap_or_default();
+    for (name, result) in darwan_core::wallpaper::colours::run_after(
+        &env,
+        Some(&owner),
+        &enabled,
+        &req.path,
+        &paths::cache_home(),
+    ) {
+        match result {
+            Ok(()) => println!("{} with {name}", style::ok("Colours made")),
+            Err(e) => println!("{} {name}: {e}", style::warn("Colours not made:")),
+        }
+    }
     Ok(ExitCode::SUCCESS)
 }
 

@@ -121,6 +121,9 @@ pub mod qobject {
         fn wall_allow_restart(self: Pin<&mut Backend>, tool: &QString);
 
         #[qinvokable]
+        fn wall_colours(self: Pin<&mut Backend>, generator: &QString, on: bool);
+
+        #[qinvokable]
         fn wall_lock_too(self: Pin<&mut Backend>, path: &QString) -> QString;
 
         #[qsignal]
@@ -777,10 +780,28 @@ impl qobject::Backend {
 
     fn wall_owner(&self) -> QString {
         let r = self.rust();
+        let env = darwan_core::wallpaper::Env::system();
+        let found = darwan_core::wallpaper::colours::found(&env, r.walls.owner.as_ref());
         json(walls::owner(
             r.walls.owner.as_ref(),
             &r.config.wallpaper_restart(),
+            &found,
+            &r.config.wallpaper_colours(),
         ))
+    }
+
+    fn wall_colours(mut self: Pin<&mut Self>, generator: &QString, on: bool) {
+        let id = generator.to_string();
+        let mut list = self.rust().config.wallpaper_colours();
+        list.retain(|g| g != &id);
+        if on {
+            list.push(id);
+        }
+        self.as_mut().set_value_now(
+            &QString::from("wallpaper.colours"),
+            &QString::from(list.join(",")),
+        );
+        self.wall_bump();
     }
 
     // The folder, what draws the wallpaper and what it shows now; then thumbnails and colours in the background.
@@ -928,13 +949,18 @@ impl qobject::Backend {
             .get("restart")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
-        let (online, folder, remembered) = {
+        let (online, folder, remembered, colours) = {
             let r = self.rust();
             let online = v
                 .get("online")
                 .and_then(|x| x.as_str())
                 .and_then(|id| r.walls.found.iter().find(|f| f.id == id).cloned());
-            (online, r.walls.folder.clone(), r.config.wallpaper_restart())
+            (
+                online,
+                r.walls.folder.clone(),
+                r.config.wallpaper_restart(),
+                r.config.wallpaper_colours(),
+            )
         };
         let local = v
             .get("path")
@@ -1019,15 +1045,25 @@ impl qobject::Backend {
             }
             progress(&thread, format!("Setting it with {}…", owner.tool.name()));
             let file = req.path.display().to_string();
-            match set::carry_out(&env, &owner, &req, &plan, &set::System) {
-                Ok(_) => finish(
-                    &thread,
-                    true,
-                    format!("Wallpaper set with {}", owner.tool.name()),
-                    file,
-                ),
-                Err(e) => finish(&thread, false, e, file),
+            if let Err(e) = set::carry_out(&env, &owner, &req, &plan, &set::System) {
+                return finish(&thread, false, e, file);
             }
+            let mut text = format!("Wallpaper set with {}", owner.tool.name());
+            if !colours.is_empty() {
+                progress(&thread, "Making colours…".into());
+                for (name, result) in darwan_core::wallpaper::colours::run_after(
+                    &env,
+                    Some(&owner),
+                    &colours,
+                    &req.path,
+                    &paths::cache_home(),
+                ) {
+                    if let Err(e) = result {
+                        text = format!("{text}; {name} failed: {e}");
+                    }
+                }
+            }
+            finish(&thread, true, text, file)
         });
     }
 

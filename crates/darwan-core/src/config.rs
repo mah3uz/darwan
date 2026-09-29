@@ -159,6 +159,18 @@ impl UserConfig {
         }
     }
 
+    // Colour generators the user wants run after a wallpaper change (matugen, pywal, wallust, hellwal), by id.
+    pub fn wallpaper_colours(&self) -> Vec<String> {
+        self.item("wallpaper", "colours")
+            .and_then(Item::as_array)
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     // Wallpaper tools the user let Darwan restart (swaybg, mpvpaper, gSlapper, wbg), by name.
     pub fn wallpaper_restart(&self) -> Vec<String> {
         self.item("wallpaper", "restart")
