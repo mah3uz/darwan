@@ -236,10 +236,11 @@ fn tune(cmd: &mut Command) {
     cmd.env("DARWAN_SECONDARY_TIER", secondary.as_str());
     // Qt keeps NVIDIA on its single-threaded loop over an old resize bug; lock and saver surfaces never resize, and
     // the threaded loop keeps rendering and video uploads off the thread that handles the waking input.
-    if facts
-        .gpu
-        .as_ref()
-        .is_some_and(|g| g.vendor == hardware::Vendor::Nvidia)
+    if std::env::var_os("QSG_RENDER_LOOP").is_none()
+        && facts
+            .gpu
+            .as_ref()
+            .is_some_and(|g| g.vendor == hardware::Vendor::Nvidia)
     {
         cmd.env("QSG_RENDER_LOOP", "threaded");
     }

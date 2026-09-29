@@ -242,6 +242,7 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
 pub fn return_after_choices(current: &str) -> Vec<(String, String)> {
     let mut choices: Vec<(String, String)> = [
         ("10", "After 10 seconds"),
+        ("15", "After 15 seconds"),
         ("30", "After 30 seconds"),
         ("60", "After a minute"),
         ("300", "After 5 minutes"),

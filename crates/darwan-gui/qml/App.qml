@@ -177,7 +177,8 @@ Item {
     Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         y: parent.height - (backend.dirty && !stage.shown ? height + 24 : -10)
-        width: wallSaveRow.width + 16
+        // Save sits 8 px in on the right, as it does top and bottom, so the pills nest.
+        width: wallSaveRow.x + wallSaveRow.width + 8
         height: 48
         radius: 24
         color: Style.panel

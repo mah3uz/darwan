@@ -7,6 +7,15 @@ What changed in each release of Darwan, newest first. Each release's section is 
 - New setting `saver.return_after`: how long a lock left untouched keeps its password field and widgets before the
   screensaver comes back, whether you locked by hand or the screensaver locked. It stays 30 seconds unless you change
   it (5 or more), and it's in the GUI under *When you step away* → *When you lock*.
+- With several monitors, the lock showed its theme on every screen but the primary one, which stayed black. Every
+  screen now shows it, whatever your compositor calls the monitors.
+- Previews (`darwan preview`, including `--saver`, `--sddm` and `--at`, and the GUI's *Full-screen preview* and
+  *Screensaver preview*) open on every monitor, as the lock does, and what you type shows on each. `--shot` still takes
+  one picture.
+- With several monitors, what you type into the password field shows on the other screens only in fields that hide it
+  too, so a screen left on a username field never shows your password.
+- The GUI's floating *Unsaved changes* bar no longer lets its Save button touch the bar's right edge.
+- The lock and screensaver keep a `QSG_RENDER_LOOP` you set yourself instead of always choosing `threaded` on NVIDIA.
 
 ## 0.4.0 - 2026-09-29 18:38 +06:00
 

@@ -25,7 +25,14 @@ ShellRoot {
     // The other outputs show a still unless the user asked for full video everywhere; without a known primary, the
     // first screen plays.
     readonly property string secondaryTier: Quickshell.env("DARWAN_SECONDARY_TIER") || mediaTier
-    readonly property string primaryOutput: Quickshell.env("DARWAN_PRIMARY_OUTPUT") || (Quickshell.screens.length > 0 ? Quickshell.screens[0].name : "")
+    readonly property var primaryScreen: {
+        const want = Quickshell.env("DARWAN_PRIMARY_OUTPUT") || ""
+        for (let i = 0; i < Quickshell.screens.length; i++) {
+            if (want !== "" && Quickshell.screens[i].name === want)
+                return Quickshell.screens[i]
+        }
+        return Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    }
 
     // Only a successful authentication may end the lock; anything else locks again.
     property bool authenticated: false
@@ -43,12 +50,14 @@ ShellRoot {
     property int stills: 0
     property bool released: false
     property int releasedWindows: 0
-    // screen name -> the overlay's still; the lock surface shows it until the moved video draws again.
-    property var stillUrls: ({})
+    // Each screen's overlay still, [{ screen, item: url }]; the lock surface shows it until the moved video draws again.
+    property var stillUrls: []
     readonly property bool lockNow: lockWanted && (released || (saverPhase !== "shown" && saverPhase !== "leaving"))
     property var surfaceList: []
-    property var saverSlots: ({})
-    property var lockSlots: ({})
+    // Where each screen's theme goes, [{ screen, item }]. Screens are matched as objects, never by name: an output's
+    // name is whatever the compositor calls it, and may even be empty.
+    property var saverSlots: []
+    property var lockSlots: []
     property var hosts: []
     // Without darwan's plugin there is nothing to catch the waking input: no ambient mode, and a saver locks at once.
     property bool gateMissing: false
@@ -58,13 +67,21 @@ ShellRoot {
         Qt.callLater(() => Qt.exit(code))
     }
 
-    function setSlot(map, name, item) {
-        const next = Object.assign({}, map)
-        if (item)
-            next[name] = item
-        else
-            delete next[name]
-        return next
+    function slotOn(list, screen) {
+        const e = list.find(e => e.screen === screen)
+        return e ? e.item : null
+    }
+
+    function withSlot(list, screen, item) {
+        const rest = list.filter(e => e.screen !== screen)
+        return item ? rest.concat([{ screen: screen, item: item }]) : rest
+    }
+
+    // A new lock surface reports the primary screen until Quickshell gives it its own, within the same call that
+    // creates it, so the surfaces are read once that settles; recording changes would miss the primary's surface,
+    // whose screen never changes.
+    function rebuildLockSlots() {
+        lockSlots = surfaceList.filter(s => s.screen).map(s => ({ screen: s.screen, item: s.slot }))
     }
 
     function unlock(windup) {
@@ -117,10 +134,12 @@ ShellRoot {
     }
 
     // Every screen runs its own theme and the keyboard reaches only the focused one, so what is typed shows on all.
+    // Only into a field that hides text the same way: a screen whose focus was left on a plain username field must
+    // not show the password there.
     function mirror(from, text) {
         for (const h of hosts) {
             const f = h !== from && h.item ? h.item.field : null
-            if (f && typeof f.text === "string" && f.text !== text)
+            if (f && typeof f.text === "string" && f.text !== text && f.echoMode === from.item.field.echoMode)
                 f.text = text
         }
     }
@@ -324,9 +343,8 @@ ShellRoot {
             id: slotContent
 
             required property var modelData
-            readonly property string screenName: modelData.name
 
-            parent: root.lockSlots[screenName] || (root.frozen ? null : root.saverSlots[screenName]) || null
+            parent: root.slotOn(root.lockSlots, modelData) || (root.frozen ? null : root.slotOn(root.saverSlots, modelData)) || null
             anchors.fill: parent
             visible: parent !== null
             focus: true
@@ -351,7 +369,7 @@ ShellRoot {
                 sessionList: root.sessions
                 authBackend: PamAuth {}
                 ambient: root.ambient && !root.warming && !root.gateMissing
-                mediaTier: slotContent.screenName === root.primaryOutput ? root.mediaTier : root.secondaryTier
+                mediaTier: slotContent.modelData === root.primaryScreen ? root.mediaTier : root.secondaryTier
                 // Unload before quitting: a playing video crashes Qt's FFmpeg backend on exit.
                 onUnlocked: {
                     unload()
@@ -395,8 +413,8 @@ ShellRoot {
                 Behavior on opacity {
                     NumberAnimation { duration: root.saverPhase === "leaving" ? 300 : 800; easing.type: Easing.InOutQuad }
                 }
-                Component.onCompleted: root.saverSlots = root.setSlot(root.saverSlots, saverWindow.modelData.name, saverSlot)
-                Component.onDestruction: root.saverSlots = root.setSlot(root.saverSlots, saverWindow.modelData.name, null)
+                Component.onCompleted: root.saverSlots = root.withSlot(root.saverSlots, saverWindow.modelData, saverSlot)
+                Component.onDestruction: root.saverSlots = root.withSlot(root.saverSlots, saverWindow.modelData, null)
             }
 
             Connections {
@@ -417,7 +435,7 @@ ShellRoot {
                         saverSlot.grabToImage(result => {
                             still.grab = result
                             still.source = result.url
-                            root.stillUrls = root.setSlot(root.stillUrls, saverWindow.modelData.name, result.url)
+                            root.stillUrls = root.withSlot(root.stillUrls, saverWindow.modelData, result.url)
                             root.stillTaken()
                         })
                 }
@@ -463,13 +481,17 @@ ShellRoot {
                     lockSlot.Window.window.update()
             }
 
-            Component.onCompleted: root.surfaceList = root.surfaceList.concat([surface])
+            readonly property Item slot: lockSlot
+
+            Component.onCompleted: {
+                root.surfaceList = root.surfaceList.concat([surface])
+                Qt.callLater(root.rebuildLockSlots)
+            }
             Component.onDestruction: {
                 root.surfaceList = root.surfaceList.filter(s => s !== surface)
-                if (root.lockSlots[screenName] === lockSlot)
-                    root.lockSlots = root.setSlot(root.lockSlots, screenName, null)
+                root.rebuildLockSlots()
             }
-            onScreenNameChanged: if (screenName !== "") root.lockSlots = root.setSlot(root.lockSlots, screenName, lockSlot)
+            onScreenChanged: Qt.callLater(root.rebuildLockSlots)
 
             FocusScope {
                 id: lockSlot
@@ -485,7 +507,7 @@ ShellRoot {
             Image {
                 id: lockStill
                 anchors.fill: parent
-                source: root.stillUrls[surface.screenName] || ""
+                source: root.slotOn(root.stillUrls, surface.screen) || ""
                 visible: source != "" && opacity > 0
                 Behavior on opacity { NumberAnimation { duration: 150 } }
                 Timer {

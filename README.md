@@ -579,12 +579,12 @@ source checkout, drop the file into the theme's `font/` folder instead.
 
 You never have to lock your real session to try a theme.
 
-| Mode                    | How                                  | Password                              | Good for                                                            |
-|:------------------------|:-------------------------------------|:--------------------------------------|:--------------------------------------------------------------------|
-| **Live preview**        | GUI, the open theme                  | `test`                                | tweaking settings and seeing the change at once                     |
-| **Full-screen preview** | `darwan preview <theme>`             | `test`, or your real one with `--pam` | the exact lockscreen runtime, without locking; `Ctrl+Q` closes it   |
-| **SDDM preview**        | `darwan sddm preview <theme>`        | — (visual only)                       | how it looks in SDDM's own greeter before applying                  |
-| **Headless check**      | `darwan check --all --shots ./shots` | typed for you                         | QML errors, missing fonts and a real unlock test across every theme |
+| Mode                    | How                                  | Password                              | Good for                                                                           |
+|:------------------------|:-------------------------------------|:--------------------------------------|:-----------------------------------------------------------------------------------|
+| **Live preview**        | GUI, the open theme                  | `test`                                | tweaking settings and seeing the change at once                                    |
+| **Full-screen preview** | `darwan preview <theme>`             | `test`, or your real one with `--pam` | the exact lockscreen runtime on every monitor, without locking; `Ctrl+Q` closes it |
+| **SDDM preview**        | `darwan sddm preview <theme>`        | — (visual only)                       | how it looks in SDDM's own greeter before applying                                 |
+| **Headless check**      | `darwan check --all --shots ./shots` | typed for you                         | QML errors, missing fonts and a real unlock test across every theme                |
 
 Preview flags:
 
