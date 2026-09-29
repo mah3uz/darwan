@@ -21,9 +21,16 @@ GridView {
     cellHeight: cellWidth * 9 / 16 + 20
     model: feed.model
     boundsBehavior: Flickable.StopAtBounds
-    cacheBuffer: cellHeight * 2
+    // Rows made a screen ahead, so their pictures are decoding before they scroll in.
+    cacheBuffer: height
     reuseItems: true
     clip: true
+    SmoothWheel { view: grid; step: grid.cellHeight }
+    // New results rise into place rather than appearing.
+    add: Transition {
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 320; easing.type: Easing.OutCubic }
+        NumberAnimation { property: "y"; from: ViewTransition.destination.y + 24; duration: 320; easing.type: Easing.OutCubic }
+    }
     // Only while scrolling, as wallspace shows it.
     ScrollIndicator.vertical: ScrollIndicator {}
     // Near the end, the next 25.

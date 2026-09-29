@@ -426,14 +426,25 @@ impl Client {
 
     // A wallpaper's tags, kept a week: moderators can change them, and the switches are applied to the list, so
     // changing a switch needs no new request.
+    // Also kept in memory for the session: a picture checked once isn't read or parsed again.
     fn wallhaven_tags(&self, id: &str) -> Result<Vec<Tag>, String> {
+        static SEEN: Mutex<Option<std::collections::HashMap<String, Vec<Tag>>>> = Mutex::new(None);
+        if let Some(tags) = SEEN.lock().unwrap().as_ref().and_then(|m| m.get(id)) {
+            return Ok(tags.clone());
+        }
         let url = format!("https://wallhaven.cc/api/v1/w/{}", encode(id));
         let text = self.cached(
             &format!("wallhaven tags {id}"),
             Duration::from_secs(7 * 86400),
             &url,
         )?;
-        parse_wallhaven_tags(&text).ok_or_else(|| format!("wallhaven: no tags for {id}"))
+        let tags =
+            parse_wallhaven_tags(&text).ok_or_else(|| format!("wallhaven: no tags for {id}"))?;
+        SEEN.lock()
+            .unwrap()
+            .get_or_insert_with(Default::default)
+            .insert(id.to_string(), tags.clone());
+        Ok(tags)
     }
 
     fn commons(&self, q: &Query, allowed: &Allowed) -> Result<Page, String> {

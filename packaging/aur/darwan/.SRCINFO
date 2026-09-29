@@ -9,6 +9,7 @@ pkgbase = darwan
 	makedepends = cmake
 	makedepends = librsvg
 	makedepends = lld
+	makedepends = qt6-shadertools
 	depends = gcc-libs
 	depends = glibc
 	depends = mpvqt

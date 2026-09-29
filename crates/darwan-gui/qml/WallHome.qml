@@ -26,6 +26,7 @@ Flickable {
     contentHeight: body.height + 60
     boundsBehavior: Flickable.StopAtBounds
     ScrollIndicator.vertical: ScrollIndicator {}
+    SmoothWheel { view: home; step: 320 }
 
     Component.onCompleted: {
         backend.wallSearch("home-bing", JSON.stringify({ sources: ["bing"], first: 16 }))

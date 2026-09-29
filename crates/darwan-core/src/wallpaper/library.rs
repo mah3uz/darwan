@@ -329,6 +329,35 @@ fn write_thumbnail(
     Ok(())
 }
 
+// A screen-sized JPEG of a picture, made once and cached: Qt decodes every picture on one shared thread, so a 4K
+// or 6K original there holds up every thumbnail behind it, and this makes that decode a fraction of the cost.
+// Keyed by path, size, mtime and width, so an edited file gets a new one.
+pub fn preview(cache_dir: &Path, file: &Path, width: u32) -> Result<PathBuf, String> {
+    let meta = std::fs::metadata(file).map_err(|e| format!("{}: {e}", file.display()))?;
+    let mut key = file.as_os_str().as_encoded_bytes().to_vec();
+    key.extend(format!("\0{}\0{}\0{width}", meta.len(), seconds(meta.modified())).into_bytes());
+    let out = cache_dir.join(format!("{:016x}.jpg", crate::media::fnv1a(&key)));
+    if out.is_file() {
+        return Ok(out);
+    }
+    let picture = image::open(file).map_err(|e| format!("{}: {e}", file.display()))?;
+    let picture = if picture.width() > width {
+        picture.resize(width, u32::MAX, image::imageops::FilterType::Triangle)
+    } else {
+        picture
+    };
+    std::fs::create_dir_all(cache_dir).map_err(|e| format!("{}: {e}", cache_dir.display()))?;
+    let tmp = tempfile::NamedTempFile::new_in(cache_dir).map_err(|e| e.to_string())?;
+    {
+        let mut w = std::io::BufWriter::new(tmp.as_file());
+        image::codecs::jpeg::JpegEncoder::new_with_quality(&mut w, 90)
+            .encode_image(&picture.into_rgb8())
+            .map_err(|e| e.to_string())?;
+    }
+    tmp.persist(&out).map_err(|e| e.to_string())?;
+    Ok(out)
+}
+
 // Colour groups for the Library's filter, as ranges of HCT hue (not HSV: pure blue is 283°, pure red 27°), with the
 // boundaries halfway between measured reference colours. Low chroma is black, grey or white by tone.
 pub const COLOURS: &[(&str, f64, f64)] = &[
@@ -582,6 +611,31 @@ mod tests {
         .unwrap();
         let f = facts(&d.path().join("facts"), &item, &thumb).unwrap();
         assert_eq!((f.width, f.height), (1920, 1080));
+    }
+
+    #[test]
+    fn a_preview_is_screen_sized_and_made_once() {
+        let d = tempfile::tempdir().unwrap();
+        let item = picture(d.path(), "big.png", [30, 90, 200]);
+        let cache = d.path().join("previews");
+        let p = preview(&cache, &item.path, 1280).unwrap();
+        assert_eq!(
+            image::image_dimensions(&p).unwrap(),
+            (1280, 720),
+            "fits the screen's width, keeping the shape"
+        );
+        let made = std::fs::metadata(&p).unwrap().modified().unwrap();
+        assert_eq!(preview(&cache, &item.path, 1280).unwrap(), p);
+        assert_eq!(
+            std::fs::metadata(&p).unwrap().modified().unwrap(),
+            made,
+            "the cached one is reused"
+        );
+        assert_ne!(
+            preview(&cache, &item.path, 640).unwrap(),
+            p,
+            "another width is another file"
+        );
     }
 
     #[test]

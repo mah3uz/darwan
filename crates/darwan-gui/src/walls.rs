@@ -26,6 +26,8 @@ pub struct Channel {
     pub refused: String,
     pub target: usize,
     pub ticket: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    // Counts this channel's changes, so a page reads it again only when it changed.
+    pub stamp: u32,
 }
 
 impl Channel {
@@ -38,6 +40,7 @@ impl Channel {
             refused: String::new(),
             target,
             ticket: Default::default(),
+            stamp: 0,
         }
     }
 

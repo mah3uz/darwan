@@ -25,7 +25,7 @@ minutes.
 
 ### Wallpapers
 
-**Wallpapers in the GUI.** The pill at the top of the window now reads *Themes · Home · Explore · Library*, over
+**Wallpapers in the GUI.** The pill at the top of the window now reads *Themes · Home · Library · Explore*, over
 one of your wallpapers shown at full size.
 
 - *Home* features a picture from your Library, with *View Wallpaper* and a strip of others to feature instead, then
@@ -38,8 +38,9 @@ one of your wallpapers shown at full size.
 - *Library* is your wallpaper folder and its subfolders, four levels down, newest first, with NEW and IN USE badges,
   colour chips and a search. **+** adds pictures or videos to it; **⚙** changes the folder and holds the colour
   generators.
-- Open a wallpaper to see it full-window at full size (an online one is fetched in the background), step with ‹ › or
-  the arrow keys, and *Set Wallpaper*: with several screens, choose one or All. An online picture you've already
+- Open a wallpaper to see it full-window: its thumbnail at once, then a copy the size of your screen crossfades in
+  (an online one is fetched in the background first). Step with ‹ › or the arrow keys; each step crossfades too.
+  *Set Wallpaper*: with several screens, choose one or All. An online picture you've already
   downloaded shows DOWNLOADED and isn't fetched again. Once set, *Use on lockscreen too* makes your lock theme show
   your desktop wallpaper. When your wallpaper tool can only change by restarting (swaybg, for one), Darwan asks
   first: just this time, or always.
@@ -71,6 +72,10 @@ war and weapons, gore and violence, and horror are hidden too until you allow th
 
 ### Also
 
+- **Smoother scrolling.** A mouse-wheel notch on *Themes* and the wallpaper pages now glides a whole row of cards
+  instead of 72 pixels; notches in quick succession add up, and a touchpad scrolls as before. The *Themes* cards are
+  drawn more cheaply, so the page opens and scrolls with less work however many themes you have.
+- Building the `darwan` package from source now also needs `qt6-shadertools`.
 - The *Darwan* / *System* look moved from the window's left edge into **⚙** (Settings → Appearance); Darwan's own
   look is still the default.
 - Using your desktop wallpaper as a theme's background no longer mistakes an editor open on Omarchy's or Caelestia's

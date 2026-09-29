@@ -17,32 +17,36 @@ Item {
 
     HoverHandler { id: hover }
 
-    Rounded {
+    // Rounded by a shader and the Rectangles' own radius; offscreen layers only while the animation plays.
+    Item {
         id: frame
         anchors.fill: parent
-        radius: 16
-        Rectangle { anchors.fill: parent; color: Style.bgDeep }
-        Image {
+        Rectangle { anchors.fill: parent; radius: 16; color: Style.bgDeep }
+        RoundedImage {
             anchors.fill: parent
+            radius: 16
             visible: gate.theme !== null
             source: gate.theme ? "file://" + gate.theme.still : ""
             sourceSize.width: 1280
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
         }
         Loader {
             anchors.fill: parent
             active: hover.hovered && gate.theme !== null && gate.theme.loop !== ""
-            sourceComponent: AnimatedImage {
-                source: "file://" + gate.theme.loop
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                opacity: status === Image.Ready ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 600 } }
+            sourceComponent: Rounded {
+                radius: 16
+                AnimatedImage {
+                    anchors.fill: parent
+                    source: "file://" + gate.theme.loop
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    opacity: status === Image.Ready ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 600 } }
+                }
             }
         }
         Rectangle {
             anchors.fill: parent
+            radius: 16
             gradient: Gradient {
                 GradientStop { position: 0.35; color: "transparent" }
                 GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.78) }

@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Effects
 import org.darwan
 
-// One wallpaper in a grid: its thumbnail, a NEW or In use badge, and its name and size on hover.
+// One wallpaper in a grid: its picture on a tile of its own colour, badges, and its name and size on hover. Kept
+// light, since a grid makes many: the picture is one shader (no layers), and the words exist only while hovered.
 FocusScope {
     id: card
 
@@ -17,6 +17,13 @@ FocusScope {
     readonly property bool lit: hover.hovered || activeFocus
 
     signal open()
+
+    activeFocusOnTab: true
+    Keys.onReturnPressed: open()
+    Keys.onSpacePressed: open()
+
+    HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
+    TapHandler { onTapped: card.open() }
 
     // Solid, so it reads over any picture.
     component Badge: Rectangle {
@@ -37,19 +44,36 @@ FocusScope {
         }
     }
 
-    activeFocusOnTab: true
-    Keys.onReturnPressed: open()
-    Keys.onSpacePressed: open()
-
-    HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-    TapHandler { onTapped: card.open() }
-
     Item {
         id: frame
         anchors.fill: parent
-        y: card.lit ? -2 : 0
+        y: card.lit ? -3 : 0
         Behavior on y { NumberAnimation { duration: Style.medium; easing.type: Style.ease } }
 
+        // The picture's own colour while it loads: a calm tile rather than a spinner per card.
+        Rectangle {
+            anchors.fill: parent
+            radius: 16
+            color: card.item.swatches && card.item.swatches.length ? card.item.swatches[0] : Qt.rgba(1, 1, 1, 0.06)
+            opacity: card.item.swatches && card.item.swatches.length ? 0.45 : 1
+        }
+        RoundedImage {
+            id: picture
+            anchors.fill: parent
+            radius: 16
+            source: card.item.thumb
+            sourceSize.width: 512
+            onStatusChanged: if (status === Image.Error && card.backend) card.backend.wallHide(card.item.key || card.item.path)
+        }
+        Rectangle {
+            anchors.fill: parent
+            radius: 16
+            visible: card.lit && !card.quiet
+            gradient: Gradient {
+                GradientStop { position: 0.45; color: "transparent" }
+                GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.72) }
+            }
+        }
         Rectangle {
             anchors.fill: parent
             anchors.margins: -2
@@ -57,44 +81,7 @@ FocusScope {
             color: "transparent"
             border.width: 2
             border.color: card.item.inUse ? Style.ok : Style.accent
-            opacity: card.lit || card.item.inUse ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Style.fast } }
-        }
-        Rounded {
-            anchors.fill: parent
-            radius: 16
-            Rectangle {
-                anchors.fill: parent
-                color: card.item.swatches && card.item.swatches.length ? card.item.swatches[0] : Style.bgDeep
-                opacity: 0.35
-            }
-            Spinner {
-                anchors.centerIn: parent
-                visible: card.item.thumb === "" || thumb.status !== Image.Ready
-            }
-            Image {
-                id: thumb
-                anchors.fill: parent
-                source: card.item.thumb
-                sourceSize.width: 512
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                opacity: status === Image.Ready ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Style.medium } }
-                onStatusChanged: if (status === Image.Error && card.backend) card.backend.wallHide(card.item.key || card.item.path)
-            }
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: parent.height * 0.55
-                opacity: card.lit && !card.quiet ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Style.fast } }
-                gradient: Gradient {
-                    GradientStop { position: 0; color: "transparent" }
-                    GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.72) }
-                }
-            }
+            visible: card.lit || card.item.inUse === true
         }
 
         Row {
@@ -125,43 +112,43 @@ FocusScope {
             tint: Style.ok
         }
 
-        Column {
+        Loader {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.margins: 14
-            spacing: 2
-            visible: !card.quiet
-            opacity: card.lit ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Style.fast } }
-            Label {
-                width: parent.width
-                text: card.mode === "online" ? card.item.credit.source : card.item.folder
-                visible: text !== ""
-                elide: Text.ElideRight
-                font.family: Style.family
-                font.pixelSize: 11
-                color: Qt.rgba(1, 1, 1, 0.7)
-            }
-            Label {
-                width: parent.width
-                text: card.mode === "online" ? card.item.title : card.item.name
-                elide: Text.ElideRight
-                font.family: Style.family
-                font.pixelSize: Style.body
-                font.weight: Font.DemiBold
-                color: "white"
-            }
-            Label {
-                width: parent.width
-                text: card.mode === "online"
-                      ? [card.item.credit.author, card.item.size].filter(s => s).join(" · ")
-                      : [card.item.size, card.item.bytes].filter(s => s).join(" · ")
-                visible: text !== ""
-                elide: Text.ElideRight
-                font.family: Style.family
-                font.pixelSize: 11
-                color: Qt.rgba(1, 1, 1, 0.7)
+            active: card.lit && !card.quiet
+            sourceComponent: Column {
+                spacing: 2
+                Label {
+                    width: parent.width
+                    text: card.mode === "online" ? card.item.credit.source : card.item.folder
+                    visible: text !== ""
+                    elide: Text.ElideRight
+                    font.family: Style.family
+                    font.pixelSize: 11
+                    color: Qt.rgba(1, 1, 1, 0.7)
+                }
+                Label {
+                    width: parent.width
+                    text: card.mode === "online" ? card.item.title : card.item.name
+                    elide: Text.ElideRight
+                    font.family: Style.family
+                    font.pixelSize: Style.body
+                    font.weight: Font.DemiBold
+                    color: "white"
+                }
+                Label {
+                    width: parent.width
+                    text: card.mode === "online"
+                          ? [card.item.credit.author, card.item.size].filter(s => s).join(" · ")
+                          : [card.item.size, card.item.bytes].filter(s => s).join(" · ")
+                    visible: text !== ""
+                    elide: Text.ElideRight
+                    font.family: Style.family
+                    font.pixelSize: 11
+                    color: Qt.rgba(1, 1, 1, 0.7)
+                }
             }
         }
     }

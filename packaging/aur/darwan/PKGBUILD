@@ -22,7 +22,7 @@ depends=(
   'quickshell'
   'ttf-jetbrains-mono-nerd'
 )
-makedepends=('cargo' 'cmake' 'librsvg' 'lld')
+makedepends=('cargo' 'cmake' 'librsvg' 'lld' 'qt6-shadertools')
 optdepends=(
   'sddm: use the themes on the login screen'
   'libfaketime: darwan preview --at'

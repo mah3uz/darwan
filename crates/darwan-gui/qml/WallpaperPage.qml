@@ -40,26 +40,35 @@ FocusScope {
 
     Rectangle { anchors.fill: parent; color: "#0c0c0e" }
 
-    // The featured picture at the window's full resolution; the grid's thumbnail stands in while it decodes.
-    Image {
-        id: standIn
-        anchors.fill: parent
-        source: page.featured ? page.featured.thumb : ""
-        fillMode: Image.PreserveAspectCrop
-        visible: false
+    // The featured picture, its thumbnail first and then a screen-sized copy crossfading over it.
+    property string featuredFull: ""
+    function askFull() {
+        if (featured)
+            backend.wallFull(featured.path, Math.round(Math.max(page.width, 1280) * Screen.devicePixelRatio))
     }
-    Image {
-        id: full
+    // Later, not now: the first pick happens while the page is still being made, and a copy already made is answered
+    // at once, before anything here listens.
+    onFeaturedChanged: {
+        featuredFull = ""
+        Qt.callLater(askFull)
+    }
+    Connections {
+        target: page.backend
+        function onWallFullReady(key, path) {
+            if (page.featured && page.featured.path === key)
+                page.featuredFull = path
+        }
+    }
+    FadeImage {
+        id: backdrop
         anchors.fill: parent
-        source: page.featured ? page.featured.file : ""
-        sourceSize.width: Math.min(3840, page.width * Screen.devicePixelRatio)
-        fillMode: Image.PreserveAspectCrop
-        asynchronous: true
+        duration: 600
+        source: page.featuredFull !== "" ? page.featuredFull : page.featured ? page.featured.thumb : ""
         visible: false
     }
     MultiEffect {
         anchors.fill: parent
-        source: full.status === Image.Ready ? full : standIn
+        source: backdrop
         blurEnabled: true
         blurMax: 64
         blur: page.view === "home" && !page.categoryShown ? 0 : 1

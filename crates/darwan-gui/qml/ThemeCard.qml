@@ -47,21 +47,21 @@ FocusScope {
             opacity: card.lit ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Style.fast } }
         }
-        Rounded {
+        // The still is drawn rounded by a shader; offscreen layers only for the one card playing its animation.
+        Rectangle { anchors.fill: parent; radius: Style.radius; color: Style.bgDeep }
+        RoundedImage {
             anchors.fill: parent
             radius: Style.radius
-            Rectangle { anchors.fill: parent; color: Style.bgDeep }
-            Image {
-                anchors.fill: parent
-                source: card.theme.still ? "file://" + card.theme.still : ""
-                sourceSize.width: 640
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-            }
-            Loader {
-                anchors.fill: parent
-                active: card.lit && card.theme.loop !== ""
-                sourceComponent: AnimatedImage {
+            source: card.theme.still ? "file://" + card.theme.still : ""
+            sourceSize.width: 640
+        }
+        Loader {
+            anchors.fill: parent
+            active: card.lit && card.theme.loop !== ""
+            sourceComponent: Rounded {
+                radius: Style.radius
+                AnimatedImage {
+                    anchors.fill: parent
                     source: "file://" + card.theme.loop
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true

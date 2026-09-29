@@ -107,7 +107,10 @@ pub mod qobject {
         fn wall_more(self: Pin<&mut Backend>, channel: &QString);
 
         #[qinvokable]
-        fn wall_full(self: Pin<&mut Backend>, key: &QString);
+        fn wall_full(self: Pin<&mut Backend>, key: &QString, width: i32);
+
+        #[qinvokable]
+        fn wall_stamp(self: &Backend, channel: &QString) -> i32;
 
         #[qinvokable]
         fn wall_hide(self: Pin<&mut Backend>, key: &QString);
@@ -809,11 +812,13 @@ impl qobject::Backend {
     }
 
     fn wall_hide(mut self: Pin<&mut Self>, key: &QString) {
-        self.as_mut()
-            .rust_mut()
-            .walls
-            .hidden
-            .insert(key.to_string());
+        {
+            let mut r = self.as_mut().rust_mut();
+            r.walls.hidden.insert(key.to_string());
+            for c in r.walls.channels.values_mut() {
+                c.stamp = c.stamp.wrapping_add(1);
+            }
+        }
         self.as_mut().feed_bump();
         self.wall_bump();
     }
@@ -953,6 +958,11 @@ impl qobject::Backend {
             let mut r = self.as_mut().rust_mut();
             let old = r.walls.channels.get(&name).map(|c| c.ticket.clone());
             let mut c = walls::Channel::new(feeds, first);
+            c.stamp = r
+                .walls
+                .channels
+                .get(&name)
+                .map_or(0, |o| o.stamp.wrapping_add(1));
             if let Some(t) = old {
                 // The same counter, bumped: a worker for the old query stops.
                 t.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -976,6 +986,7 @@ impl qobject::Backend {
                 return;
             }
             c.target += 25;
+            c.stamp = c.stamp.wrapping_add(1);
             c.items.len() < c.target && c.more()
         };
         self.as_mut().feed_bump();
@@ -1031,6 +1042,9 @@ impl qobject::Backend {
                                 c.items.push(f);
                                 added = true;
                             }
+                        }
+                        if added {
+                            c.stamp = c.stamp.wrapping_add(1);
                         }
                     }
                     if added {
@@ -1096,6 +1110,11 @@ impl qobject::Backend {
                                                 w.thumb_prints.insert(print, key.clone());
                                             }
                                         }
+                                        for c in w.channels.values_mut() {
+                                            if c.items.iter().any(|f| f.key() == key) {
+                                                c.stamp = c.stamp.wrapping_add(1);
+                                            }
+                                        }
                                         w.thumbs.insert(key, thumb);
                                     }
                                     qo.as_mut().feed_bump();
@@ -1139,6 +1158,7 @@ impl qobject::Backend {
                     }
                     c.loading = false;
                     c.feeds = feeds;
+                    c.stamp = c.stamp.wrapping_add(1);
                     match problem {
                         Ok(refused) => c.refused = refused,
                         Err(e) if c.items.is_empty() => c.error = e,
@@ -1150,30 +1170,50 @@ impl qobject::Backend {
         });
     }
 
-    // The full-size picture for the preview: a Library file is already here; an online one is fetched into the cache.
-    fn wall_full(mut self: Pin<&mut Self>, key: &QString) {
+    // The picture at screen size for the preview or the background, as a JPEG made once (see `library::preview`):
+    // `key` is a Library path, or an online result's key, which is fetched into the cache first. A video gives its
+    // largest thumbnail.
+    fn wall_full(mut self: Pin<&mut Self>, key: &QString, width: i32) {
+        use darwan_core::wallpaper::library;
         use darwan_core::wallpaper::online::Client;
         let key = key.to_string();
-        if let Some(path) = self.rust().walls.full.get(&key).cloned() {
+        let width = width.clamp(640, 3840) as u32;
+        let slot = format!("{key}@{width}");
+        if let Some(path) = self.rust().walls.full.get(&slot).cloned() {
             self.as_mut().wall_full_ready(
                 QString::from(key),
                 QString::from(format!("file://{}", path.display())),
             );
             return;
         }
-        let Some(found) = self.rust().walls.find(&key).cloned() else {
-            return;
+        let online = if key.starts_with('/') {
+            None
+        } else {
+            self.rust().walls.find(&key).cloned()
         };
+        if online.is_none() && !key.starts_with('/') {
+            return;
+        }
         let thread = self.qt_thread();
         std::thread::spawn(move || {
-            let folder_copy = Client::new(paths::cache_dir().join("online")).full(&found);
-            if let Ok(path) = folder_copy {
+            let previews = paths::cache_dir().join("previews");
+            let made = match &online {
+                Some(found) => Client::new(paths::cache_dir().join("online"))
+                    .full(found)
+                    .and_then(|file| library::preview(&previews, &file, width)),
+                None => {
+                    let file = std::path::PathBuf::from(&key);
+                    match library::item(&file) {
+                        Some(item) if item.kind == library::Kind::Video => {
+                            library::thumbnail(&paths::cache_home(), &item, library::Size::XxLarge)
+                        }
+                        _ => library::preview(&previews, &file, width),
+                    }
+                }
+            };
+            if let Ok(path) = made {
                 let _ = thread.queue(move |mut q| {
-                    q.as_mut()
-                        .rust_mut()
-                        .walls
-                        .full
-                        .insert(key.clone(), path.clone());
+                    q.as_mut().rust_mut().walls.full.insert(slot, path.clone());
                     q.as_mut().wall_full_ready(
                         QString::from(key),
                         QString::from(format!("file://{}", path.display())),
@@ -1181,6 +1221,14 @@ impl qobject::Backend {
                 });
             }
         });
+    }
+
+    fn wall_stamp(&self, channel: &QString) -> i32 {
+        self.rust()
+            .walls
+            .channels
+            .get(&channel.to_string())
+            .map_or(-1, |c| c.stamp as i32)
     }
 
     // "+": pictures and videos copied into the wallpaper folder; returns what happened, for the notice.
@@ -1388,6 +1436,7 @@ impl qobject::Backend {
                 let c = r.walls.channels.get_mut(&name).expect("listed above");
                 c.ticket.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 c.items.clear();
+                c.stamp = c.stamp.wrapping_add(1);
                 for f in &mut c.feeds {
                     f.next_page = 1;
                     f.more = true;

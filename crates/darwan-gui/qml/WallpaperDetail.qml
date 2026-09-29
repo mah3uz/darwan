@@ -23,7 +23,7 @@ FocusScope {
     // The list it was opened from, for ‹ › and the arrow keys.
     property var list: []
     property int index: -1
-    // The full-size picture: a Library file at once; an online one once fetched.
+    // The screen-sized picture, once made (or fetched, for an online one).
     property string fullSource: ""
 
     function open(it, l, i) {
@@ -39,9 +39,9 @@ FocusScope {
         notice = ""
         noticeKind = ""
         lockNote = ""
-        fullSource = mode === "library" ? (it.kind === "video" ? it.thumb : it.file) : ""
-        if (mode === "online")
-            backend.wallFull(it.key)
+        fullSource = ""
+        // A screen-sized copy, made once, rather than decoding the original on Qt's one image thread.
+        backend.wallFull(it.key || it.path, Math.round(detail.width * Screen.devicePixelRatio))
     }
     function step(by) {
         if (list.length < 2)
@@ -89,7 +89,7 @@ FocusScope {
     Connections {
         target: detail.backend
         function onWallFullReady(key, path) {
-            if (detail.item && detail.item.key === key)
+            if (detail.item && (detail.item.key || detail.item.path) === key)
                 detail.fullSource = path
         }
         function onWallProgress(text, image) {
@@ -116,33 +116,12 @@ FocusScope {
     }
 
     Rectangle { anchors.fill: parent; color: "black" }
-    // The thumbnail is always underneath, so there is never a black frame; the full picture fades in over it.
-    Image {
-        id: standIn
+    // The thumbnail first, then the full picture crossfading over it; stepping crossfades too, so there is never a
+    // black frame.
+    FadeImage {
+        id: picture
         anchors.fill: parent
-        source: detail.item ? detail.item.thumb : ""
-        fillMode: Image.PreserveAspectCrop
-    }
-    Image {
-        id: preview
-        anchors.fill: parent
-        source: detail.fullSource
-        sourceSize.width: Math.min(3840, detail.width * Screen.devicePixelRatio)
-        fillMode: Image.PreserveAspectCrop
-        asynchronous: true
-        opacity: 0
-        onSourceChanged: {
-            fadeIn.stop()
-            opacity = 0
-        }
-        onStatusChanged: if (status === Image.Ready) fadeIn.restart()
-        NumberAnimation on opacity {
-            id: fadeIn
-            running: false
-            to: 1
-            duration: 450
-            easing.type: Easing.InOutQuad
-        }
+        source: detail.fullSource !== "" ? detail.fullSource : detail.item ? detail.item.thumb : ""
     }
     TapHandler { onTapped: detail.close() }
 
@@ -151,7 +130,9 @@ FocusScope {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 22
-        visible: detail.shown && preview.status !== Image.Ready
+        visible: opacity > 0
+        opacity: detail.shown && (detail.fullSource === "" || !picture.ready) ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Style.medium } }
         width: loadingRow.width + 28
         height: 36
         radius: 18
@@ -163,7 +144,7 @@ FocusScope {
             Spinner { anchors.verticalCenter: parent.verticalCenter; size: 14 }
             Label {
                 anchors.verticalCenter: parent.verticalCenter
-                text: preview.status === Image.Loading && preview.progress > 0 ? "Loading full size " + Math.round(preview.progress * 100) + "%" : "Loading full size…"
+                text: "Loading full size…"
                 font.family: Style.family
                 font.pixelSize: Style.caption
                 color: "white"

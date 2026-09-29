@@ -13,10 +13,16 @@ QtObject {
     property var items: []
     readonly property ListModel model: ListModel {}
     readonly property int revision: backend && channel !== "" ? backend.wallFeedRevision : -1
+    property int stamp: -2
 
+    // Read again only when this channel changed; another channel's news costs one number.
     function refresh() {
         if (!backend || channel === "")
             return
+        const now = backend.wallStamp(channel)
+        if (now === stamp)
+            return
+        stamp = now
         const d = JSON.parse(backend.wallOnline(channel))
         info = d
         set(d.items)
@@ -31,13 +37,22 @@ QtObject {
             same++
         if (same < m.count)
             m.remove(same, m.count - same)
+        // Only a card whose picture or marks changed is told; comparing these few fields is far cheaper than the
+        // whole entry.
         for (let i = 0; i < same; i++) {
-            const text = JSON.stringify(list[i])
-            if (m.get(i).json !== text)
-                m.setProperty(i, "json", text)
+            const it = list[i]
+            const sig = signature(it)
+            if (m.get(i).sig !== sig) {
+                m.setProperty(i, "sig", sig)
+                m.setProperty(i, "json", JSON.stringify(it))
+            }
         }
         for (let i = same; i < list.length; i++)
-            m.append({ key: list[i].key || list[i].path, json: JSON.stringify(list[i]) })
+            m.append({ key: list[i].key || list[i].path, sig: signature(list[i]), json: JSON.stringify(list[i]) })
+    }
+
+    function signature(it) {
+        return (it.thumb || "") + "|" + (it.size || "") + "|" + (it.downloaded ? 1 : 0) + (it.inUse ? 1 : 0) + (it.isNew ? 1 : 0)
     }
 
     onRevisionChanged: refresh()

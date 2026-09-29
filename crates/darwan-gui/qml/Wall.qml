@@ -114,6 +114,7 @@ FocusScope {
         boundsBehavior: Flickable.StopAtBounds
         clip: true
         ScrollBar.vertical: ScrollBar {}
+        SmoothWheel { view: scroll; step: (body.width - 18 * (wall.columns - 1)) / wall.columns * 9 / 16 + 32 + 22 }
         Behavior on contentY {
             id: glide
             enabled: !scroll.moving

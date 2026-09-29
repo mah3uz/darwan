@@ -1,4 +1,36 @@
-use cxx_qt_build::{CxxQtBuilder, QmlFile, QmlModule};
+use std::path::PathBuf;
+use std::process::Command;
+
+use cxx_qt_build::{CxxQtBuilder, QResource, QResources, QmlFile, QmlModule};
+use qt_build_utils::QResourceFile;
+
+// Qt Quick takes shaders precompiled for every graphics API; qsb (qt6-shadertools) makes them at build time.
+fn shader(name: &str) -> PathBuf {
+    let src = PathBuf::from("shaders").join(name);
+    let out = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join(format!("{name}.qsb"));
+    println!("cargo::rerun-if-changed={}", src.display());
+    let qsb = ["/usr/lib/qt6/bin/qsb", "qsb6", "qsb"]
+        .into_iter()
+        .find(|p| Command::new(p).arg("--version").output().is_ok())
+        .expect("qsb not found: install qt6-shadertools to build the GUI");
+    let status = Command::new(qsb)
+        .args([
+            "--qt6",
+            "--glsl",
+            "100es,120,150",
+            "--hlsl",
+            "50",
+            "--msl",
+            "12",
+            "-o",
+        ])
+        .arg(&out)
+        .arg(&src)
+        .status()
+        .expect("cannot run qsb");
+    assert!(status.success(), "qsb failed on {}", src.display());
+    out
+}
 
 fn main() {
     let qml = QmlModule::new("org.darwan").qml_files([
@@ -7,6 +39,7 @@ fn main() {
         QmlFile::from("qml/App.qml"),
         QmlFile::from("qml/ColorPopover.qml"),
         QmlFile::from("qml/ColorWell.qml"),
+        QmlFile::from("qml/FadeImage.qml"),
         QmlFile::from("qml/FieldControl.qml"),
         QmlFile::from("qml/GateCard.qml"),
         QmlFile::from("qml/GlassEdge.qml"),
@@ -22,12 +55,14 @@ fn main() {
         QmlFile::from("qml/Popover.qml"),
         QmlFile::from("qml/ReportDialog.qml"),
         QmlFile::from("qml/Rounded.qml"),
+        QmlFile::from("qml/RoundedImage.qml"),
         QmlFile::from("qml/SaverPanel.qml"),
         QmlFile::from("qml/Segmented.qml"),
         QmlFile::from("qml/SettingGroup.qml"),
         QmlFile::from("qml/SettingRow.qml"),
         QmlFile::from("qml/SettingsPopover.qml"),
         QmlFile::from("qml/SliderField.qml"),
+        QmlFile::from("qml/SmoothWheel.qml"),
         QmlFile::from("qml/Spinner.qml"),
         QmlFile::from("qml/Stage.qml"),
         QmlFile::from("qml/StatusBadge.qml"),
@@ -52,7 +87,11 @@ fn main() {
         QmlFile::from("qml/WallCard.qml"),
         QmlFile::from("qml/PageSwitch.qml"),
     ]);
+    let rounded = shader("rounded.frag");
     CxxQtBuilder::new_qml_module(qml)
         .files(["src/bridge.rs"])
+        .qrc_resources(QResources::new().resource(
+            QResource::new().file(QResourceFile::new(rounded).alias("qml/rounded.frag.qsb")),
+        ))
         .build();
 }

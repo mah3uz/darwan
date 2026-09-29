@@ -991,6 +991,7 @@ dependencies = [
  "cxx-qt-build",
  "cxx-qt-lib",
  "darwan-core",
+ "qt-build-utils",
  "serde_json",
 ]
 
