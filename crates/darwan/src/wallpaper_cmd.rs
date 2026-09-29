@@ -278,3 +278,92 @@ pub fn prepare(_paths: &Paths) -> Result<ExitCode, String> {
     }
     Ok(ExitCode::SUCCESS)
 }
+
+pub fn online(
+    source: &str,
+    text: &str,
+    sort: &str,
+    topic: Option<String>,
+    download: Option<usize>,
+    set_it: bool,
+) -> Result<ExitCode, String> {
+    use darwan_core::wallpaper::filter::Allowed;
+    use darwan_core::wallpaper::online::{Client, Query, Sort, Source};
+
+    let src = Source::parse(source)
+        .ok_or_else(|| format!("no source {source:?}; use wallhaven, bing, apod or commons"))?;
+    let sort = match sort {
+        "popular" => Sort::Popular,
+        "latest" => Sort::Latest,
+        "random" => Sort::Random,
+        other => return Err(format!("sort is popular, latest or random, not {other:?}")),
+    };
+    let config_path = paths::config_file();
+    let config =
+        UserConfig::load(&config_path).map_err(|e| format!("{}: {e}", config_path.display()))?;
+    let allowed = Allowed(
+        config
+            .wallpaper_allow()
+            .map_err(|e| format!("{}: {e}", config_path.display()))?
+            .unwrap_or_default(),
+    );
+    let client = Client::new(paths::cache_dir().join("online"));
+    let query = Query {
+        text: text.to_string(),
+        sort,
+        topic,
+        page: 1,
+        ..Query::default()
+    };
+    let page = client.search(src, &query, &allowed)?;
+    if let Some(term) = &page.refused {
+        println!(
+            "{} the search has a refused word ({term})",
+            style::warn("Nothing asked:")
+        );
+        return Ok(ExitCode::FAILURE);
+    }
+    println!(
+        "{} {} {}",
+        style::bold(src.name()),
+        style::dim(format!("({} shown)", page.items.len())),
+        if page.more {
+            style::dim("more pages")
+        } else {
+            String::new()
+        }
+    );
+    for (i, f) in page.items.iter().enumerate() {
+        let size = if f.width > 0 {
+            format!("{}×{}", f.width, f.height)
+        } else {
+            String::new()
+        };
+        let title = if f.title.is_empty() {
+            f.id.clone()
+        } else {
+            f.title.clone()
+        };
+        println!(
+            "{:>3}. {title}  {}  {}",
+            i + 1,
+            style::dim(size),
+            style::dim(&f.licence)
+        );
+    }
+    let Some(n) = download else {
+        return Ok(ExitCode::SUCCESS);
+    };
+    let found = page
+        .items
+        .get(n.wrapping_sub(1))
+        .ok_or_else(|| format!("no result {n}"))?;
+    let home = std::path::PathBuf::from(std::env::var_os("HOME").unwrap_or_default());
+    let folder = library::folder(&config, &home, &paths::config_home());
+    let file = client.download(found, &folder, &paths::data_dir().join("credits"))?;
+    println!("{} {}", style::ok("Saved"), file.display());
+    if set_it {
+        return set_file(&file, &[], false);
+    }
+    Ok(ExitCode::SUCCESS)
+}

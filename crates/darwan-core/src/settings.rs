@@ -61,6 +61,7 @@ pub enum Key {
     SaverQuality,
     GuiLook,
     WallpaperFolder,
+    WallpaperAllow,
     Option { theme: String, key: String },
 }
 
@@ -77,10 +78,11 @@ impl Key {
             "saver.quality" => Key::SaverQuality,
             "gui.look" => Key::GuiLook,
             "wallpaper.folder" => Key::WallpaperFolder,
+            "wallpaper.allow" => Key::WallpaperAllow,
             _ => {
                 let (theme, key) = s.rsplit_once('.').filter(|(t, k)| valid_id(t) && !k.is_empty()).ok_or_else(|| {
                     format!(
-                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look, wallpaper.folder or <theme-id>.<option>"
+                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look, wallpaper.folder, wallpaper.allow or <theme-id>.<option>"
                     )
                 })?;
                 Key::Option {
@@ -104,6 +106,7 @@ impl fmt::Display for Key {
             Key::SaverQuality => f.write_str("saver.quality"),
             Key::GuiLook => f.write_str("gui.look"),
             Key::WallpaperFolder => f.write_str("wallpaper.folder"),
+            Key::WallpaperAllow => f.write_str("wallpaper.allow"),
             Key::Option { theme, key } => write!(f, "{theme}.{key}"),
         }
     }
@@ -123,6 +126,7 @@ pub fn get(config: &UserConfig, key: &Key) -> Result<Option<String>, String> {
         Key::SaverQuality => config.saver_quality().map(|v| v.map(|q| q.to_string())),
         Key::GuiLook => config.gui_look().map(owned),
         Key::WallpaperFolder => config.wallpaper_folder().map(owned),
+        Key::WallpaperAllow => config.wallpaper_allow().map(|v| v.map(|l| l.join(","))),
         Key::Option { theme, key } => config
             .theme_values(theme)
             .into_iter()
@@ -192,6 +196,22 @@ pub fn set(
             "darwan" | "system" => config.set_global("gui", "look", toml_edit::value(value)),
             _ => Err(format!("gui.look is darwan or system, not {value:?}")),
         },
+        // Comma-separated group names; "" switches every group off. There is no name for sexual content.
+        Key::WallpaperAllow => {
+            let groups = crate::wallpaper::filter::GROUPS;
+            let mut list = toml_edit::Array::new();
+            for id in value.split(',').map(str::trim).filter(|v| !v.is_empty()) {
+                if !groups.iter().any(|g| g.id == id) {
+                    let names: Vec<&str> = groups.iter().map(|g| g.id).collect();
+                    return Err(format!(
+                        "wallpaper.allow takes {}, not {id:?}",
+                        names.join(", ")
+                    ));
+                }
+                list.push(id);
+            }
+            config.set_global("wallpaper", "allow", toml_edit::value(list))
+        }
         // Absolute or under the home folder: Darwan runs from different working folders.
         Key::WallpaperFolder => {
             if value.starts_with('/') || value.starts_with("~/") {
@@ -259,6 +279,7 @@ pub fn unset(config: &mut UserConfig, key: &Key) -> bool {
         Key::SaverQuality => config.remove_global("saver", "quality"),
         Key::GuiLook => config.remove_global("gui", "look"),
         Key::WallpaperFolder => config.remove_global("wallpaper", "folder"),
+        Key::WallpaperAllow => config.remove_global("wallpaper", "allow"),
         Key::Option { theme, key } => config.remove_theme_value(theme, key),
     }
 }
@@ -287,6 +308,7 @@ mod tests {
             "saver.quality",
             "gui.look",
             "wallpaper.folder",
+            "wallpaper.allow",
             "clockwork/orbital.themeMode",
         ] {
             assert_eq!(Key::parse(s).unwrap().to_string(), s);
@@ -321,6 +343,7 @@ mod tests {
             ("gui.look", "windows"),
             ("wallpaper.folder", "relative/folder"),
             ("wallpaper.folder", ""),
+            ("wallpaper.allow", "anime,nsfw"),
         ] {
             assert!(
                 set(&mut cfg, &cat, &Key::parse(k).unwrap(), v).is_err(),
@@ -359,6 +382,10 @@ mod tests {
             Ok(Some("~/Pictures/Walls".into())),
             "kept as written, expanded where used"
         );
+
+        let allow = Key::parse("wallpaper.allow").unwrap();
+        set(&mut cfg, &cat, &allow, "anime, war").unwrap();
+        assert_eq!(get(&cfg, &allow), Ok(Some("anime,war".into())));
 
         let back = Key::parse("saver.return_after").unwrap();
         set(&mut cfg, &cat, &back, "45").unwrap();

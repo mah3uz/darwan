@@ -3,7 +3,9 @@ use std::process::{Command, Stdio};
 
 use crate::custom::Wallpaper;
 
+pub mod filter;
 pub mod library;
+pub mod online;
 pub mod set;
 
 // Where to look; `run` executes a query command. Injected so every provider can be tested on fixtures.

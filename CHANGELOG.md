@@ -37,6 +37,13 @@ through `user-dirs.dirs` so a localised Pictures folder works. `darwan wallpaper
 `darwan wallpaper prepare` makes their thumbnails and colours ahead of time. Thumbnails go to the shared freedesktop
 cache (`~/.cache/thumbnails`), so your file manager and Darwan make each one once.
 
+`darwan wallpaper online` browses free wallpapers: Wallhaven (searchable), Bing's image of the day, NASA's Astronomy
+Picture of the Day and Wikimedia Commons' featured pictures (nature, space, city, night). `--download N` saves one
+into your wallpaper folder with its credit (author, licence and source page), and `--set` also sets it. Sexual
+content in any form is never shown, from any source. People and portraits, anime and manga, games, films and TV,
+war and weapons, gore and violence, and horror are hidden too until you allow them with `wallpaper.allow`
+(e.g. `darwan set wallpaper.allow anime,games`). No account or API key is needed.
+
 ### Also
 
 - Using your desktop wallpaper as a theme's background no longer mistakes an editor open on Omarchy's or Caelestia's

@@ -178,6 +178,25 @@ enum WallpaperCmd {
     List,
     /// Make the thumbnails and colours the Wallpapers page shows, for the whole folder
     Prepare,
+    /// Browse free wallpapers online (wallhaven, bing, apod, commons); sexual content is never shown
+    Online {
+        #[arg(default_value = "wallhaven")]
+        source: String,
+        /// Search words (Wallhaven only)
+        query: Vec<String>,
+        /// popular, latest or random
+        #[arg(long, default_value = "popular")]
+        sort: String,
+        /// A Wikimedia Commons subject: nature, space, city or night
+        #[arg(long)]
+        topic: Option<String>,
+        /// Save result N (1-based) into the wallpaper folder
+        #[arg(long, value_name = "N")]
+        download: Option<usize>,
+        /// Also set the downloaded wallpaper
+        #[arg(long, requires = "download")]
+        set: bool,
+    },
     /// Show FILE as the wallpaper, on every screen or on the ones named
     Set {
         file: PathBuf,
@@ -273,6 +292,14 @@ fn main() -> ExitCode {
             WallpaperCmd::Status => wallpaper_cmd::status(),
             WallpaperCmd::List => wallpaper_cmd::list(&paths),
             WallpaperCmd::Prepare => wallpaper_cmd::prepare(&paths),
+            WallpaperCmd::Online {
+                source,
+                query,
+                sort,
+                topic,
+                download,
+                set,
+            } => wallpaper_cmd::online(&source, &query.join(" "), &sort, topic, download, set),
             WallpaperCmd::Set {
                 file,
                 outputs,

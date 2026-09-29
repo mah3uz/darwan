@@ -138,6 +138,27 @@ impl UserConfig {
         self.string("wallpaper", "folder")
     }
 
+    // The online tab's optional groups the user switched on; unknown names are dropped. Sexual content has no entry.
+    pub fn wallpaper_allow(&self) -> Result<Option<Vec<String>>, String> {
+        match self.item("wallpaper", "allow") {
+            None => Ok(None),
+            Some(item) => item
+                .as_array()
+                .map(|a| {
+                    Some(
+                        a.iter()
+                            .filter_map(|v| v.as_str())
+                            .filter(|id| {
+                                crate::wallpaper::filter::GROUPS.iter().any(|g| g.id == *id)
+                            })
+                            .map(str::to_string)
+                            .collect(),
+                    )
+                })
+                .ok_or_else(|| "wallpaper.allow must be a list of names".into()),
+        }
+    }
+
     // The GUI's look: "darwan", its own, or "system" to follow the Qt theme's palette and font.
     pub fn gui_look(&self) -> Result<Option<&str>, String> {
         self.string("gui", "look")

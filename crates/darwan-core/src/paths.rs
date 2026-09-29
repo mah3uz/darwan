@@ -62,6 +62,11 @@ pub fn cache_dir() -> PathBuf {
     xdg("XDG_CACHE_HOME", ".cache").join("darwan")
 }
 
+// Darwan's own data that isn't a cache: credits for downloaded wallpapers.
+pub fn data_dir() -> PathBuf {
+    xdg("XDG_DATA_HOME", ".local/share").join("darwan")
+}
+
 pub fn state_dir() -> PathBuf {
     xdg("XDG_STATE_HOME", ".local/state").join("darwan")
 }
