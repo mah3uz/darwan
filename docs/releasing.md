@@ -25,13 +25,17 @@ AUR commits carry your global git name and email and can't be changed after push
 
 ## A release
 
-One command does all of the steps below:
+The release notes are the `## Unreleased` section of [`CHANGELOG.md`](../CHANGELOG.md), filled in as changes are
+committed: what changed for the people using Darwan, and an "Upgrading from" section for anything they have to do.
+Read it through before releasing; `just release-notes Unreleased` prints it.
+
+Then one command does all of the steps below:
 
 ```sh
 just ship 0.1.1
 ```
 
-It first checks that you're on an up-to-date, clean `main`, that the version is new, that `gh` is logged in, and that
+It first checks that you're on an up-to-date, clean `main`, that the version is new, that `## Unreleased` isn't empty, that `gh` is logged in, and that
 `just lint` and `just test` pass on a fresh build of Darwan's own crates (dependencies stay cached). Then it commits the version bump and asks once before pushing anything, since from
 there on the release is public. If a later step fails, it stops and you finish the rest by hand, from the step below
 where it stopped.
@@ -40,7 +44,9 @@ The steps it runs:
 
 **1. Set the version** in three places: `version` in [`Cargo.toml`](../Cargo.toml), and `pkgver` in
 [`packaging/aur/darwan/PKGBUILD`](../packaging/aur/darwan/PKGBUILD) and
-[`packaging/aur/darwan-bin/PKGBUILD`](../packaging/aur/darwan-bin/PKGBUILD). Reset both `pkgrel` to `1`. Commit it.
+[`packaging/aur/darwan-bin/PKGBUILD`](../packaging/aur/darwan-bin/PKGBUILD). Reset both `pkgrel` to `1`. In
+`CHANGELOG.md`, add `## 0.1.0 - <date and time>` (like `2026-09-29 18:38 +06:00`) under `## Unreleased`, so what was unreleased becomes this release's
+section. Commit it.
 
 **2. Tag and push:**
 
@@ -56,11 +62,15 @@ git push origin main v0.1.0
 just release
 ```
 
-**4. Publish the GitHub Release** with the package attached:
+**4. Publish the GitHub Release** with the package attached and the release's changelog section as its notes:
 
 ```sh
-gh release create v0.1.0 dist/darwan-0.1.0-x86_64.pkg.tar.zst --title v0.1.0 --generate-notes
+just release-notes 0.1.0 > dist/notes-0.1.0.md
+gh release create v0.1.0 dist/darwan-0.1.0-x86_64.pkg.tar.zst --title v0.1.0 --notes-file dist/notes-0.1.0.md
 ```
+
+To correct a published release's notes, fix its section in `CHANGELOG.md`, print it again with `just release-notes`,
+and publish it with `gh release edit v0.1.0 --notes-file dist/notes-0.1.0.md`; only the text changes.
 
 **5. Commit the checksums** that step 3 filled in:
 

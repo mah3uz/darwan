@@ -57,6 +57,10 @@ Run all three before sending a change:
 just test lint check
 ```
 
+A change people using Darwan will notice (a feature, a fix, changed behaviour, a new setting or dependency) also adds a
+line under `## Unreleased` in [`CHANGELOG.md`](../CHANGELOG.md), in the same commit. That section becomes the next
+release's notes.
+
 Writing or changing a theme? [The theme contract](./theme-contract.md) lists what a theme can rely on and the rules
 `just check` enforces.
 

@@ -1,0 +1,156 @@
+# Changelog
+
+What changed in each release of Darwan, newest first. Each release's section is also its GitHub Release notes.
+
+## Unreleased
+
+## 0.4.0 - 2026-09-29 18:38 +06:00
+
+### A new GUI
+
+**Every theme is a card.** The start screen shows your lockscreen and login screen, what happens when you step away,
+and every theme as a card that plays its unlock when you point at it. Filter by family, background or font, or search
+with Ctrl+F.
+
+**A theme opens live, full-window**, growing out of its card. Try it, Check it, hold Compare changes (or `\`) to see
+it as it ships, or Use it as your lockscreen or login screen. Arrow keys and a strip along the bottom step through the
+themes, and a theme you opened before comes back at once.
+
+**Its settings sit beside it** (Ctrl+I hides them), grouped, with a tab for this theme and one for every theme. Every
+change shows in the preview at once, and nothing is written until you Save (Ctrl+S).
+
+**The screensaver is a timeline**: when it starts, when it locks, when the screen goes off and when the machine
+sleeps, on one line. Change it from "When you step away" on the start screen. Its changes to `hypridle.conf` wait for
+Save like every other setting.
+
+**Two looks**: Darwan's own, frosted glass over a blurred theme, or your system's Qt theme. Switch on the window's left
+edge; it's saved at once (`gui.look = darwan | system`).
+
+### Upgrading from 0.3.0
+
+- **New dependencies:** `qt6-imageformats` and `qt6-svg`, installed with the package.
+- The Screensaver window is now the "When you step away" row on the start screen.
+
+## 0.3.0 - 2026-09-28 20:04 +06:00
+
+### Every theme is a screensaver
+
+When you're idle, your lock theme fades in over the desktop with only its background and its animation (rain,
+drifting ash, a turning dial), no password field; clock themes keep their clock. Any key or click fades it away to
+your desktop, or, once it has locked, brings in the lock's widgets, and the first key you type goes straight into the
+password field. After `saver.lock_after` seconds (10 by default) it locks by turning the same running theme into the
+lock, so nothing reloads or flashes. A revealed lock settles back to the screensaver after 30 seconds without input.
+
+All 40 themes have a screensaver mode. Videos play through libmpv on the GPU that draws them.
+
+### Setting it up
+
+hypridle starts it. The GUI's **Screensaver** window says whether hypridle is installed and running, how to start it
+with your session, and has a Start now button. It writes `~/.config/hypr/hypridle.conf` for you (the screensaver after
+5 minutes, the screen off after 10, Darwan locking before sleep) while keeping your own lines, changes the idle,
+screen-off and suspend times, and restarts hypridle to apply them. The README has the same setup by hand.
+
+`darwan doctor` checks all of it: hypridle running, its screensaver listener, `darwan resumed` after sleep, locking
+before sleep, the screensaver plugin, and which video quality this machine gets and why.
+
+### Video quality
+
+`saver.quality` picks what the screensaver and lock play: `full` (as shipped, the default), `auto` (chosen for this
+machine: lighter on integrated graphics, on battery, without a video decoder or with less than 8 GB of memory), `eco`
+(up to 1080p and 30 fps, from copies `darwan prepare-media` makes) or `still`. With several monitors, every screen
+plays at `full`; at the other qualities only the focused one does and the rest show a still.
+
+### Also
+
+- `darwan preview <theme> --saver` shows a theme's screensaver without locking.
+- With several monitors, what you type shows in every screen's password field.
+- The screensaver doesn't come back after waking from sleep without input.
+- NieR's rings turn by native animation, and NieR's emblem and Forest's glass rest while the widgets are hidden.
+- Full-screen stills at 4K and above load at screen size.
+- If Darwan's plugin is missing, the lock still locks and unlocks; only the screensaver mode is lost.
+
+### Upgrading from 0.2.1
+
+- **New dependency:** `mpvqt`, installed with the package.
+- **Turn the screensaver on:** open the GUI's Screensaver window, or add the `darwan saver` listener and
+  `after_sleep_cmd = darwan resumed` from the README to your `hypridle.conf`. Then run `darwan doctor`.
+
+## 0.2.1 - 2026-09-28 13:13 +06:00
+
+### The login screen shows the theme you picked
+
+After switching the login screen from one theme to another, SDDM could show the new theme's settings on the old
+theme's widgets: every theme was reached through the same link, and Qt's QML cache kept running the previous one. Each
+theme now has its own link (`/usr/share/sddm/themes/darwan-<id>`), and applying a theme removes Darwan's other links.
+
+### Colours keep what you pick
+
+- In Material You, generating builds the palette from the background, and a colour you pick replaces only its own
+  part: a picked accent leads the primary colours while the image still gives the surfaces and text. A picked accent
+  used to be forgotten as soon as any colour was set to generate.
+- Short and alpha codes such as `#f00` now seed the colour they name.
+
+### A colour picker
+
+In the GUI each colour is one chip showing the colour the preview really uses, generated ones included, and where it
+comes from: the theme, the background or you. It opens a picker with Theme, From background and Custom: a colour
+wheel with brightness, a hex field with Paste, and swatches of the background's colours and the theme's own. Every
+choice shows in the preview at once, and Cancel or Escape puts back what was there.
+
+### Put a theme back to its defaults
+
+Reset theme in the GUI (into the unsaved draft, so Discard undoes it), `R` twice in the TUI, or `darwan unset <theme>`.
+
+### Also
+
+- The README's new Desktop shells section shows how to lock with Darwan under DankMaterialShell, Noctalia, Caelestia,
+  illogical-impulse (end-4) and Omarchy: sending every lock to `darwan lock` and turning the shell's own lock off.
+- Confirmations in the GUI's status bar fade like the TUI's, while problems stay until something replaces them.
+
+### Upgrading from 0.2.0
+
+If you use Darwan on the login screen, run `darwan sddm apply` once: it moves to the new per-theme link and removes the
+old one.
+
+## 0.2.0 - 2026-09-28 02:03 +06:00
+
+### Make every theme yours
+
+- **Your own background** behind any theme: an image, an animated GIF, a video, a plain colour, or `desktop` for your desktop wallpaper. Darwan finds what draws it: DankMaterialShell, Omarchy, Caelestia, Noctalia, hyprpaper, awww, swww, gSlapper, mpvpaper, swaybg or waypaper.
+- **Colours** typed, or generated from the background the way Material You does, with matugen's schemes. In Material You, one accent colour recolours the whole theme.
+- **Fonts** for the text and the clock, from your installed fonts or a font file.
+- **Motion**: animation speed, curve, and reduce motion.
+- **Light and dark looks** for Nothing, Neo-Orbital, Tape, Girl · Coffee, NieR: Automata, Orbital and Material You, designed for each theme, and `auto` to follow your desktop.
+- The **login screen** gets your customisations too: `darwan sddm apply` sends your background and font files to the helper, which checks and stores its own copies.
+
+All 40 themes take these settings where their design allows. See `darwan show <theme>`, or the settings on the right in the GUI.
+
+### A lock that heals itself
+
+`darwan lock` now runs under a small supervisor. If the lockscreen crashes, for example when a monitor drops out, a new one takes the lock back within a second or two and your desktop never shows. It also checks the lock after the screens wake up, and holds sleep until the lock is up. For hypridle, add `inhibit_sleep = 3` (see the README); `darwan doctor` checks it.
+
+### Also
+
+- The GUI keeps your changes as a draft: the live preview shows each one at once, and nothing is written until you press Save (Ctrl+S). It asks before switching themes, closing, or running a command with unsaved changes.
+- The CLI is in colour on a terminal (plain in pipes, and with `NO_COLOR`), `darwan list` and `darwan show` are grouped like the GUI, and tab completion knows every customisation and its values.
+- Orbital, Neo-Orbital and Tape sweep their dials natively instead of redrawing each frame, and Forest no longer draws a hidden full-screen blur.
+
+### Upgrading from 0.1.0
+
+- **Material You Dark is now Material You's dark look.** If you used `material-you-dark`, switch with `darwan set lock.theme material-you` (or `sddm.theme`) and `darwan set material-you.variant dark`.
+- **Orbital's `themeMode` is now `variant`**: `darwan set clockwork/orbital.variant light` (or `dark`), then `darwan unset clockwork/orbital.themeMode`. Tape's `themeMode` option is gone; it never took effect.
+- Run `darwan sddm apply` again if you use Darwan on the login screen.
+
+## 0.1.0 - 2026-09-27 02:32 +06:00
+
+The first release: 41 hand-crafted themes for the SDDM login screen and the Quickshell lockscreen, from one app.
+
+- **A CLI, a TUI and a GUI** (`darwan`, `darwan` with no arguments, and `darwan-gui`) sharing one core.
+- **One config file**, `~/.config/darwan/config.toml`; nothing inside the theme folders is ever edited.
+- **Separate lockscreen and login themes.**
+- **Options that know the theme**: options a theme can't use are shown disabled with the reason.
+- **Test without locking yourself out**: a live preview in the GUI, a full-screen preview with a mock password, SDDM's
+  own test mode, and headless checks that load every theme and type the password.
+- **Safe SDDM setup**: a small helper does the root-only work through polkit and checks every value again.
+- **Never locked out**: if a theme fails to load, Darwan shows a plain password prompt instead of a black screen.
+- **Global clock and date settings** for every theme that shows them.

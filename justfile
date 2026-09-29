@@ -115,6 +115,27 @@ aur:
       rm -rf "$dir"
     done
 
+# One release's section of CHANGELOG.md, with its compare link; `Unreleased` gives what the next release has so far
+release-notes version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    awk -v v={{version}} '
+      $1 == "##" && found { prev = $2; exit }
+      $1 == "##" && $2 == v { found = 1; i = index($0, " - "); if (i) stamp = substr($0, i + 3); next }
+      found { lines[++n] = $0 }
+      END {
+        if (!found) { print "release-notes: no \"## " v "\" in CHANGELOG.md" > "/dev/stderr"; exit 1 }
+        first = 1; while (first <= n && lines[first] == "") first++
+        while (n >= first && lines[n] == "") n--
+        if (stamp != "" && first <= n) print "_Released " stamp "_\n"
+        for (i = first; i <= n; i++) print lines[i]
+        if (v == "Unreleased" || first > n) exit
+        url = "https://github.com/mah3uz/darwan/"
+        print ""
+        print "**Full Changelog**: " url (prev ? "compare/v" prev "...v" v : "commits/v" v)
+      }
+    ' CHANGELOG.md
+
 # The whole release: version bump, tag, GitHub Release and AUR, e.g. `just ship 0.2.1`
 ship version:
     #!/usr/bin/env bash
@@ -125,6 +146,7 @@ ship version:
 
     [[ $v =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "version must look like 0.2.1, not $v"
     [[ $(printf '%s\n%s\n' "$old" "$v" | sort -V | tail -1) == "$v" && $v != "$old" ]] || fail "$v is not newer than $old"
+    [[ -n $(just release-notes Unreleased) ]] || fail "CHANGELOG.md has nothing under ## Unreleased"
     [[ $(git branch --show-current) == main ]] || fail "switch to main first"
     [[ -z $(git status --porcelain) ]] || fail "commit or stash your changes first"
     git fetch -q origin
@@ -145,6 +167,7 @@ ship version:
       sed -i "s/^pkgver=.*/pkgver=$v/; s/^pkgrel=.*/pkgrel=1/" "$p"
     done
     cargo update --workspace -q
+    sed -i "s/^## Unreleased$/## Unreleased\n\n## $v - $(date '+%F %H:%M %:z')/" CHANGELOG.md
     git commit -q -am "Version $v"
 
     # Everything after this is public and can't be taken back.
@@ -163,7 +186,8 @@ ship version:
     DARWAN_SHIP=1 packaging/release.sh
 
     echo "==> GitHub Release"
-    gh release create "v$v" "dist/darwan-$v-x86_64.pkg.tar.zst" --title "v$v" --generate-notes
+    just release-notes "$v" > "dist/notes-$v.md"
+    gh release create "v$v" "dist/darwan-$v-x86_64.pkg.tar.zst" --title "v$v" --notes-file "dist/notes-$v.md"
 
     echo "==> commit the checksums"
     git commit -q -am "Release $v"
