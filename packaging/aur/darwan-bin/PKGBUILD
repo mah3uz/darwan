@@ -32,7 +32,7 @@ provides=("$_pkgname")
 conflicts=("$_pkgname")
 options=('!strip' '!debug')
 source=("$url/releases/download/v$pkgver/$_pkgname-$pkgver-x86_64.pkg.tar.zst")
-sha256sums=('b3823b8ad6c15904746f4959835567d096889fe77c67d059dce25152855ee71e')
+sha256sums=('1287fa5775a756895500870c612bb5bab6016a8ad6924bb61eb5f1d0a04189e0')
 
 package() {
   cp -r --no-preserve=ownership "$srcdir/usr" "$pkgdir/"
