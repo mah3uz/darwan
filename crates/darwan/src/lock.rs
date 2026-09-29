@@ -9,7 +9,7 @@ use darwan_core::config::UserConfig;
 use darwan_core::hardware;
 use darwan_core::host;
 use darwan_core::paths::{self, Paths};
-use darwan_core::saver::Quality;
+use darwan_core::saver::{self, Quality};
 use rustix::fs::{FlockOperation, flock};
 use rustix::io::{FdFlags, fcntl_setfd};
 use rustix::process::{Pid, Signal, kill_process, kill_process_group};
@@ -207,10 +207,21 @@ pub fn spawn(
     Ok(child.id())
 }
 
+// saver.return_after for lock_shell.qml and the saver preview.
+pub fn return_after_ms(config: Option<&UserConfig>) -> String {
+    let secs = config
+        .and_then(|c| c.saver_return_after().ok().flatten())
+        .unwrap_or(saver::RETURN_AFTER_DEFAULT);
+    (u64::from(secs) * 1000).to_string()
+}
+
 // What the probe says this machine can afford (saver.quality), and Qt's shader cache so the first frames don't compile.
+// A bad setting falls back to its default: the lock must start whatever the config says.
 fn tune(cmd: &mut Command) {
-    let quality = UserConfig::load(&paths::config_file())
-        .ok()
+    let config = UserConfig::load(&paths::config_file()).ok();
+    cmd.env("DARWAN_RETURN_AFTER", return_after_ms(config.as_ref()));
+    let quality = config
+        .as_ref()
         .and_then(|c| c.saver_quality().ok().flatten())
         .unwrap_or(Quality::DEFAULT);
     let facts = hardware::probe();

@@ -2,7 +2,7 @@ use crate::catalog::Theme;
 use crate::config::UserConfig;
 use crate::custom::{self, Area, Kind};
 use crate::manifest::OptionKind;
-use crate::saver::{LockAfter, Quality};
+use crate::saver::{self, LockAfter, Quality};
 use crate::settings::{self, Key};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -202,6 +202,19 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
         disabled: None,
         group: None,
     });
+    let (back, back_set) = current(
+        &Key::SaverReturnAfter,
+        &saver::RETURN_AFTER_DEFAULT.to_string(),
+    );
+    out.push(Field {
+        key: Key::SaverReturnAfter,
+        label: "Untouched lock shows the screensaver".into(),
+        kind: FieldKind::Choice(return_after_choices(&back)),
+        value: back,
+        is_set: back_set,
+        disabled: None,
+        group: None,
+    });
     let (quality, quality_set) = current(&Key::SaverQuality, Quality::DEFAULT.as_str());
     out.push(Field {
         key: Key::SaverQuality,
@@ -223,6 +236,23 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
         group: None,
     });
     out
+}
+
+// saver.return_after's presets, plus the current value when it was set by hand.
+pub fn return_after_choices(current: &str) -> Vec<(String, String)> {
+    let mut choices: Vec<(String, String)> = [
+        ("10", "After 10 seconds"),
+        ("30", "After 30 seconds"),
+        ("60", "After a minute"),
+        ("300", "After 5 minutes"),
+    ]
+    .into_iter()
+    .map(|(v, l)| (v.to_string(), l.to_string()))
+    .collect();
+    if !choices.iter().any(|(v, _)| v == current) {
+        choices.push((current.to_string(), format!("After {current} seconds")));
+    }
+    choices
 }
 
 // Standard customisations: every supported one, and for an area the theme doesn't support, one row saying why.
@@ -503,6 +533,24 @@ mod tests {
             field(&f, "Screensaver locks").value,
             "10",
             "the default gives ten seconds to come back before it locks"
+        );
+    }
+
+    #[test]
+    fn return_after_defaults_to_thirty_seconds_and_keeps_a_value_set_by_hand() {
+        let f = fields(&theme("pixel-rainyroom"), &UserConfig::default());
+        assert_eq!(
+            field(&f, "Untouched lock shows the screensaver").value,
+            "30",
+            "a manual lock keeps its widgets for half a minute before the screensaver"
+        );
+        let cfg = UserConfig::parse("[saver]\nreturn_after = 45\n").unwrap();
+        let f = fields(&theme("pixel-rainyroom"), &cfg);
+        let back = field(&f, "Untouched lock shows the screensaver");
+        assert_eq!(back.value, "45");
+        assert!(
+            matches!(&back.kind, FieldKind::Choice(c) if c.iter().any(|(v, l)| v == "45" && l == "After 45 seconds")),
+            "a value set by hand must still show as itself"
         );
     }
 

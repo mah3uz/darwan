@@ -122,8 +122,8 @@ Rules:
 Every theme is also the screensaver (`darwan saver`), so every theme has two looks:
 **ambient**, only its background and ambient animation (rain, drifting particles, a turning dial), and **revealed**, the
 lock screen as usual. The saver starts ambient; the first key or click reveals the widgets, and a revealed lock settles
-back to ambient after 30 seconds without input while the password field is empty. Under SDDM there is no screensaver
-and themes stay revealed.
+back to ambient after `saver.return_after` seconds (30 by default) without input while the password field is empty.
+Under SDDM there is no screensaver and themes stay revealed.
 
 Use the kit's `Ambient` (copied in by `just theme-kit`). Its `wake` is 1 while revealed and 0 in ambient, animated both
 ways; multiply the widgets' opacity by it and keep the theme's own intro:

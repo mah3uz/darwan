@@ -4,7 +4,7 @@ use std::path::Path;
 use toml_edit::{DocumentMut, Item, Table, Value};
 
 use crate::manifest::OptionKind;
-use crate::saver::{LockAfter, Quality};
+use crate::saver::{self, LockAfter, Quality};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
@@ -115,6 +115,17 @@ impl UserConfig {
                 (_, Some(s)) => s.parse().map(Some),
                 _ => Err("saver.lock_after must be a number of seconds or \"never\"".into()),
             },
+        }
+    }
+
+    pub fn saver_return_after(&self) -> Result<Option<u32>, String> {
+        match self.item("saver", "return_after") {
+            None => Ok(None),
+            Some(item) => item
+                .as_integer()
+                .ok_or_else(|| "saver.return_after must be a number of seconds".to_string())
+                .and_then(saver::check_return_after)
+                .map(Some),
         }
     }
 
@@ -323,19 +334,26 @@ mod tests {
 
     #[test]
     fn saver_settings_read_numbers_and_never_and_reject_the_rest() {
-        let cfg = UserConfig::parse("[saver]\nlock_after = 60\nquality = \"eco\"\n").unwrap();
+        let cfg =
+            UserConfig::parse("[saver]\nlock_after = 60\nreturn_after = 45\nquality = \"eco\"\n")
+                .unwrap();
         assert_eq!(cfg.saver_lock_after(), Ok(Some(LockAfter::Secs(60))));
+        assert_eq!(cfg.saver_return_after(), Ok(Some(45)));
         assert_eq!(cfg.saver_quality(), Ok(Some(Quality::Eco)));
         let never = UserConfig::parse("[saver]\nlock_after = \"never\"\n").unwrap();
         assert_eq!(never.saver_lock_after(), Ok(Some(LockAfter::Never)));
         for bad in [
             "lock_after = -1",
             "lock_after = true",
+            "return_after = 0",
+            "return_after = \"never\"",
             "quality = \"ultra\"",
         ] {
             let cfg = UserConfig::parse(&format!("[saver]\n{bad}\n")).unwrap();
             assert!(
-                cfg.saver_lock_after().is_err() || cfg.saver_quality().is_err(),
+                cfg.saver_lock_after().is_err()
+                    || cfg.saver_return_after().is_err()
+                    || cfg.saver_quality().is_err(),
                 "{bad}"
             );
         }

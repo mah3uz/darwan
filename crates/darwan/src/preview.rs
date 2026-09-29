@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
+use darwan_core::config::UserConfig;
 use darwan_core::host;
-use darwan_core::paths::Paths;
+use darwan_core::paths::{self, Paths};
 
 use crate::session::WaylandSession;
 use crate::style;
-use crate::{overlay, qs};
+use crate::{lock, overlay, qs};
 
 pub struct Options {
     pub id: Option<String>,
@@ -53,7 +54,12 @@ pub fn run(paths: &Paths, opts: Options) -> Result<ExitCode, String> {
                 &prepared.theme.dir,
                 Some(&prepared.overlay),
             );
+            let config = UserConfig::load(&paths::config_file()).ok();
             cmd.env("DARWAN_PREVIEW_SAVER", if opts.saver { "1" } else { "0" })
+                .env(
+                    "DARWAN_RETURN_AFTER",
+                    lock::return_after_ms(config.as_ref()),
+                )
                 .env("DARWAN_MODE", mode)
                 .env("DARWAN_AUTH", if opts.pam { "pam" } else { "mock" })
                 .env("DARWAN_USER", host::user_name())

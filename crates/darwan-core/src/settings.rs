@@ -4,7 +4,7 @@ use crate::catalog::{Catalog, valid_id};
 use crate::config::{Target, UserConfig};
 use crate::custom::{self, Kind};
 use crate::manifest::OptionKind;
-use crate::saver::{LockAfter, Quality};
+use crate::saver::{self, LockAfter, Quality};
 
 pub struct DatePreset {
     pub format: &'static str,
@@ -57,6 +57,7 @@ pub enum Key {
     ClockShowAmPm,
     DateFormat,
     SaverLockAfter,
+    SaverReturnAfter,
     SaverQuality,
     GuiLook,
     Option { theme: String, key: String },
@@ -71,12 +72,13 @@ impl Key {
             "clock.show_ampm" => Key::ClockShowAmPm,
             "date.format" => Key::DateFormat,
             "saver.lock_after" => Key::SaverLockAfter,
+            "saver.return_after" => Key::SaverReturnAfter,
             "saver.quality" => Key::SaverQuality,
             "gui.look" => Key::GuiLook,
             _ => {
                 let (theme, key) = s.rsplit_once('.').filter(|(t, k)| valid_id(t) && !k.is_empty()).ok_or_else(|| {
                     format!(
-                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.quality, gui.look or <theme-id>.<option>"
+                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look or <theme-id>.<option>"
                     )
                 })?;
                 Key::Option {
@@ -96,6 +98,7 @@ impl fmt::Display for Key {
             Key::ClockShowAmPm => f.write_str("clock.show_ampm"),
             Key::DateFormat => f.write_str("date.format"),
             Key::SaverLockAfter => f.write_str("saver.lock_after"),
+            Key::SaverReturnAfter => f.write_str("saver.return_after"),
             Key::SaverQuality => f.write_str("saver.quality"),
             Key::GuiLook => f.write_str("gui.look"),
             Key::Option { theme, key } => write!(f, "{theme}.{key}"),
@@ -111,6 +114,9 @@ pub fn get(config: &UserConfig, key: &Key) -> Result<Option<String>, String> {
         Key::ClockShowAmPm => config.clock_show_ampm().map(|v| v.map(|b| b.to_string())),
         Key::DateFormat => config.date_format().map(owned),
         Key::SaverLockAfter => config.saver_lock_after().map(|v| v.map(|l| l.to_string())),
+        Key::SaverReturnAfter => config
+            .saver_return_after()
+            .map(|v| v.map(|s| s.to_string())),
         Key::SaverQuality => config.saver_quality().map(|v| v.map(|q| q.to_string())),
         Key::GuiLook => config.gui_look().map(owned),
         Key::Option { theme, key } => config
@@ -167,6 +173,13 @@ pub fn set(
                 config.set_global("saver", "lock_after", toml_edit::value(i64::from(n)))
             }
         },
+        Key::SaverReturnAfter => {
+            let secs = value
+                .parse()
+                .map_err(|_| format!("saver.return_after is a number of seconds, not {value:?}"))?;
+            let secs = saver::check_return_after(secs)?;
+            config.set_global("saver", "return_after", toml_edit::value(i64::from(secs)))
+        }
         Key::SaverQuality => {
             let q: Quality = value.parse()?;
             config.set_global("saver", "quality", toml_edit::value(q.as_str()))
@@ -228,6 +241,7 @@ pub fn unset(config: &mut UserConfig, key: &Key) -> bool {
         Key::ClockShowAmPm => config.remove_global("clock", "show_ampm"),
         Key::DateFormat => config.remove_global("date", "format"),
         Key::SaverLockAfter => config.remove_global("saver", "lock_after"),
+        Key::SaverReturnAfter => config.remove_global("saver", "return_after"),
         Key::SaverQuality => config.remove_global("saver", "quality"),
         Key::GuiLook => config.remove_global("gui", "look"),
         Key::Option { theme, key } => config.remove_theme_value(theme, key),
@@ -254,6 +268,7 @@ mod tests {
             "clock.show_ampm",
             "date.format",
             "saver.lock_after",
+            "saver.return_after",
             "saver.quality",
             "gui.look",
             "clockwork/orbital.themeMode",
@@ -284,6 +299,8 @@ mod tests {
             ("date.format", "a\nb"),
             ("date.format", "ddd d"),
             ("saver.lock_after", "-1"),
+            ("saver.return_after", "0"),
+            ("saver.return_after", "never"),
             ("saver.quality", "ultra"),
             ("gui.look", "windows"),
         ] {
@@ -315,6 +332,14 @@ mod tests {
         assert!(
             cfg.to_string().contains("[gui]\nlook = \"system\""),
             "the GUI's look lives in the one config file"
+        );
+
+        let back = Key::parse("saver.return_after").unwrap();
+        set(&mut cfg, &cat, &back, "45").unwrap();
+        assert_eq!(get(&cfg, &back), Ok(Some("45".into())));
+        assert!(
+            cfg.to_string().contains("return_after = 45\n"),
+            "saved as a number, as the README shows it"
         );
     }
 

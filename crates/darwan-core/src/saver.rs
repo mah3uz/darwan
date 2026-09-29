@@ -43,6 +43,20 @@ impl fmt::Display for LockAfter {
     }
 }
 
+// Seconds a revealed lock that nobody touches keeps its widgets before the screensaver comes back.
+pub const RETURN_AFTER_DEFAULT: u32 = 30;
+// Any shorter and the widgets would hide while someone is still reaching for the keyboard.
+pub const RETURN_AFTER_MIN: u32 = 5;
+
+pub fn check_return_after(secs: i64) -> Result<u32, String> {
+    u32::try_from(secs)
+        .ok()
+        .filter(|&s| s >= RETURN_AFTER_MIN)
+        .ok_or_else(|| {
+            format!("saver.return_after is {RETURN_AFTER_MIN} or more seconds, not {secs}")
+        })
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Quality {
     Auto,
@@ -119,6 +133,21 @@ mod tests {
             LockAfter::Secs(10),
             "an unconfigured saver locks, after a short grace"
         );
+    }
+
+    #[test]
+    fn return_after_keeps_the_widgets_up_long_enough_to_use_them() {
+        assert_eq!(check_return_after(30), Ok(30));
+        assert_eq!(
+            check_return_after(i64::from(RETURN_AFTER_MIN)),
+            Ok(RETURN_AFTER_MIN)
+        );
+        assert!(
+            check_return_after(0).is_err(),
+            "0 would hide the widgets as soon as a click shows them"
+        );
+        assert!(check_return_after(-30).is_err());
+        assert!(check_return_after(i64::from(u32::MAX) + 1).is_err());
     }
 
     #[test]

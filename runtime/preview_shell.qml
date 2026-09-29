@@ -9,8 +9,9 @@ ShellRoot {
 
     readonly property bool usePam: Quickshell.env("DARWAN_AUTH") === "pam"
     readonly property string shotPath: Quickshell.env("DARWAN_SHOT") || ""
-    // The screensaver's look: ambient until input, back to ambient after 30 s idle with an empty field.
+    // The screensaver's look: ambient until input, back to ambient after saver.return_after idle with an empty field.
     readonly property bool saver: Quickshell.env("DARWAN_PREVIEW_SAVER") === "1"
+    readonly property int returnAfter: parseInt(Quickshell.env("DARWAN_RETURN_AFTER")) || 30000
 
     Window {
         id: win
@@ -84,7 +85,7 @@ ShellRoot {
 
     Timer {
         id: idle
-        interval: 30000
+        interval: root.returnAfter
         running: root.saver && !host.ambient
         onTriggered: {
             const f = win.activeFocusItem

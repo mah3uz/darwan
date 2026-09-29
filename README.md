@@ -335,8 +335,8 @@ out during sleep, Darwan starts a new one by itself and it takes the lock back.
 Every theme doubles as a screensaver: when you're idle, your lock theme fades in over the desktop with only its
 background and its animation (rain, drifting ash, a turning dial), no clock or password field. Any key or click brings
 the lock's widgets in (the first key you type goes straight into the password field), or, if the screensaver hasn't
-locked yet, fades it away to your desktop. A revealed lock settles back to the screensaver after 30 seconds without
-input.
+locked yet, fades it away to your desktop. A revealed lock, including one you locked yourself, settles back to the
+screensaver after 30 seconds without input (`saver.return_after`).
 
 hypridle starts it. In the GUI, *When you step away* on the start screen (or ⚙ → *Screensaver*) sets it up: it says
 whether hypridle is installed and running (and how to start it with your session), writes
@@ -372,16 +372,17 @@ Darwan notices the outputs powering off by itself. With the outputs off, an
 unlocked screensaver ends (waking shows the desktop) and a locked one drops its theme to a black lock (waking shows the
 password prompt). Waking from sleep never shows the screensaver either.
 
-| Setting            | Values                             | Default | Does                                                                   |
-|:-------------------|:-----------------------------------|:--------|:-----------------------------------------------------------------------|
-| `saver.lock_after` | seconds, or `never`                | `10`    | how long the screensaver waits before it locks; `0` locks as it appears |
-| `saver.quality`    | `full` `auto` `eco` `still`        | `full`  | what videos play: as shipped, chosen for you, at up to 1080p and 30 fps, or a still frame |
+| Setting              | Values                      | Default | Does                                                                                                             |
+|:---------------------|:----------------------------|:--------|:-----------------------------------------------------------------------------------------------------------------|
+| `saver.lock_after`   | seconds, or `never`         | `10`    | how long the screensaver waits before it locks; `0` locks as it appears                                          |
+| `saver.return_after` | seconds, `5` or more        | `30`    | how long a lock left untouched keeps its widgets before the screensaver comes back; not while something is typed |
+| `saver.quality`      | `full` `auto` `eco` `still` | `full`  | what videos play: as shipped, chosen for you, at up to 1080p and 30 fps, or a still frame                        |
 
 `full` plays every video as shipped, on every monitor: the smoothest, and the most GPU work, power and memory. `auto`
 picks from your hardware and power: full video on a dedicated GPU with a decoder; the smaller copies on integrated
 graphics, on battery, without a video decoder driver or with less than 8 GB of memory; stills with the power-saver
 profile or without a GPU. The smaller copies are made once, in the background, when you pick a theme or a background.
-Except with `full`, only the focused monitor plays video (the others show its first frame). Both settings are also in
+Except with `full`, only the focused monitor plays video (the others show its first frame). All three are also in
 the GUI's screensaver settings, and `darwan doctor` shows what was chosen and why.
 
 Try it without waiting: `darwan preview <theme> --saver` (or *Screensaver preview* in the GUI, `a` in the TUI).
@@ -506,6 +507,7 @@ format = "ddd, MMM d"   # one of the presets below; unset, each theme keeps its 
 
 [saver]
 lock_after = 10         # seconds from the screensaver to the lock, or "never"; 0 locks at once
+return_after = 30       # seconds an untouched lock keeps its widgets before the screensaver comes back; 5 or more
 quality = "full"        # "full" | "auto" | "eco" | "still"
 
 [gui]

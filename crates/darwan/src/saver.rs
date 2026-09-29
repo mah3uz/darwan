@@ -22,8 +22,9 @@ pub fn run(paths: &Paths) -> Result<ExitCode, String> {
         .saver_lock_after()
         .map_err(bad)?
         .unwrap_or(LockAfter::DEFAULT);
-    // The lock reads saver.quality leniently; the saver reports a bad value to hypridle's log.
+    // The lock reads these leniently; the saver reports a bad value to hypridle's log.
     config.saver_quality().map_err(bad)?;
+    config.saver_return_after().map_err(bad)?;
 
     let timeout = hypridle_timeout().unwrap_or(DEFAULT_TIMEOUT);
     if saver::declines_after_wake(since_wake(&wayland), timeout) {

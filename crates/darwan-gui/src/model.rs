@@ -174,7 +174,12 @@ pub fn fields(
     form::fields(theme, config)
         .into_iter()
         // The Screensaver window holds these, next to hypridle's settings.
-        .filter(|f| !matches!(f.key, Key::SaverLockAfter | Key::SaverQuality))
+        .filter(|f| {
+            !matches!(
+                f.key,
+                Key::SaverLockAfter | Key::SaverReturnAfter | Key::SaverQuality
+            )
+        })
         .map(|f| {
             let mut v = json!({
                 "key": f.key.to_string(),

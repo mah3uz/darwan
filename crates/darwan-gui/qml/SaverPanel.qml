@@ -351,6 +351,22 @@ Column {
                 }
             }
         }
+        SettingGroup {
+            width: panel.wide ? (parent.width - 28) / 2 : parent.width
+            title: "When you lock"
+            foldable: false
+            SettingRow {
+                width: parent.width
+                first: true
+                label: "Screensaver comes back"
+                sub: "Once a lock is left untouched, with nothing typed"
+                MenuButton {
+                    options: panel.p.returnAfters
+                    current: panel.p.returnAfter
+                    onPicked: v => panel.backend.saverDo("returnAfter", v)
+                }
+            }
+        }
         Column {
             width: panel.wide ? (parent.width - 28) / 2 : parent.width
             spacing: 8

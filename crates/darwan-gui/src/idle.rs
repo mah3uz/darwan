@@ -1,8 +1,9 @@
 use std::process::{Command, Stdio};
 
 use darwan_core::config::UserConfig;
+use darwan_core::form;
 use darwan_core::hypridle::{self, Conf, Hypridle, Listener, Setup, runs_command};
-use darwan_core::saver::{LockAfter, Quality};
+use darwan_core::saver::{self, LockAfter, Quality};
 use serde_json::{Value, json};
 
 // Everything the Screensaver window shows: hypridle's state, its settings, and darwan's saver settings.
@@ -336,6 +337,12 @@ pub fn panel(setup: &Setup, conf: Option<&Hypridle>, config: &UserConfig) -> Val
     let home = std::env::var("HOME").unwrap_or_default();
     let path = s["path"].as_str().unwrap_or("");
     let quality = s["quality"].as_str().unwrap_or("full");
+    let return_after = config
+        .saver_return_after()
+        .ok()
+        .flatten()
+        .unwrap_or(saver::RETURN_AFTER_DEFAULT)
+        .to_string();
     let q = QUALITIES
         .iter()
         .find(|q| q.0 == quality)
@@ -356,6 +363,11 @@ pub fn panel(setup: &Setup, conf: Option<&Hypridle>, config: &UserConfig) -> Val
                 None => "loginctl lock-session and power menus show your Darwan theme".into(),
             },
         })),
+        "returnAfter": return_after,
+        "returnAfters": form::return_after_choices(&return_after)
+            .into_iter()
+            .map(|(v, l)| json!({ "value": v, "label": l }))
+            .collect::<Vec<_>>(),
         "quality": quality,
         "qualities": QUALITIES.iter().map(|(v, l, _, long)| json!({ "value": v, "label": l, "long": long })).collect::<Vec<_>>(),
         "qualityLine": q.2,
@@ -494,6 +506,23 @@ mod tests {
         assert!(apply(None, "bogus", "", true).is_err());
         assert!(apply(None, "saver", "soon", true).is_err());
     }
+    #[test]
+    fn the_panel_offers_return_after_even_without_hypridle() {
+        let p = panel_for(&setup(), None, "");
+        assert_eq!(
+            p["returnAfter"], "30",
+            "a manual lock needs no hypridle, so its delay shows before hypridle is set up"
+        );
+        let p = panel_for(&setup(), None, "[saver]\nreturn_after = 45\n");
+        assert!(
+            p["returnAfters"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|c| c["value"] == "45" && c["label"] == "After 45 seconds")
+        );
+    }
+
     fn panel_for(setup: &Setup, text: Option<&str>, config: &str) -> Value {
         panel(
             setup,

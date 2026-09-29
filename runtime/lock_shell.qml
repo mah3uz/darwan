@@ -19,6 +19,8 @@ ShellRoot {
         const v = parseInt(Quickshell.env("DARWAN_LOCK_AFTER"))
         return isNaN(v) ? 0 : v
     }
+    // Milliseconds a revealed lock nobody touches keeps its widgets (saver.return_after).
+    readonly property int returnAfter: parseInt(Quickshell.env("DARWAN_RETURN_AFTER")) || 30000
     readonly property string mediaTier: Quickshell.env("DARWAN_MEDIA_TIER") || "full"
     // The other outputs show a still unless the user asked for full video everywhere; without a known primary, the
     // first screen plays.
@@ -204,7 +206,7 @@ ShellRoot {
     // A revealed lock settles back to ambient when nobody touches it, unless something is typed.
     Timer {
         id: ambientTimer
-        interval: 30000
+        interval: root.returnAfter
         running: root.lockWanted && root.themeLoaded && !root.ambient && !root.authenticated
         onTriggered: {
             if (root.fieldHasText())

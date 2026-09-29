@@ -315,6 +315,7 @@ impl qobject::Backend {
         let on = value.to_string() == "true";
         match action.to_string().as_str() {
             "lock" => self.set_value(&QString::from("saver.lock_after"), value),
+            "returnAfter" => self.set_value(&QString::from("saver.return_after"), value),
             "quality" => self.set_value(&QString::from("saver.quality"), value),
             "start" => self.idle_start(),
             "check" => self.recheck_idle(),

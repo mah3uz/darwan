@@ -4,6 +4,10 @@ What changed in each release of Darwan, newest first. Each release's section is 
 
 ## Unreleased
 
+- New setting `saver.return_after`: how long a lock left untouched keeps its password field and widgets before the
+  screensaver comes back, whether you locked by hand or the screensaver locked. It stays 30 seconds unless you change
+  it (5 or more), and it's in the GUI under *When you step away* → *When you lock*.
+
 ## 0.4.0 - 2026-09-29 18:38 +06:00
 
 ### A new GUI
