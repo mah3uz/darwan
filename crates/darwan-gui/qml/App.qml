@@ -165,7 +165,6 @@ Item {
         onTestSddm: id => app.run(["sddm", "preview", id], "SDDM test mode")
         onDoctor: app.runReport(["doctor"], "System check", "Checking the session, the themes and SDDM…")
         onSettings: from => settings.openFrom(from)
-        onSaverPreview: app.run(["preview", app.gates.lock ? app.gates.lock.id : "", "--saver"], "Screensaver preview")
     }
     Toast {
         id: wallToast

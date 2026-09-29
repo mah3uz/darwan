@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Controls.Basic
 
-// One of the two gates in the hero's strip: its theme's still, its unlock animation while hovered, a ring while it's
-// the one featured. Picking it features it.
+// One of the two gates in the hero's strip: its theme's still, cropped to the card, its unlock animation while hovered,
+// a ring while it's the one featured. Picking it features it.
 Item {
     id: gate
 
@@ -11,6 +11,7 @@ Item {
     property string label: ""
     property string glyph: ""
     property bool chosen: false
+    property real frameHeight: width * 9 / 16
     property alias frame: frame
 
     signal picked()
@@ -24,7 +25,7 @@ Item {
     Item {
         id: frame
         width: parent.width
-        height: width * 9 / 16
+        height: gate.frameHeight
         y: hover.hovered && !gate.chosen ? -2 : 0
         Behavior on y { NumberAnimation { duration: Style.medium; easing.type: Style.ease } }
 
@@ -34,7 +35,7 @@ Item {
             radius: 14
             visible: gate.theme !== null
             source: gate.theme ? "file://" + gate.theme.still : ""
-            sourceSize.width: 640
+            sourceSize.width: 1280
         }
         // Offscreen layers only while the animation plays.
         Loader {

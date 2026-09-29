@@ -423,8 +423,10 @@ Column {
     }
 
     Label {
+        width: parent.width
         leftPadding: 4
-        text: "Saved to " + panel.p.path + " when you save, and hypridle restarts to pick it up."
+        wrapMode: Text.WordWrap
+        text: "Saved to " + panel.p.path + "; hypridle restarts to apply it."
         font.family: Style.family
         font.pixelSize: Style.caption
         color: Style.muted

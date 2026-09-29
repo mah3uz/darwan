@@ -278,9 +278,9 @@ Run `darwan-gui`, or open *Darwan* from your launcher.
 
 - **The start screen** opens on your lockscreen theme, filling the window behind its name, with *Customise* and
   *Lock now*; the strip under it features your login screen instead (with *Test*), and hovering a gate there plays its
-  unlock. Under them, *When you step away* sums up the screensaver and opens into its settings. Then every theme
-  as a card: hover one (or move to it with the arrow keys) to watch it unlock; the chips above filter by family, video
-  backgrounds, themes that bring their own font, or the ones in use. `Ctrl+F` searches.
+  unlock. Under them, every theme as a card: hover one (or move to it with the arrow keys) to watch it unlock; the
+  chips above filter by family, video backgrounds, themes that bring their own font, or the ones in use. `Ctrl+F`
+  searches. The screensaver's settings are under ⚙ → *Screensaver*.
 - **Open a theme** and it fills the window, live: click it and type `test` to unlock. `←` `→` step through the themes
   (or hover near the bottom for a strip of them), *Lockscreen* / *Login screen* shows it as each host would, and the
   bars step aside while you look. At the bottom: *Try* (full-screen, screensaver, SDDM's own greeter, lock now),
@@ -346,10 +346,9 @@ screensaver after 30 seconds without input (`saver.return_after`). On Hyprland, 
 screens off after 5 minutes (`saver.screen_off_locked`), counted from the lock and from every touch, whether you locked
 by hand or the screensaver did; any key or mouse move turns them back on.
 
-hypridle starts it. In the GUI, *When you step away* on the start screen (or ⚙ → *Screensaver*) sets it up: it says
-whether hypridle is installed and running (and how to start it with your session), writes
-`~/.config/hypr/hypridle.conf` for you when you save, and shows the idle, lock, screen-off and suspend times as a
-timeline you can change. By hand, the setup it writes is:
+hypridle starts it. In the GUI, ⚙ → *Screensaver* sets it up: it says whether hypridle is installed and running (and
+how to start it with your session), writes `~/.config/hypr/hypridle.conf` for you when you save, and shows the idle,
+lock, screen-off and suspend times as a timeline you can change. By hand, the setup it writes is:
 
 ```ini
 general {

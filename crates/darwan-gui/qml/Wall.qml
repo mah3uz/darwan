@@ -4,7 +4,7 @@ import QtQuick.Effects
 import org.darwan
 
 // The first screen, as the wallpaper pages' Home: the featured gate's theme fills the window behind a hero, with a
-// strip to feature the other gate; then what happens when you step away, and every theme as a card.
+// strip to feature the other gate; then every theme as a card.
 FocusScope {
     id: wall
 
@@ -36,7 +36,6 @@ FocusScope {
     signal testSddm(string id)
     signal settings(Item from)
     signal doctor()
-    signal saverPreview()
     signal switchPage(string page)
 
     // Measured from where the scroll is heading, so keys pressed during a scroll still land the card in view.
@@ -152,8 +151,10 @@ FocusScope {
             Item {
                 id: hero
                 width: body.width
-                height: Math.max(460, wall.height * 0.66)
+                // A little of the picture above the text, then the text and the strip.
+                height: toolbar.height + Math.max(24, wall.height * 0.06) + heroText.height + 30 + strip.height
                 Column {
+                    id: heroText
                     anchors.left: parent.left
                     anchors.bottom: strip.top
                     anchors.bottomMargin: 30
@@ -214,11 +215,14 @@ FocusScope {
                 }
                 Row {
                     id: strip
+                    // Both gates side by side, half the width each, the same height.
+                    readonly property real cardHeight: Math.max(260, Math.min(420, body.width * 0.31))
                     anchors.bottom: parent.bottom
                     spacing: 18
                     GateCard {
                         id: lockGate
-                        width: 260
+                        width: (body.width - strip.spacing) / 2
+                        frameHeight: strip.cardHeight
                         theme: wall.model.gates.lock
                         label: "Lockscreen"
                         glyph: "lock"
@@ -227,7 +231,8 @@ FocusScope {
                     }
                     GateCard {
                         id: sddmGate
-                        width: 260
+                        width: (body.width - strip.spacing) / 2
+                        frameHeight: strip.cardHeight
                         theme: wall.model.gates.sddm
                         label: "Login screen"
                         glyph: "login"
@@ -237,11 +242,6 @@ FocusScope {
                 }
             }
             Item { width: 1; height: 12 }
-            StepAway {
-                width: parent.width
-                backend: wall.backend
-                onPreview: wall.saverPreview()
-            }
 
             Flow {
                 width: parent.width
@@ -338,9 +338,12 @@ FocusScope {
                                 width: (body.width - 18 * (wall.columns - 1)) / wall.columns
                                 focus: theme.index === wall.current
                                 keyboard: wall.keyboard
+                                // Only the keyboard scrolls a card into view, once the grid has placed it: a filter makes the
+                                // cards again, and a new card isn't placed yet when it takes the focus.
                                 onActiveFocusChanged: if (activeFocus) {
                                     wall.current = theme.index
-                                    wall.reveal(themeCard)
+                                    if (wall.keyboard)
+                                        Qt.callLater(wall.reveal, themeCard)
                                 }
                                 onOpen: (id, from) => wall.openTheme(id, from)
                             }

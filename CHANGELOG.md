@@ -20,19 +20,19 @@ screen left on a username field never shows your password.
 
 A lock left alone brings the screensaver back after 30 seconds, whether you locked by hand or the screensaver locked.
 The new setting `saver.return_after` changes that: 5 seconds or more, nothing hides while something is typed. The
-GUI has it under *When you step away* → *When you lock*, with 10 and 15 seconds, half a minute, a minute and five
+GUI has it under ⚙ → *Screensaver* → *When you lock*, with 10 and 15 seconds, half a minute, a minute and five
 minutes.
 
 ### The screen turns off while locked
 
 On Hyprland, a lock nobody touches turns the screens off after 5 minutes, counted from the lock and from every touch,
 whether you locked by hand or the screensaver did. Any key or mouse move turns them back on. `saver.screen_off_locked`
-changes it (10 seconds or more, or `never`); the GUI has it under *When you step away* → *When you lock*.
+changes it (10 seconds or more, or `never`); the GUI has it under ⚙ → *Screensaver* → *When you lock*.
 
 ### Other shells' idle timers
 
 When DMS, Noctalia, Caelestia, Omarchy's shell or swayidle also locks, turns the screens off or suspends on idle,
-*When you step away* says so and where to turn it off, and `darwan doctor` warns. Those timers act whatever Darwan's
+⚙ → *Screensaver* says so and where to turn it off, and `darwan doctor` warns. Those timers act whatever Darwan's
 settings say.
 
 ### Wallpapers
@@ -91,7 +91,8 @@ war and weapons, gore and violence, and horror are hidden too until you allow th
 - The GUI's hints are shorter.
 - The *Themes* page opens as the wallpaper pages do: your lockscreen theme fills the window behind its name, with
   *Customise* and *Lock now*, and a strip under it to feature your login screen instead. Scrolling down blurs it into
-  the background of the theme cards.
+  the background of the theme cards. The screensaver's settings left the start screen for ⚙ → *Screensaver*.
+- Picking a filter chip on the *Themes* page keeps your place instead of scrolling back to the top.
 - The *Darwan* / *System* look moved from the window's left edge into **⚙** (Settings → Appearance); Darwan's own
   look is still the default.
 - Using your desktop wallpaper as a theme's background no longer mistakes an editor open on Omarchy's or Caelestia's

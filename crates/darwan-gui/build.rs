@@ -66,7 +66,6 @@ fn main() {
         QmlFile::from("qml/Spinner.qml"),
         QmlFile::from("qml/Stage.qml"),
         QmlFile::from("qml/StatusBadge.qml"),
-        QmlFile::from("qml/StepAway.qml"),
         QmlFile::from("qml/Tag.qml"),
         QmlFile::from("qml/ThemeCard.qml"),
         QmlFile::from("qml/Toast.qml"),
