@@ -16,7 +16,8 @@ Rectangle {
     readonly property string runtime: "file://" + backend.runtimeDir + "/"
     property QtObject auth: null
 
-    color: "black"
+    // The Stage shows the theme's still under it while the live theme loads.
+    color: "transparent"
     clip: true
 
     signal unlocked()
@@ -67,8 +68,11 @@ Rectangle {
     }
 
     // Themes size themselves from Screen, so they render at screen size and are scaled to fit.
+    // Built across frames, and the theme's own Loaders with it (they follow an asynchronous parent), so loading a
+    // theme doesn't freeze the window.
     Loader {
         id: hostLoader
+        asynchronous: true
         width: Screen.width
         height: Screen.height
         transformOrigin: Item.TopLeft
@@ -187,10 +191,4 @@ Rectangle {
         }
     }
 
-    Label {
-        anchors.centerIn: parent
-        visible: !pane.loaded
-        text: pane.themeId === "" ? "No theme selected" : "Loading…"
-        color: Style.muted
-    }
 }

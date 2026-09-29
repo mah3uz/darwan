@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Layouts
 import org.darwan
 
 // Asked before anything that would lose the draft or run darwan on the saved file instead of it.
+// A sheet that slides down from the top of the window.
 Popup {
     id: dialog
 
@@ -26,46 +26,57 @@ Popup {
     }
 
     parent: Overlay.overlay
-    anchors.centerIn: parent
-    width: Math.min(480, parent.width - 64)
+    x: (parent.width - width) / 2
+    y: 0
+    width: Math.min(460, parent.width - 64)
     modal: true
-    padding: 24
+    padding: 22
     closePolicy: Popup.CloseOnEscape
     focus: true
     onOpened: saveButton.forceActiveFocus()
 
-    Overlay.modal: Rectangle { color: Qt.alpha(Style.crust, 0.65) }
+    Overlay.modal: Rectangle { color: Qt.rgba(0, 0, 0, 0.35) }
 
-    background: Rectangle {
-        radius: 14
-        color: Style.mantle
-        border.color: Style.border
+    enter: Transition {
+        NumberAnimation { property: "y"; from: -dialog.height; to: 0; duration: Style.slow; easing.type: Style.ease }
+    }
+    exit: Transition {
+        NumberAnimation { property: "y"; to: -dialog.height; duration: Style.medium; easing.type: Easing.InCubic }
     }
 
-    contentItem: ColumnLayout {
+    background: Item {
+        Rectangle {
+            anchors.fill: parent
+            anchors.topMargin: -Style.radius
+            radius: Style.radius + 2
+            color: Style.popover
+            border.color: Style.panelBorder
+        }
+    }
+
+    contentItem: Column {
         spacing: 16
 
         Label {
-            Layout.fillWidth: true
-            text: "Unsaved changes"
+            width: parent.width
+            text: "Save your changes before you " + dialog.action + "?"
+            font.family: Style.family
+            font.pixelSize: Style.title
+            font.weight: Font.DemiBold
             color: Style.text
-            font.pixelSize: 18
-            font.bold: true
-        }
-        Label {
-            Layout.fillWidth: true
-            text: "Save your changes before you " + dialog.action + "? Discarded changes go back to what was saved."
-            color: Style.subtext
             wrapMode: Text.WordWrap
         }
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-            Item { Layout.fillWidth: true }
-            ActionButton {
-                text: "Cancel"
-                onActivated: dialog.finish(false)
-            }
+        Label {
+            width: parent.width
+            text: "Previews, checks and applying read the saved settings. Discarded changes go back to what was saved."
+            font.family: Style.family
+            font.pixelSize: Style.body
+            color: Style.sub
+            wrapMode: Text.WordWrap
+        }
+        Item {
+            width: parent.width
+            height: saveButton.height
             ActionButton {
                 text: "Discard"
                 onActivated: {
@@ -73,11 +84,19 @@ Popup {
                     dialog.finish(true)
                 }
             }
-            ActionButton {
-                id: saveButton
-                text: "Save"
-                primary: true
-                onActivated: dialog.finish(dialog.backend.saveChanges())
+            Row {
+                anchors.right: parent.right
+                spacing: 8
+                ActionButton {
+                    text: "Cancel"
+                    onActivated: dialog.finish(false)
+                }
+                ActionButton {
+                    id: saveButton
+                    text: "Save"
+                    primary: true
+                    onActivated: dialog.finish(dialog.backend.saveChanges())
+                }
             }
         }
     }

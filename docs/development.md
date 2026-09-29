@@ -34,7 +34,7 @@ The [`justfile`](../justfile) points every binary at this checkout's `runtime/` 
 
 | Recipe                        | Does                                                                 |
 |:------------------------------|:---------------------------------------------------------------------|
-| `just darwan`                 | opens the TUI                                                        |
+| `just tui`                    | opens the TUI                                                        |
 | `just darwan list`            | runs any CLI command; everything after `darwan` is passed through    |
 | `just gui`                    | opens the GUI                                                        |
 | `just preview pixel-coffee`   | full-screen preview; add flags after the theme id                    |

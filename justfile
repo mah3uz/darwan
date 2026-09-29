@@ -31,6 +31,10 @@ check *args: build
 darwan *args: build
     DARWAN_DATA_DIR={{root}} {{bin}}/darwan {{args}}
 
+# The TUI against this checkout
+tui: build
+    DARWAN_DATA_DIR={{root}} {{bin}}/darwan
+
 # The GUI against this checkout
 gui: build
     DARWAN_DATA_DIR={{root}} {{bin}}/darwan-gui

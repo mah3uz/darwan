@@ -58,6 +58,7 @@ pub enum Key {
     DateFormat,
     SaverLockAfter,
     SaverQuality,
+    GuiLook,
     Option { theme: String, key: String },
 }
 
@@ -71,10 +72,11 @@ impl Key {
             "date.format" => Key::DateFormat,
             "saver.lock_after" => Key::SaverLockAfter,
             "saver.quality" => Key::SaverQuality,
+            "gui.look" => Key::GuiLook,
             _ => {
                 let (theme, key) = s.rsplit_once('.').filter(|(t, k)| valid_id(t) && !k.is_empty()).ok_or_else(|| {
                     format!(
-                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.quality or <theme-id>.<option>"
+                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.quality, gui.look or <theme-id>.<option>"
                     )
                 })?;
                 Key::Option {
@@ -95,6 +97,7 @@ impl fmt::Display for Key {
             Key::DateFormat => f.write_str("date.format"),
             Key::SaverLockAfter => f.write_str("saver.lock_after"),
             Key::SaverQuality => f.write_str("saver.quality"),
+            Key::GuiLook => f.write_str("gui.look"),
             Key::Option { theme, key } => write!(f, "{theme}.{key}"),
         }
     }
@@ -109,6 +112,7 @@ pub fn get(config: &UserConfig, key: &Key) -> Result<Option<String>, String> {
         Key::DateFormat => config.date_format().map(owned),
         Key::SaverLockAfter => config.saver_lock_after().map(|v| v.map(|l| l.to_string())),
         Key::SaverQuality => config.saver_quality().map(|v| v.map(|q| q.to_string())),
+        Key::GuiLook => config.gui_look().map(owned),
         Key::Option { theme, key } => config
             .theme_values(theme)
             .into_iter()
@@ -167,6 +171,10 @@ pub fn set(
             let q: Quality = value.parse()?;
             config.set_global("saver", "quality", toml_edit::value(q.as_str()))
         }
+        Key::GuiLook => match value {
+            "darwan" | "system" => config.set_global("gui", "look", toml_edit::value(value)),
+            _ => Err(format!("gui.look is darwan or system, not {value:?}")),
+        },
         Key::Option { theme, key } => {
             let t = catalog
                 .get(theme)
@@ -221,6 +229,7 @@ pub fn unset(config: &mut UserConfig, key: &Key) -> bool {
         Key::DateFormat => config.remove_global("date", "format"),
         Key::SaverLockAfter => config.remove_global("saver", "lock_after"),
         Key::SaverQuality => config.remove_global("saver", "quality"),
+        Key::GuiLook => config.remove_global("gui", "look"),
         Key::Option { theme, key } => config.remove_theme_value(theme, key),
     }
 }
@@ -246,6 +255,7 @@ mod tests {
             "date.format",
             "saver.lock_after",
             "saver.quality",
+            "gui.look",
             "clockwork/orbital.themeMode",
         ] {
             assert_eq!(Key::parse(s).unwrap().to_string(), s);
@@ -275,6 +285,7 @@ mod tests {
             ("date.format", "ddd d"),
             ("saver.lock_after", "-1"),
             ("saver.quality", "ultra"),
+            ("gui.look", "windows"),
         ] {
             assert!(
                 set(&mut cfg, &cat, &Key::parse(k).unwrap(), v).is_err(),
@@ -297,6 +308,14 @@ mod tests {
         );
         assert!(unset(&mut cfg, &key));
         assert_eq!(get(&cfg, &key), Ok(None));
+
+        let look = Key::parse("gui.look").unwrap();
+        set(&mut cfg, &cat, &look, "system").unwrap();
+        assert_eq!(get(&cfg, &look), Ok(Some("system".into())));
+        assert!(
+            cfg.to_string().contains("[gui]\nlook = \"system\""),
+            "the GUI's look lives in the one config file"
+        );
     }
 
     #[test]

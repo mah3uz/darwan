@@ -77,7 +77,7 @@ Your AUR helper or `makepkg -s` installs these for you.
 
 |                           | Packages                                                                                                                            |
 |--------------------------:|:------------------------------------------------------------------------------------------------------------------------------------|
-|              **Required** | `quickshell` `qt6-base` `qt6-declarative` `qt6-5compat` `qt6-multimedia` `qt6-multimedia-ffmpeg` `mpvqt` `polkit` `ttf-jetbrains-mono-nerd` |
+|              **Required** | `quickshell` `qt6-base` `qt6-declarative` `qt6-imageformats` `qt6-svg` `qt6-5compat` `qt6-multimedia` `qt6-multimedia-ffmpeg` `mpvqt` `polkit` `ttf-jetbrains-mono-nerd` |
 |              **Optional** | `sddm` (the login screen) · `hypridle` (the screensaver) · `libfaketime` (`darwan preview --at`) · `noto-fonts-cjk` (Chinese text in Genshin Impact) |
 | **Build** (`darwan` only) | `rust` `lld` `librsvg` `cmake` |
 
@@ -273,20 +273,29 @@ greyed out and say why.
 
 Run `darwan-gui`, or open *Darwan* from your launcher.
 
-| Left                      | Centre                                                                               | Right                                          |
-|:--------------------------|:-------------------------------------------------------------------------------------|:-----------------------------------------------|
-| theme gallery with search | live preview that reloads as you change settings; click it and type `test` to unlock | the theme's settings, saved as you change them |
-
-Below the preview: *Use for lock*, *Lock now*, *Full-screen preview*, *Apply to SDDM*, *SDDM test mode* and *Check*,
-plus *Import…* for missing fonts. *Doctor* is at the top right. The *Lockscreen* / *Login screen layout* switch shows
-the theme as each host would.
+- **The start screen** shows your two gates, the lockscreen and the login screen, with *Lock now*, *Test* and
+  *Customise*; hover one to watch it unlock. Under them, *When you step away* sums up the screensaver and opens into its settings. Then every theme
+  as a card: hover one (or move to it with the arrow keys) to watch it unlock; the chips above filter by family, video
+  backgrounds, themes that bring their own font, or the ones in use. `Ctrl+F` searches.
+- **Open a theme** and it fills the window, live: click it and type `test` to unlock. `←` `→` step through the themes
+  (or hover near the bottom for a strip of them), *Lockscreen* / *Login screen* shows it as each host would, and the
+  bars step aside while you look. At the bottom: *Try* (full-screen, screensaver, SDDM's own greeter, lock now),
+  *Check*, *Compare changes* once you've changed it (hold it, or `\`, to see it as it ships) and *Use as…*, which puts
+  it on the lockscreen, the login screen or both. `Esc` goes back.
+- **The settings** sit beside it (`Ctrl+I` hides them): *This theme* for its background, look, colours, fonts and
+  motion, *All themes* for the clock and date. The preview shows every change at once; nothing is written until
+  *Save* (`Ctrl+S`), and *Discard* takes it all back. Drop an image or video on the preview to use it as the
+  background.
+- **The look** switch on the left edge picks *Darwan*'s own or your *System* Qt theme's colours and font (`gui.look`),
+  saved as you pick. **⚙** holds the clock and date and the screensaver. **Doctor** at the top turns amber when
+  something needs a look; click it for the full check.
 
 <a id="lockscreen-keybind"></a>
 
 #### 🔒 LOCKSCREEN KEYBIND
 
-*Use for lock* only chooses the theme. To lock with Darwan, point your lock keybind and idle locker at `darwan lock`,
-and let a new locker take over if one ever crashes. In Hyprland's Lua config:
+*Use as… → Lockscreen* only chooses the theme. To lock with Darwan, point your lock keybind and idle locker at
+`darwan lock`, and let a new locker take over if one ever crashes. In Hyprland's Lua config:
 
 ```lua
 hl.config({ misc = { allow_session_lock_restore = true } })
@@ -329,9 +338,10 @@ the lock's widgets in (the first key you type goes straight into the password fi
 locked yet, fades it away to your desktop. A revealed lock settles back to the screensaver after 30 seconds without
 input.
 
-hypridle starts it. The GUI's **Screensaver** window sets it up: it says whether hypridle is installed and running
-(and how to start it with your session), writes `~/.config/hypr/hypridle.conf` for you, and changes the idle, screen-off
-and suspend times. By hand, the setup it writes is:
+hypridle starts it. In the GUI, *When you step away* on the start screen (or ⚙ → *Screensaver*) sets it up: it says
+whether hypridle is installed and running (and how to start it with your session), writes
+`~/.config/hypr/hypridle.conf` for you when you save, and shows the idle, lock, screen-off and suspend times as a
+timeline you can change. By hand, the setup it writes is:
 
 ```ini
 general {
@@ -372,7 +382,7 @@ picks from your hardware and power: full video on a dedicated GPU with a decoder
 graphics, on battery, without a video decoder driver or with less than 8 GB of memory; stills with the power-saver
 profile or without a GPU. The smaller copies are made once, in the background, when you pick a theme or a background.
 Except with `full`, only the focused monitor plays video (the others show its first frame). Both settings are also in
-the Screensaver window, and `darwan doctor` shows what was chosen and why.
+the GUI's screensaver settings, and `darwan doctor` shows what was chosen and why.
 
 Try it without waiting: `darwan preview <theme> --saver` (or *Screensaver preview* in the GUI, `a` in the TUI).
 
@@ -498,6 +508,9 @@ format = "ddd, MMM d"   # one of the presets below; unset, each theme keeps its 
 lock_after = 10         # seconds from the screensaver to the lock, or "never"; 0 locks at once
 quality = "full"        # "full" | "auto" | "eco" | "still"
 
+[gui]
+look = "darwan"         # "darwan" | "system" to follow your Qt theme's colours and font
+
 [themes."clockwork/orbital"]
 themeMode = "light"
 enableWindup = false
@@ -566,7 +579,7 @@ You never have to lock your real session to try a theme.
 
 | Mode                    | How                                  | Password                              | Good for                                                            |
 |:------------------------|:-------------------------------------|:--------------------------------------|:--------------------------------------------------------------------|
-| **Live preview**        | GUI centre pane                      | `test`                                | tweaking settings and seeing the change at once                     |
+| **Live preview**        | GUI, the open theme                  | `test`                                | tweaking settings and seeing the change at once                     |
 | **Full-screen preview** | `darwan preview <theme>`             | `test`, or your real one with `--pam` | the exact lockscreen runtime, without locking; `Ctrl+Q` closes it   |
 | **SDDM preview**        | `darwan sddm preview <theme>`        | — (visual only)                       | how it looks in SDDM's own greeter before applying                  |
 | **Headless check**      | `darwan check --all --shots ./shots` | typed for you                         | QML errors, missing fonts and a real unlock test across every theme |
@@ -637,7 +650,7 @@ crates/darwan          CLI + TUI (clap, ratatui); runs Quickshell for the lock, 
 crates/darwan-gui      GUI (cxx-qt + QML) with the live preview
 crates/darwan-helper   root-only SDDM and font writer, launched through pkexec
 runtime/               QML: ThemeHost, the SDDM contract, the Quickshell lock/preview/check shells
-themes/<id>/           Main.qml, theme.conf, metadata.desktop, darwan.toml, preview.jpg
+themes/<id>/           Main.qml, theme.conf, metadata.desktop, darwan.toml, preview.jpg, preview.webp
 ```
 
 - **Themes stay plain SDDM themes.** They read `config.<key>` exactly as they would under SDDM.

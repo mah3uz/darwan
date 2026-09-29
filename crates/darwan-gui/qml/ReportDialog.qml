@@ -49,16 +49,19 @@ Popup {
     focus: true
     onOpened: closeButton.forceActiveFocus()
 
-    Overlay.modal: Rectangle { color: Qt.alpha(Style.crust, 0.65) }
+    Overlay.modal: Rectangle { color: Qt.rgba(0, 0, 0, 0.45) }
 
     background: Rectangle {
-        radius: 14
-        color: Style.mantle
-        border.color: Style.border
+        radius: Style.radius + 4
+        color: Style.popover
+        border.color: Style.panelBorder
     }
 
-    enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 120 } }
-    exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 90 } }
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Style.fast }
+        NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Style.medium; easing.type: Style.ease }
+    }
+    exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 110 } }
 
     contentItem: ColumnLayout {
         spacing: 0
@@ -99,7 +102,7 @@ Popup {
                     Layout.fillWidth: true
                     text: "$ " + dialog.command
                     color: Style.muted
-                    font.family: "monospace"
+                    font.family: Style.mono
                     font.pixelSize: 12
                     elide: Text.ElideRight
                 }
@@ -186,7 +189,7 @@ Popup {
                                 leftPadding: 30
                                 text: modelData.text
                                 color: Style.subtext
-                                font.family: "monospace"
+                                font.family: Style.mono
                                 font.pixelSize: 12
                                 wrapMode: Text.WrapAnywhere
                             }

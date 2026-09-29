@@ -11,6 +11,7 @@ A Darwan theme is a folder under `themes/` with a `Main.qml`. The same file runs
 | `metadata.desktop` | SDDM metadata; must set `MainScript=Main.qml` and `ConfigFile=theme.conf` |
 | `darwan.toml` | Darwan manifest: name, options, required fonts (see `darwan_core::manifest`) |
 | `preview.jpg` or `preview.png` | gallery still, 1280×720 (`darwan preview --shot`) |
+| `preview.webp` (optional) | the GUI's hover loop, 640×360, made from the theme's demo by darwan-assets' `just loops` |
 | `font/` | bundled, openly licensed fonts, or the user-supplied fonts listed in `darwan.toml` |
 
 ## Root names

@@ -122,6 +122,11 @@ impl UserConfig {
         self.string("saver", "quality")?.map(str::parse).transpose()
     }
 
+    // The GUI's look: "darwan", its own, or "system" to follow the Qt theme's palette and font.
+    pub fn gui_look(&self) -> Result<Option<&str>, String> {
+        self.string("gui", "look")
+    }
+
     pub fn date_format(&self) -> Result<Option<&str>, String> {
         self.string("date", "format")
     }

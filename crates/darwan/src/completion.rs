@@ -123,6 +123,10 @@ fn keys_in(catalog: &Catalog) -> Vec<CompletionCandidate> {
             "saver.quality",
             "Screensaver video quality: auto, full, eco or still",
         ),
+        candidate(
+            "gui.look",
+            "The GUI's look: darwan, or system to follow your Qt theme",
+        ),
     ];
     // The same fields the GUI and `darwan show` list: the theme's own options and the customisations it supports.
     for t in catalog.themes() {
@@ -242,6 +246,10 @@ fn values_for(catalog: &Catalog, config: &UserConfig, key: &str) -> Vec<Completi
             .iter()
             .map(|q| candidate(q.as_str(), q.describe()))
             .collect(),
+        Key::GuiLook => vec![
+            candidate("darwan", "Darwan's own greys and blue, see-through panels"),
+            candidate("system", "your Qt theme's colours and font"),
+        ],
         Key::Option { theme, .. } => {
             let Some(t) = catalog.get(&theme) else {
                 return Vec::new();

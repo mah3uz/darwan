@@ -76,10 +76,16 @@ Popup {
         enabled: pop.visible
         onActivated: pop.cancel()
     }
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Style.fast }
+        NumberAnimation { property: "scale"; from: 0.95; to: 1; duration: Style.fast; easing.type: Style.ease }
+    }
+    exit: Transition { NumberAnimation { property: "opacity"; to: 0; duration: 110 } }
+    transformOrigin: Popup.Right
     background: Rectangle {
-        color: Style.base
+        color: Style.popover
         radius: Style.radius
-        border.color: Style.border
+        border.color: Style.panelBorder
     }
 
     component Segment: Rectangle {
@@ -94,7 +100,7 @@ Popup {
         Label {
             anchors.centerIn: parent
             text: seg.label
-            color: seg.active ? Style.crust : Style.text
+            color: seg.active ? Style.accentText : Style.text
             font.pixelSize: 12
         }
         HoverHandler { id: segHover; cursorShape: Qt.PointingHandCursor }
@@ -275,7 +281,7 @@ Popup {
                 id: code
                 Layout.fillWidth: true
                 text: pop.hex
-                font.family: "monospace"
+                font.family: Style.mono
                 // A complete code applies as it's typed; "#abc" waits for Enter, since it may become "#abcdef".
                 onTextEdited: if (/^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(text.trim())) pop.chooseCode(text)
                 onEditingFinished: pop.chooseCode(text)

@@ -49,7 +49,7 @@ enum Cmd {
         #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
         key: Option<String>,
     },
-    /// Change a setting: lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.quality, or <theme-id>.<option> for a theme's options and customisations (background, accent, variant, motion_speed, …)
+    /// Change a setting: lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.quality, gui.look, or <theme-id>.<option> for a theme's options and customisations (background, accent, variant, motion_speed, …)
     Set {
         #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
         key: String,

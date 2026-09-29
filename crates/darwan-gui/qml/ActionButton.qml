@@ -7,33 +7,68 @@ Button {
 
     property string reason: ""
     property bool primary: false
+    property bool pill: false
+    property bool compact: false
+    property string glyph: ""
+    property string tip: ""
     readonly property bool available: reason === ""
 
     signal activated()
     signal refused(string reason)
 
     hoverEnabled: true
+    // A click doesn't take the keyboard focus away from where it was.
+    focusPolicy: Qt.TabFocus
     onClicked: available ? activated() : refused(reason)
 
-    ToolTip.visible: hovered && !available
-    ToolTip.text: reason
-    ToolTip.delay: 300
+    ToolTip.visible: hovered && (!available || tip !== "")
+    ToolTip.text: available ? tip : reason
+    ToolTip.delay: 400
 
-    contentItem: Label {
-        text: button.text
-        color: !button.available ? Style.muted : button.primary ? Style.crust : Style.text
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
+    font.family: Style.family
+    font.pixelSize: compact ? Style.caption : Style.body
+    font.weight: primary ? Font.DemiBold : Font.Normal
+    leftPadding: text === "" ? 0 : pill ? 16 : 12
+    rightPadding: text === "" ? 0 : pill ? 16 : 12
+
+    scale: down ? 0.97 : 1
+    Behavior on scale { NumberAnimation { duration: 100 } }
+
+    contentItem: Item {
+        implicitWidth: row.implicitWidth
+        implicitHeight: row.implicitHeight
+        Row {
+            id: row
+            anchors.centerIn: parent
+            spacing: 6
+            Icon {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: button.glyph !== ""
+                name: button.glyph
+                size: button.compact ? 13 : 15
+                color: label.color
+            }
+            Label {
+                id: label
+                anchors.verticalCenter: parent.verticalCenter
+                visible: button.text !== ""
+                text: button.text
+                font: button.font
+                color: !button.available ? Style.muted : button.primary ? Style.accentText : Style.text
+            }
+        }
     }
+
     background: Rectangle {
-        implicitHeight: 32
-        implicitWidth: 64
-        radius: 6
-        color: !button.available ? Style.mantle
-             : button.primary ? (button.down ? Qt.darker(Style.accent, 1.2) : Style.accent)
-             : (button.down ? Style.border : button.hovered ? Qt.lighter(Style.surface, 1.2) : Style.surface)
-        border.color: button.visualFocus ? Style.accent : button.available ? "transparent" : Style.surface
-        border.width: button.visualFocus ? 2 : 1
+        implicitHeight: button.compact ? 26 : 32
+        implicitWidth: button.text === "" ? implicitHeight : 64
+        radius: button.pill || button.text === "" ? height / 2 : Style.small
+        color: button.primary && button.available ? (button.hovered ? Qt.lighter(Style.accent, 1.08) : Style.accent)
+             : button.flat && !button.hovered && !button.down ? "transparent"
+             : button.down || (button.hovered && button.available) ? Style.controlHover
+             : Style.control
+        border.width: button.visualFocus ? 2 : 0
+        border.color: Style.accent
+        Behavior on color { ColorAnimation { duration: Style.fast } }
     }
 }
