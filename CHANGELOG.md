@@ -4,6 +4,8 @@ What changed in each release of Darwan, newest first. Each release's section is 
 
 ## Unreleased
 
+## 0.5.0 - 2026-09-30 02:12 +06:00
+
 ### Multi-monitor
 
 **The lock shows on every screen.** With several monitors, the lock drew its theme on every screen but the primary one,
