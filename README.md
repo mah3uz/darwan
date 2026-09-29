@@ -228,22 +228,25 @@ darwan sddm reset
 
 #### ⌨️ CLI
 
-| Command                                                  | What it does                                                                      |
-|:---------------------------------------------------------|:----------------------------------------------------------------------------------|
-| `darwan`                                                 | open the TUI                                                                      |
-| `darwan list`                                            | list the themes; `L` marks the lock theme, `S` the SDDM theme                     |
-| `darwan show <theme>`                                    | a theme's details, fonts and settings                                             |
-| `darwan get [key]` · `set <key> <value>` · `unset <key>` | read, change or reset a setting, e.g. `darwan set clock.format 12h`               |
-| `darwan unset <theme>`                                   | put every setting of one theme back to its default                                |
-| `darwan lock [theme]`                                    | lock the screen now (default: the `[lock]` theme)                                 |
-| `darwan preview [theme]`                                 | full-screen preview, no real lock ([details](#preview))                           |
-| `darwan check <theme>… \| --all`                         | headless test: QML errors, missing fonts, and whether typing the password unlocks |
-| `darwan sddm apply` · `preview` · `status` · `reset`     | manage the login screen ([details](#sddm))                                        |
-| `darwan font import <theme> <file>`                      | install a licensed font a theme needs                                             |
-| `darwan doctor`                                          | check the session, Quickshell, fonts, the helper and SDDM's config                |
-| `darwan completion bash\|zsh\|fish`                      | print the tab-completion script for your shell                                    |
+| Command                                                   | What it does                                                                      |
+|:----------------------------------------------------------|:----------------------------------------------------------------------------------|
+| `darwan`                                                  | open the TUI                                                                      |
+| `darwan list`                                             | list the themes; `L` marks the lock theme, `S` the SDDM theme                     |
+| `darwan show <theme>`                                     | a theme's details, fonts and settings                                             |
+| `darwan get [key]` · `set <key> <value>` · `unset <key>`  | read, change or reset a setting, e.g. `darwan set clock.format 12h`               |
+| `darwan unset <theme>`                                    | put every setting of one theme back to its default                                |
+| `darwan lock [theme]`                                     | lock the screen now (default: the `[lock]` theme)                                 |
+| `darwan preview [theme]`                                  | full-screen preview, no real lock ([details](#preview))                           |
+| `darwan check <theme>… \| --all`                          | headless test: QML errors, missing fonts, and whether typing the password unlocks |
+| `darwan sddm apply` · `preview` · `status` · `reset`      | manage the login screen ([details](#sddm))                                        |
+| `darwan font import <theme> <file>`                       | install a licensed font a theme needs                                             |
+| `darwan wallpaper set <file> [-o DP-1]`                   | set the desktop wallpaper through whatever draws it ([details](#wallpapers))      |
+| `darwan wallpaper status` · `list` · `prepare` · `online` | what draws it; your folder; thumbnails ahead of time; browse and download online  |
+| `darwan doctor`                                           | check the session, Quickshell, fonts, the helper and SDDM's config                |
+| `darwan completion bash\|zsh\|fish`                       | print the tab-completion script for your shell                                    |
 
-Setting keys are `lock.theme`, `sddm.theme`, `clock.format`, `clock.show_ampm`, `date.format` and `<theme>.<option>`.
+Setting keys are `lock.theme`, `sddm.theme`, `clock.format`, `clock.show_ampm`, `date.format`, the screensaver's
+`saver.*`, the wallpaper page's `wallpaper.*` ([details](#wallpapers)) and `<theme>.<option>`.
 
 Tab completion offers theme ids, setting keys and each key's values. Load it when your shell starts, so it stays in step
 with the installed version:
@@ -286,6 +289,8 @@ Run `darwan-gui`, or open *Darwan* from your launcher.
   motion, *All themes* for the clock and date. The preview shows every change at once; nothing is written until
   *Save* (`Ctrl+S`), and *Discard* takes it all back. Drop an image or video on the preview to use it as the
   background.
+- **Wallpapers**, the other side of *Themes | Wallpapers* at the top, shows your wallpaper folder and free
+  wallpapers online; open one and *Set Wallpaper* ([details](#wallpapers)).
 - **The look** switch on the left edge picks *Darwan*'s own or your *System* Qt theme's colours and font (`gui.look`),
   saved as you pick. **⚙** holds the clock and date and the screensaver. **Doctor** at the top turns amber when
   something needs a look; click it for the full check.
@@ -386,6 +391,44 @@ Except with `full`, only the focused monitor plays video (the others show its fi
 the GUI's screensaver settings, and `darwan doctor` shows what was chosen and why.
 
 Try it without waiting: `darwan preview <theme> --saver` (or *Screensaver preview* in the GUI, `a` in the TUI).
+
+<a id="wallpapers"></a>
+
+#### 🖼️ WALLPAPERS
+
+Darwan sets your desktop wallpaper through whatever already draws it, so nothing new runs and your setup keeps
+working: your shell (DMS, Noctalia, Caelestia, Omarchy), your desktop's own background (KDE Plasma, GNOME, Cinnamon,
+MATE, Xfce), sway, waypaper when its backend is what runs, or the wallpaper tool itself (hyprpaper, awww/swww,
+wpaperd, mpvpaper, gSlapper, swaybg, wbg). It checks the result by asking that tool what it shows, and says so plainly
+when something can't be done, e.g. a video with a tool that shows pictures only.
+
+- **Library** is your wallpaper folder: by default `Wallpapers` (or `wallpapers`) in your Pictures folder, however
+  your system names that. Thumbnails go to the shared `~/.cache/thumbnails`, so your file manager and Darwan make each
+  one once, and every picture's colours are kept too, for the colour chips.
+- **Online** has Wallhaven (search, popular / latest / random, aspect ratio), Bing's image of the day, NASA's
+  Astronomy Picture of the Day and Wikimedia Commons' featured pictures (nature, space, city, night). No account or
+  key. A picture you set is downloaded into your folder with its credit (author, licence, source page), shown with it.
+- **Sexual content in any form is never shown**, from any source; there is no switch for it. People and portraits,
+  anime and manga, games, films and TV, war and weapons, gore and violence, and horror stay hidden until you allow
+  them under *Allowed* (or with `wallpaper.allow`). Wallhaven pictures appear one by one, as each one's own tags pass
+  these checks.
+- **Set Wallpaper** asks which display when you have several and your tool can give each its own. Afterwards,
+  *Use on lockscreen too* makes your lock theme show your desktop wallpaper.
+- **Colours.** A shell that makes your colours from the wallpaper does so as usual, because Darwan sets it through
+  the shell. With a plain wallpaper tool, *Colours* runs matugen, pywal, wallust or hellwal after each change, if you
+  use one.
+- **Tools that must be restarted** (swaybg, and mpvpaper or gSlapper without their control socket) are restarted only
+  after you say so, once or for good; one that systemd runs is never restarted behind its back.
+
+| Setting             | Values                                                        | Default                  |
+|:--------------------|:--------------------------------------------------------------|:-------------------------|
+| `wallpaper.folder`  | an absolute path, or one starting with `~/`                   | `~/Pictures/Wallpapers`  |
+| `wallpaper.allow`   | any of `people` `anime` `games` `series` `war` `gore` `horror` | none                     |
+| `wallpaper.restart` | any of `swaybg` `mpvpaper` `gSlapper` `wbg`                   | none: Darwan asks        |
+| `wallpaper.colours` | any of `matugen` `pywal` `wallust` `hellwal`                  | none                     |
+
+From a terminal: `darwan wallpaper set <file>` (add `-o DP-1` for one screen), `darwan wallpaper status`,
+`darwan wallpaper online bing` (or `wallhaven lake`, `apod`, `commons --topic space`) with `--download 3 --set`.
 
 <a id="desktop-shells"></a>
 

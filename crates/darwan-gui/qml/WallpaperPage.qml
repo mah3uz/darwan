@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Dialogs
@@ -98,14 +99,15 @@ FocusScope {
             Repeater {
                 model: page.online ? page.online.groups : []
                 delegate: SettingRow {
+                    id: d1
                     required property var modelData
                     required property int index
                     width: 320 - 12
-                    first: index === 0
-                    label: modelData.label
+                    first: d1.index === 0
+                    label: d1.modelData.label
                     Toggle {
-                        on: modelData.on
-                        onFlipped: v => page.backend.wallAllow(modelData.id, v)
+                        on: d1.modelData.on
+                        onFlipped: v => page.backend.wallAllow(d1.modelData.id, v)
                     }
                 }
             }
@@ -144,17 +146,18 @@ FocusScope {
             Repeater {
                 model: page.owner ? page.owner.generators : []
                 delegate: SettingRow {
+                    id: d2
                     required property var modelData
                     required property int index
                     width: 340 - 12
-                    first: index === 0
-                    label: "Run " + modelData.id + " after each change"
-                    sub: modelData.reason
-                    off: modelData.reason !== ""
+                    first: d2.index === 0
+                    label: "Run " + d2.modelData.id + " after each change"
+                    sub: d2.modelData.reason
+                    off: d2.modelData.reason !== ""
                     Toggle {
-                        on: modelData.on && modelData.reason === ""
-                        enabled: modelData.reason === ""
-                        onFlipped: v => page.backend.wallColours(modelData.id, v)
+                        on: d2.modelData.on && d2.modelData.reason === ""
+                        enabled: d2.modelData.reason === ""
+                        onFlipped: v => page.backend.wallColours(d2.modelData.id, v)
                     }
                 }
             }
@@ -226,6 +229,7 @@ FocusScope {
         ScrollBar.vertical: ScrollBar {}
         cacheBuffer: 600
         delegate: Item {
+            id: d3
             required property int index
             width: grid.cellWidth
             height: grid.cellHeight
@@ -234,9 +238,9 @@ FocusScope {
                 y: 4
                 width: parent.width - 18
                 height: width * 9 / 16
-                item: page.items[index]
+                item: page.items[d3.index]
                 mode: page.tab
-                onOpen: page.openItem(page.items[index], page.tab)
+                onOpen: page.openItem(page.items[d3.index], page.tab)
             }
         }
         footer: Item {
@@ -371,12 +375,13 @@ FocusScope {
             Repeater {
                 model: page.library ? page.library.colours : []
                 delegate: Chip {
+                    id: d4
                     required property var modelData
-                    text: modelData.label
-                    count: modelData.count
-                    swatch: page.hues[modelData.value] || ""
-                    on: page.colour === modelData.value
-                    onClicked: page.colour = on ? "" : modelData.value
+                    text: d4.modelData.label
+                    count: d4.modelData.count
+                    swatch: page.hues[d4.modelData.value] || ""
+                    on: page.colour === d4.modelData.value
+                    onClicked: page.colour = on ? "" : d4.modelData.value
                 }
             }
         }
@@ -397,11 +402,12 @@ FocusScope {
             Repeater {
                 model: [{ value: "", label: "Any shape" }, { value: "16x9", label: "Landscape (16:9)" }, { value: "21x9", label: "Ultrawide (21:9)" }, { value: "16x10", label: "16:10" }]
                 delegate: Chip {
+                    id: d5
                     required property var modelData
-                    text: modelData.label
-                    on: page.ratio === modelData.value
+                    text: d5.modelData.label
+                    on: page.ratio === d5.modelData.value
                     onClicked: {
-                        page.ratio = modelData.value
+                        page.ratio = d5.modelData.value
                         page.ask(false)
                     }
                 }
@@ -415,11 +421,12 @@ FocusScope {
             Repeater {
                 model: page.online ? page.online.topics : []
                 delegate: Chip {
+                    id: d6
                     required property var modelData
-                    text: modelData.label
-                    on: page.topic === modelData.value
+                    text: d6.modelData.label
+                    on: page.topic === d6.modelData.value
                     onClicked: {
-                        page.topic = modelData.value
+                        page.topic = d6.modelData.value
                         page.ask(false)
                     }
                 }
