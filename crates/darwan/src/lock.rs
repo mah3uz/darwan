@@ -220,6 +220,11 @@ pub fn return_after_ms(config: Option<&UserConfig>) -> String {
 fn tune(cmd: &mut Command) {
     let config = UserConfig::load(&paths::config_file()).ok();
     cmd.env("DARWAN_RETURN_AFTER", return_after_ms(config.as_ref()));
+    let screen_off = config
+        .as_ref()
+        .and_then(|c| c.saver_screen_off_locked().ok().flatten())
+        .unwrap_or(saver::ScreenOffLocked::DEFAULT);
+    cmd.env("DARWAN_SCREEN_OFF_LOCKED", screen_off.to_string());
     let quality = config
         .as_ref()
         .and_then(|c| c.saver_quality().ok().flatten())

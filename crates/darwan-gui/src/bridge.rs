@@ -363,6 +363,11 @@ impl qobject::Backend {
             &r.env,
             &r.catalog,
             panel["problem"].as_str().unwrap_or(""),
+            &r.idle_setup
+                .shells
+                .iter()
+                .map(|s| s.name)
+                .collect::<Vec<_>>(),
         ))
     }
 
@@ -390,6 +395,7 @@ impl qobject::Backend {
         match action.to_string().as_str() {
             "lock" => self.set_value(&QString::from("saver.lock_after"), value),
             "returnAfter" => self.set_value(&QString::from("saver.return_after"), value),
+            "screenOffLocked" => self.set_value(&QString::from("saver.screen_off_locked"), value),
             "quality" => self.set_value(&QString::from("saver.quality"), value),
             "start" => self.idle_start(),
             "check" => self.recheck_idle(),

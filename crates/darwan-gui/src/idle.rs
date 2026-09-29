@@ -3,7 +3,8 @@ use std::process::{Command, Stdio};
 use darwan_core::config::UserConfig;
 use darwan_core::form;
 use darwan_core::hypridle::{self, Conf, Hypridle, Listener, Setup, runs_command};
-use darwan_core::saver::{self, LockAfter, Quality};
+use darwan_core::idle_shells::{Shell, span};
+use darwan_core::saver::{self, LockAfter, Quality, ScreenOffLocked};
 use serde_json::{Value, json};
 
 // Everything the Screensaver window shows: hypridle's state, its settings, and darwan's saver settings.
@@ -62,37 +63,28 @@ const QUALITIES: &[(&str, &str, &str, &str)] = &[
     (
         "auto",
         "Auto",
-        "Picked for this machine: lighter on battery or integrated graphics.",
-        "Chosen from this machine: smaller copies on integrated graphics, on battery, without a video decoder driver or with under 8 GB of memory; still frames in power-saver mode. Only the focused monitor plays video.",
+        "Lighter on battery or integrated graphics.",
+        "Smaller copies on integrated graphics, battery, no video decoder or under 8 GB; stills in power-saver. Video on the focused monitor only.",
     ),
     (
         "full",
         "Full",
-        "As shipped, on every monitor · a 4K video theme: about 4% CPU and 1 GB.",
-        "Videos as shipped, on every monitor. The smoothest, and the most GPU work, power and memory (a 4K video theme: about 4% CPU and 1 GB).",
+        "As shipped, every monitor · 4K theme: ~4% CPU, 1 GB.",
+        "As shipped, on every monitor: smoothest, and the most GPU, power and memory.",
     ),
     (
         "eco",
         "Eco",
-        "Up to 1080p and 30 fps, focused monitor only · about a quarter of the work.",
-        "Copies at up to 1080p and 30 fps, made once when you pick a theme or background: about a quarter of the decoding work, softer on large screens. Only the focused monitor plays video.",
+        "1080p at 30 fps, focused monitor only · ~¼ of the work.",
+        "1080p 30 fps copies, made once: ~¼ of the decoding, softer on big screens. Focused monitor only.",
     ),
     (
         "still",
         "Still",
-        "The first frame of each video · almost no power.",
-        "The first frame of each video: almost no GPU work or power, and no motion in video backgrounds. Other animations still play.",
+        "First frame only · almost no power.",
+        "First frame only: almost no GPU or power. Other animations still play.",
     ),
 ];
-
-// Short, for the timeline and the summary: "30 s", "5 min", "1 hour".
-fn span(secs: u32) -> String {
-    match secs {
-        s if s % 3600 == 0 => format!("{} hour{}", s / 3600, if s == 3600 { "" } else { "s" }),
-        s if s % 60 == 0 => format!("{} min", s / 60),
-        s => format!("{s} s"),
-    }
-}
 
 // Long, for menus: "1 minute", "10 minutes", "Never".
 fn spelled(secs: u32) -> String {
@@ -136,37 +128,37 @@ fn setup_card(setup: &Setup, conf: Option<&Value>, problem: &str) -> Value {
     match problem {
         "missing" => json!({
             "title": "hypridle isn’t installed",
-            "text": "Hyprland’s idle daemon starts the screensaver when you step away. Install it, then check again.",
+            "text": "It starts the screensaver. Install it, then check again.",
             "code": "sudo pacman -S hypridle",
             "actions": [action("check", "Check again", true)],
         }),
         "stopped" => {
             let (where_, code) = if setup.uwsm {
                 (
-                    "Your session runs under uwsm, so let systemd start it with every login:",
+                    "Under uwsm, let systemd start it at login:",
                     "systemctl --user enable --now hypridle.service",
                 )
             } else if setup.lua {
                 (
-                    "To start it with Hyprland, add this to ~/.config/hypr/hyprland.lua:",
+                    "Add to ~/.config/hypr/hyprland.lua:",
                     "hl.on(\"hyprland.start\", function() hl.exec_cmd(\"hypridle\") end)",
                 )
             } else {
                 (
-                    "To start it with Hyprland, add this to ~/.config/hypr/hyprland.conf:",
+                    "Add to ~/.config/hypr/hyprland.conf:",
                     "exec-once = hypridle",
                 )
             };
             json!({
                 "title": "hypridle isn’t running",
-                "text": format!("Nothing starts the screensaver until it runs. {where_}"),
+                "text": format!("No screensaver until it runs. {where_}"),
                 "code": code,
                 "actions": [action("start", "Start now", true), action("check", "Check again", false)],
             })
         }
         "noconf" => json!({
             "title": "No hypridle.conf yet",
-            "text": "Enable writes one: the screensaver after 5 minutes, the screen off after 10, and Darwan locking before sleep.",
+            "text": "Enable writes one: screensaver at 5 min, screen off at 10, lock before sleep.",
             "code": "",
             "actions": [action("enable", "Enable the screensaver", true)],
         }),
@@ -174,10 +166,10 @@ fn setup_card(setup: &Setup, conf: Option<&Value>, problem: &str) -> Value {
             let c = conf.expect("a config needs fixing only when there is one");
             let mut text = Vec::new();
             if c["resumed"] != true {
-                text.push("Opening the lid without touching anything can bring the screensaver straight back.");
+                text.push("Opening the lid can bring the screensaver straight back.");
             }
             if c["lockWithDarwan"] == true && c["waitsForLock"] != true {
-                text.push("The machine can go to sleep before Darwan’s lock is up.");
+                text.push("It can sleep before Darwan’s lock is up.");
             }
             text.push("Fix keeps your other settings.");
             json!({
@@ -268,12 +260,30 @@ fn timeline(conf: &Value, lock_after: &str) -> Value {
         _ => Value::Null,
     };
     let (note, warn) = match saver {
-        _ if clash => ("The screen turns off before the screensaver would start, so you’ll never see it.".to_string(), true),
-        None => (format!("No screensaver: the screen just turns off{}.", screen_off.map_or(" never".into(), |s| format!(" after {}", span(s)))), false),
+        _ if clash => (
+            "The screen goes off before the screensaver starts.".to_string(),
+            true,
+        ),
+        None => (
+            format!(
+                "No screensaver: the screen just turns off{}.",
+                screen_off.map_or(" never".into(), |s| format!(" after {}", span(s)))
+            ),
+            false,
+        ),
         Some(_) => match lock_after.parse::<u32>() {
-            Err(_) => ("It never locks by itself: until you lock it, any key goes back to the desktop without a password.".into(), true),
+            Err(_) => (
+                "Never locks by itself: any key returns to the desktop.".into(),
+                true,
+            ),
             Ok(0) => ("It locks as soon as it starts.".into(), false),
-            Ok(s) => (format!("For the first {} (the amber stretch), any key goes back to the desktop without a password.", span(s)), false),
+            Ok(s) => (
+                format!(
+                    "For the first {} (amber), any key returns to the desktop.",
+                    span(s)
+                ),
+                false,
+            ),
         },
     };
     json!({
@@ -294,7 +304,13 @@ fn timeline(conf: &Value, lock_after: &str) -> Value {
     })
 }
 
-fn summary(conf: Option<&Value>, lock_after: &str, problem: &str) -> String {
+// `locked_off`: seconds an untouched lock keeps the screen on, when darwan can turn it off.
+fn summary(
+    conf: Option<&Value>,
+    lock_after: &str,
+    locked_off: Option<u32>,
+    problem: &str,
+) -> String {
     let c = match (problem, conf) {
         ("missing", _) => return "The screensaver can’t start: hypridle isn’t installed".into(),
         ("stopped", _) => return "The screensaver can’t start: hypridle isn’t running".into(),
@@ -314,9 +330,11 @@ fn summary(conf: Option<&Value>, lock_after: &str, problem: &str) -> String {
         ),
         None => "no screensaver".into(),
     }];
-    parts.push(secs("screenOff").map_or("screen stays on".into(), |s| {
-        format!("screen off after {}", span(s))
-    }));
+    parts.push(match (secs("screenOff"), locked_off) {
+        (Some(s), _) => format!("screen off after {}", span(s)),
+        (None, Some(l)) => format!("screen off {} after locking", span(l)),
+        (None, None) => "screen stays on".into(),
+    });
     parts.push(secs("suspend").map_or("never suspends".into(), |s| {
         format!("suspends after {}", span(s))
     }));
@@ -343,6 +361,13 @@ pub fn panel(setup: &Setup, conf: Option<&Hypridle>, config: &UserConfig) -> Val
         .flatten()
         .unwrap_or(saver::RETURN_AFTER_DEFAULT)
         .to_string();
+    let locked_off = config
+        .saver_screen_off_locked()
+        .ok()
+        .flatten()
+        .unwrap_or(ScreenOffLocked::DEFAULT);
+    let locked_off_secs = locked_off.secs().filter(|_| setup.hyprland);
+    let locked_off = locked_off.to_string();
     let q = QUALITIES
         .iter()
         .find(|q| q.0 == quality)
@@ -351,7 +376,7 @@ pub fn panel(setup: &Setup, conf: Option<&Hypridle>, config: &UserConfig) -> Val
         "ready": problem.is_empty(),
         "problem": problem,
         "running": setup.running,
-        "summary": summary(c, &lock_after, problem),
+        "summary": summary(c, &lock_after, locked_off_secs, problem),
         "warn": !problem.is_empty(),
         "setup": setup_card(setup, c, problem),
         "timeline": c.map_or(Value::Null, |c| timeline(c, &lock_after)),
@@ -360,7 +385,7 @@ pub fn panel(setup: &Setup, conf: Option<&Hypridle>, config: &UserConfig) -> Val
             "lockWithDarwan": c["lockWithDarwan"],
             "lockWithDarwanNote": match c["otherLocker"].as_str() {
                 Some(other) => format!("Now: {other}. Turning this on replaces it."),
-                None => "loginctl lock-session and power menus show your Darwan theme".into(),
+                None => "Power menus and loginctl lock with your theme".into(),
             },
         })),
         "returnAfter": return_after,
@@ -368,6 +393,18 @@ pub fn panel(setup: &Setup, conf: Option<&Hypridle>, config: &UserConfig) -> Val
             .into_iter()
             .map(|(v, l)| json!({ "value": v, "label": l }))
             .collect::<Vec<_>>(),
+        "screenOffLocked": locked_off,
+        "screenOffLockeds": form::screen_off_locked_choices(&locked_off)
+            .into_iter()
+            .map(|(v, l)| json!({ "value": v, "label": l }))
+            .collect::<Vec<_>>(),
+        "screenOffLockedNote": if setup.hyprland {
+            "From the lock or last touch; any input wakes it"
+        } else {
+            "Hyprland only for now"
+        },
+        "hyprland": setup.hyprland,
+        "collisions": setup.shells.iter().map(Shell::describe).collect::<Vec<_>>(),
         "quality": quality,
         "qualities": QUALITIES.iter().map(|(v, l, _, long)| json!({ "value": v, "label": l, "long": long })).collect::<Vec<_>>(),
         "qualityLine": q.2,
@@ -456,6 +493,8 @@ mod tests {
             service_enabled: false,
             uwsm: false,
             lua: true,
+            hyprland: true,
+            shells: Vec::new(),
         }
     }
 
@@ -521,6 +560,68 @@ mod tests {
                 .iter()
                 .any(|c| c["value"] == "45" && c["label"] == "After 45 seconds")
         );
+    }
+
+    // The summary is where people check whether the screen will go dark, so it must not say "stays on" when a lock
+    // will turn it off.
+    #[test]
+    fn a_locked_screen_turning_off_shows_in_the_panel_and_the_summary() {
+        let text = apply(None, "enable", "", true).unwrap();
+        let text = apply(Some(&text), "screenOff", "0", true).unwrap();
+        let p = panel_for(&setup(), Some(&text), "");
+        assert_eq!(p["screenOffLocked"], "300");
+        assert!(
+            p["summary"]
+                .as_str()
+                .unwrap()
+                .contains("screen off 5 min after locking"),
+            "{}",
+            p["summary"]
+        );
+        let other = Setup {
+            hyprland: false,
+            ..setup()
+        };
+        let p = panel_for(&other, Some(&text), "");
+        assert!(p["summary"].as_str().unwrap().contains("screen stays on"));
+        assert_eq!(p["screenOffLockedNote"], "Hyprland only for now");
+        let p = panel_for(
+            &setup(),
+            Some(&text),
+            "[saver]\nscreen_off_locked = \"never\"\n",
+        );
+        assert!(p["summary"].as_str().unwrap().contains("screen stays on"));
+    }
+
+    // A shell timer nobody sees in Darwan is how the screen went dark at 20 min with Screen off at Never.
+    #[test]
+    fn a_shell_acting_on_idle_is_named_with_what_it_does_and_where_to_turn_it_off() {
+        use darwan_core::idle_shells::{Action, Timer};
+        let with = Setup {
+            shells: vec![Shell {
+                name: "DMS",
+                place: "Settings → Power & Sleep",
+                timers: vec![
+                    Timer {
+                        action: Action::ScreenOff,
+                        secs: 1200,
+                        power: Some("on AC"),
+                    },
+                    Timer {
+                        action: Action::ScreenOffLocked,
+                        secs: 60,
+                        power: None,
+                    },
+                ],
+            }],
+            ..setup()
+        };
+        let p = panel_for(&with, None, "");
+        assert_eq!(
+            p["collisions"][0],
+            "DMS also turns screens off at 20 min on AC, turns screens off 1 min after locking. Turn off in Settings → Power & Sleep."
+        );
+        assert_eq!(panel_for(&setup(), None, "")["collisions"], json!([]));
     }
 
     fn panel_for(setup: &Setup, text: Option<&str>, config: &str) -> Value {

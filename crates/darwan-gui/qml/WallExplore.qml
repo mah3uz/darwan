@@ -55,7 +55,7 @@ Item {
                 width: Math.min(560, parent.width)
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
-                text: "Free wallpapers from Wallhaven, Bing, NASA and Wikimedia Commons. Nothing sexual, ever; the rest is up to your Filter."
+                text: "Free from Wallhaven, Bing, NASA and Wikimedia Commons. Never anything sexual."
                 font.family: Style.family
                 font.pixelSize: 15
                 color: Qt.rgba(1, 1, 1, 0.78)

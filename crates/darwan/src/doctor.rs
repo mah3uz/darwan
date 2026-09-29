@@ -261,6 +261,9 @@ fn screensaver(r: &mut Report, paths: &Paths, catalog: &Catalog, hypridle: Optio
             "hypridle is not running: start it from your Hyprland config (or the GUI's Screensaver window)"
         });
     }
+    for shell in &setup.shells {
+        r.warn(shell.describe());
+    }
     match hypridle.map(|h| (h, h.saver_timeout)) {
         None => r.warn(format!(
             "no {}: add a listener {{ timeout = 300; on-timeout = darwan saver }} to start the screensaver",

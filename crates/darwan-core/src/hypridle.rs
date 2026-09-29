@@ -65,7 +65,7 @@ impl Listener {
 }
 
 // Hyprland's dispatch syntax: a Lua config takes Lua dispatchers, a classic one the old words.
-fn dpms(lua: bool, on: bool) -> String {
+pub fn dpms(lua: bool, on: bool) -> String {
     match (lua, on) {
         (true, true) => r#"hyprctl dispatch 'hl.dsp.dpms({ action = "on" })'"#.into(),
         (true, false) => r#"hyprctl dispatch 'hl.dsp.dpms({ action = "off" })'"#.into(),
@@ -314,6 +314,10 @@ pub struct Setup {
     pub uwsm: bool,
     // Hyprland reads ~/.config/hypr/hyprland.lua, so dispatchers use the Lua syntax.
     pub lua: bool,
+    // Running under Hyprland, the one compositor whose screens darwan can turn off yet.
+    pub hyprland: bool,
+    // Shells and idle daemons running their own idle timers beside hypridle's.
+    pub shells: Vec<crate::idle_shells::Shell>,
 }
 
 pub fn setup() -> Setup {
@@ -340,10 +344,17 @@ pub fn setup() -> Setup {
                 "systemctl",
                 &["--user", "is-active", "--quiet", "wayland-wm@*.service"],
             ),
-        lua: Path::new(&config_home())
-            .join("hypr/hyprland.lua")
-            .is_file(),
+        lua: hyprland_lua(),
+        hyprland: std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some(),
+        shells: crate::idle_shells::find(&crate::wallpaper::Env::system()),
     }
+}
+
+// Hyprland reads ~/.config/hypr/hyprland.lua when it exists.
+pub fn hyprland_lua() -> bool {
+    Path::new(&config_home())
+        .join("hypr/hyprland.lua")
+        .is_file()
 }
 
 #[cfg(test)]

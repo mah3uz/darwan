@@ -9,7 +9,6 @@ Column {
 
     required property Backend backend
     property bool wide: false
-    property bool hintDismissed: false
     // The revision is read inside the expression: the compiled binding drops a bare `backend.revision;` statement,
     // and the dependency with it, so the value would never refresh.
     readonly property var p: backend.revision >= 0 ? JSON.parse(backend.saverPanel()) : null
@@ -44,7 +43,7 @@ Column {
             glyph: "play"
             compact: true
             pill: true
-            tip: "Your lockscreen’s screensaver, the one hypridle starts"
+            tip: "The screensaver hypridle starts"
             onActivated: panel.preview()
         }
     }
@@ -134,31 +133,41 @@ Column {
         }
     }
 
+    // Shells and idle daemons with their own timers: they act on the same idle, whatever the timeline says.
     Rectangle {
-        visible: panel.p.ready && !panel.hintDismissed
+        visible: panel.p.collisions !== undefined && panel.p.collisions.length > 0
         width: panel.wide ? Math.min(parent.width, 760) : parent.width
-        height: hint.height + 20
+        height: collisionList.height + 20
         radius: Style.radius
-        color: Style.group
-        Label {
-            id: hint
+        color: Qt.alpha(Style.warn, 0.12)
+        border.color: Qt.alpha(Style.warn, 0.35)
+        Column {
+            id: collisionList
             x: 12
             y: 10
-            width: parent.width - gotIt.width - 36
-            text: "If DankMaterialShell’s own idle lock is on, turn it off (Settings → Power & Sleep), or both will answer."
-            font.family: Style.family
-            font.pixelSize: Style.caption
-            color: Style.sub
-            wrapMode: Text.WordWrap
+            width: parent.width - recheck.width - 36
+            spacing: 4
+            Repeater {
+                model: panel.p.collisions || []
+                delegate: Label {
+                    required property string modelData
+                    width: collisionList.width
+                    text: modelData
+                    font.family: Style.family
+                    font.pixelSize: Style.caption
+                    color: Style.text
+                    wrapMode: Text.WordWrap
+                }
+            }
         }
         ActionButton {
-            id: gotIt
+            id: recheck
             anchors.right: parent.right
             anchors.rightMargin: 10
             anchors.verticalCenter: parent.verticalCenter
-            text: "Got it"
+            text: "Check again"
             compact: true
-            onActivated: panel.hintDismissed = true
+            onActivated: panel.backend.saverDo("check", "")
         }
     }
 
@@ -219,7 +228,7 @@ Column {
                     Behavior on width { NumberAnimation { duration: Style.slow; easing.type: Style.ease } }
                     HoverHandler { id: stretchHover }
                     ToolTip.visible: stretchHover.hovered
-                    ToolTip.text: "Until it locks, a key goes back to the desktop without a password"
+                    ToolTip.text: "Until it locks, any key returns to the desktop"
                 }
                 Column {
                     spacing: 6
@@ -335,7 +344,7 @@ Column {
                 width: parent.width
                 first: true
                 label: "Lock before sleep"
-                sub: "Waking shows the password prompt, never the screensaver or your desktop"
+                sub: "Waking shows the password prompt"
                 Toggle {
                     on: panel.p.sleep !== null && panel.p.sleep.lockBeforeSleep === true
                     onFlipped: v => panel.backend.saverDo("lockBeforeSleep", v ? "true" : "false")
@@ -359,11 +368,23 @@ Column {
                 width: parent.width
                 first: true
                 label: "Screensaver comes back"
-                sub: "Once a lock is left untouched, with nothing typed"
+                sub: "When left untouched, nothing typed"
                 MenuButton {
                     options: panel.p.returnAfters
                     current: panel.p.returnAfter
                     onPicked: v => panel.backend.saverDo("returnAfter", v)
+                }
+            }
+            SettingRow {
+                width: parent.width
+                label: "Screen turns off"
+                sub: panel.p.screenOffLockedNote
+                off: !panel.p.hyprland
+                MenuButton {
+                    enabled: panel.p.hyprland
+                    options: panel.p.screenOffLockeds
+                    current: panel.p.screenOffLocked
+                    onPicked: v => panel.backend.saverDo("screenOffLocked", v)
                 }
             }
         }

@@ -23,6 +23,18 @@ The new setting `saver.return_after` changes that: 5 seconds or more, nothing hi
 GUI has it under *When you step away* → *When you lock*, with 10 and 15 seconds, half a minute, a minute and five
 minutes.
 
+### The screen turns off while locked
+
+On Hyprland, a lock nobody touches turns the screens off after 5 minutes, counted from the lock and from every touch,
+whether you locked by hand or the screensaver did. Any key or mouse move turns them back on. `saver.screen_off_locked`
+changes it (10 seconds or more, or `never`); the GUI has it under *When you step away* → *When you lock*.
+
+### Other shells' idle timers
+
+When DMS, Noctalia, Caelestia, Omarchy's shell or swayidle also locks, turns the screens off or suspends on idle,
+*When you step away* says so and where to turn it off, and `darwan doctor` warns. Those timers act whatever Darwan's
+settings say.
+
 ### Wallpapers
 
 **Wallpapers in the GUI.** The pill at the top of the window now reads *Themes · Home · Library · Explore*, over
@@ -76,6 +88,7 @@ war and weapons, gore and violence, and horror are hidden too until you allow th
   instead of 72 pixels; notches in quick succession add up, and a touchpad scrolls as before. The *Themes* cards are
   drawn more cheaply, so the page opens and scrolls with less work however many themes you have.
 - Building the `darwan` package from source now also needs `qt6-shadertools`.
+- The GUI's hints are shorter.
 - The *Darwan* / *System* look moved from the window's left edge into **⚙** (Settings → Appearance); Darwan's own
   look is still the default.
 - Using your desktop wallpaper as a theme's background no longer mistakes an editor open on Omarchy's or Caelestia's

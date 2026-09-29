@@ -7,6 +7,7 @@ pub mod gallery;
 pub mod hardware;
 pub mod host;
 pub mod hypridle;
+pub mod idle_shells;
 pub mod ini;
 pub mod lint;
 pub mod manifest;

@@ -2,7 +2,7 @@ use crate::catalog::Theme;
 use crate::config::UserConfig;
 use crate::custom::{self, Area, Kind};
 use crate::manifest::OptionKind;
-use crate::saver::{self, LockAfter, Quality};
+use crate::saver::{self, LockAfter, Quality, ScreenOffLocked};
 use crate::settings::{self, Key};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -215,6 +215,19 @@ pub fn fields(theme: &Theme, config: &UserConfig) -> Vec<Field> {
         disabled: None,
         group: None,
     });
+    let (off, off_set) = current(
+        &Key::SaverScreenOffLocked,
+        &ScreenOffLocked::DEFAULT.to_string(),
+    );
+    out.push(Field {
+        key: Key::SaverScreenOffLocked,
+        label: "Untouched lock turns the screen off".into(),
+        kind: FieldKind::Choice(screen_off_locked_choices(&off)),
+        value: off,
+        is_set: off_set,
+        disabled: None,
+        group: None,
+    });
     let (quality, quality_set) = current(&Key::SaverQuality, Quality::DEFAULT.as_str());
     out.push(Field {
         key: Key::SaverQuality,
@@ -252,6 +265,28 @@ pub fn return_after_choices(current: &str) -> Vec<(String, String)> {
     .collect();
     if !choices.iter().any(|(v, _)| v == current) {
         choices.push((current.to_string(), format!("After {current} seconds")));
+    }
+    choices
+}
+
+// saver.screen_off_locked's presets, plus the current value when it was set by hand.
+pub fn screen_off_locked_choices(current: &str) -> Vec<(String, String)> {
+    let mut choices: Vec<(String, String)> = [
+        ("60", "After a minute"),
+        ("120", "After 2 minutes"),
+        ("300", "After 5 minutes"),
+        ("600", "After 10 minutes"),
+        ("900", "After 15 minutes"),
+        ("never", "Never"),
+    ]
+    .into_iter()
+    .map(|(v, l)| (v.to_string(), l.to_string()))
+    .collect();
+    if !choices.iter().any(|(v, _)| v == current) {
+        choices.insert(
+            choices.len() - 1,
+            (current.to_string(), format!("After {current} seconds")),
+        );
     }
     choices
 }
@@ -551,6 +586,23 @@ mod tests {
         assert_eq!(back.value, "45");
         assert!(
             matches!(&back.kind, FieldKind::Choice(c) if c.iter().any(|(v, l)| v == "45" && l == "After 45 seconds")),
+            "a value set by hand must still show as itself"
+        );
+    }
+
+    #[test]
+    fn an_untouched_lock_turns_the_screen_off_after_five_minutes_unless_told_otherwise() {
+        let f = fields(&theme("pixel-rainyroom"), &UserConfig::default());
+        let off = field(&f, "Untouched lock turns the screen off");
+        assert_eq!(off.value, "300");
+        assert!(
+            matches!(&off.kind, FieldKind::Choice(c) if c.last().is_some_and(|(v, _)| v == "never")),
+            "Never stays the last choice"
+        );
+        let cfg = UserConfig::parse("[saver]\nscreen_off_locked = 45\n").unwrap();
+        let f = fields(&theme("pixel-rainyroom"), &cfg);
+        assert!(
+            matches!(&field(&f, "Untouched lock turns the screen off").kind, FieldKind::Choice(c) if c.iter().any(|(v, l)| v == "45" && l == "After 45 seconds")),
             "a value set by hand must still show as itself"
         );
     }

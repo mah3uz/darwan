@@ -68,7 +68,7 @@ Popup {
         }
         Label {
             width: parent.width
-            text: "Previews, checks and applying read the saved settings. Discarded changes go back to what was saved."
+            text: "Previews, checks and applying use saved settings. Discard restores them."
             font.family: Style.family
             font.pixelSize: Style.body
             color: Style.sub

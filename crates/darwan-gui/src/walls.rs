@@ -376,7 +376,7 @@ pub fn owner(
             "found": false,
             "name": "",
             "generators": gens,
-            "note": "Nothing draws a desktop wallpaper in this session. Start your wallpaper tool, then refresh.",
+            "note": "Nothing draws a wallpaper. Start your wallpaper tool, then refresh.",
         }),
         Some(o) => {
             let c = o.caps();
@@ -391,7 +391,7 @@ pub fn owner(
                 "restartOk": restart_ok.iter().any(|t| t == o.tool.name()),
                 "generators": gens,
                 "note": if c.themes {
-                    format!("Set through {}, which can make your colours from the wallpaper", o.tool.name())
+                    format!("Set through {}, which colours from it", o.tool.name())
                 } else if c.persists {
                     format!("Set through {}", o.tool.name())
                 } else {

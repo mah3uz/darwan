@@ -124,6 +124,10 @@ fn keys_in(catalog: &Catalog) -> Vec<CompletionCandidate> {
             "Seconds an untouched lock waits before the screensaver shows",
         ),
         candidate(
+            "saver.screen_off_locked",
+            "Seconds an untouched lock waits before the screen turns off, or never",
+        ),
+        candidate(
             "saver.quality",
             "Screensaver video quality: auto, full, eco or still",
         ),
@@ -265,6 +269,11 @@ fn values_for(catalog: &Catalog, config: &UserConfig, key: &str) -> Vec<Completi
         Key::SaverReturnAfter => vec![
             candidate("30", "half a minute, the default"),
             candidate("300", "five minutes"),
+        ],
+        Key::SaverScreenOffLocked => vec![
+            candidate("300", "five minutes, the default"),
+            candidate("600", "ten minutes"),
+            candidate("never", "the screen stays on while locked"),
         ],
         Key::SaverQuality => Quality::ALL
             .iter()

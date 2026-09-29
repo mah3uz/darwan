@@ -329,7 +329,7 @@ FocusScope {
             x: 14
             y: 12
             shown: live.usingFallback
-            text: "The theme failed to load; this is the fallback prompt"
+            text: "The theme failed to load: fallback prompt"
             warn: true
         }
     }
@@ -563,7 +563,7 @@ FocusScope {
                         flat: true
                         pill: true
                         reason: stage.busyReason
-                        tip: "Load it offscreen, look for QML errors and missing fonts, and type the password"
+                        tip: "Load offscreen: check errors, fonts and the password"
                         onActivated: stage.check()
                     }
                     ActionButton {

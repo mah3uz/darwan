@@ -4,7 +4,7 @@ use std::path::Path;
 use toml_edit::{DocumentMut, Item, Table, Value};
 
 use crate::manifest::OptionKind;
-use crate::saver::{self, LockAfter, Quality};
+use crate::saver::{self, LockAfter, Quality, ScreenOffLocked};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
@@ -126,6 +126,17 @@ impl UserConfig {
                 .ok_or_else(|| "saver.return_after must be a number of seconds".to_string())
                 .and_then(saver::check_return_after)
                 .map(Some),
+        }
+    }
+
+    pub fn saver_screen_off_locked(&self) -> Result<Option<ScreenOffLocked>, String> {
+        match self.item("saver", "screen_off_locked") {
+            None => Ok(None),
+            Some(item) => match (item.as_integer(), item.as_str()) {
+                (Some(n), _) => n.to_string().parse().map(Some),
+                (_, Some(s)) => s.parse().map(Some),
+                _ => Err("saver.screen_off_locked must be a number of seconds or \"never\"".into()),
+            },
         }
     }
 

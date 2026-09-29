@@ -80,15 +80,15 @@ fn own_uid() -> u32 {
 }
 
 #[derive(Debug, Clone)]
-struct Proc {
+pub(crate) struct Proc {
     pid: u32,
     comm: String,
-    argv: Vec<String>,
+    pub(crate) argv: Vec<String>,
     dir: PathBuf,
 }
 
 impl Proc {
-    fn exe_name(&self) -> &str {
+    pub(crate) fn exe_name(&self) -> &str {
         self.argv
             .first()
             .and_then(|a| Path::new(a).file_name())
@@ -142,11 +142,11 @@ impl Proc {
 
 // Each shell by the shape of its own process, never by a name anywhere in argv: an editor open on
 // `~/Projects/omarchy` mentions Omarchy too.
-fn is_dms(p: &Proc) -> bool {
+pub(crate) fn is_dms(p: &Proc) -> bool {
     p.exe_name() == "dms" && p.argv.iter().skip(1).any(|a| a == "run")
 }
 
-fn is_omarchy_shell(p: &Proc) -> bool {
+pub(crate) fn is_omarchy_shell(p: &Proc) -> bool {
     p.is_quickshell() && p.mentions("omarchy/shell")
 }
 
@@ -154,15 +154,15 @@ fn is_omarchy_swaybg(p: &Proc) -> bool {
     p.exe_name() == "swaybg" && p.mentions("omarchy/current/background")
 }
 
-fn is_caelestia(p: &Proc) -> bool {
+pub(crate) fn is_caelestia(p: &Proc) -> bool {
     p.is_quickshell() && p.config_named("caelestia")
 }
 
-fn is_noctalia(p: &Proc) -> bool {
+pub(crate) fn is_noctalia(p: &Proc) -> bool {
     p.exe_name() == "noctalia"
 }
 
-fn is_noctalia_legacy(p: &Proc) -> bool {
+pub(crate) fn is_noctalia_legacy(p: &Proc) -> bool {
     p.is_quickshell() && p.config_named("noctalia-shell")
 }
 
@@ -174,7 +174,7 @@ fn is_default_namespace(p: &Proc) -> bool {
 }
 
 // This user's processes in this Wayland session: a daemon from another session draws somewhere else.
-fn processes(env: &Env) -> Vec<Proc> {
+pub(crate) fn processes(env: &Env) -> Vec<Proc> {
     let Ok(entries) = std::fs::read_dir(&env.proc_dir) else {
         return Vec::new();
     };

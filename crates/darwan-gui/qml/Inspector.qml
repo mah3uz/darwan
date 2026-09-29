@@ -247,7 +247,7 @@ Rectangle {
                     width: content.width
                     first: true
                     label: "Test it in SDDM’s own greeter"
-                    sub: "Opens a window; your session stays as it is."
+                    sub: "Opens a window; your session is untouched."
                     ActionButton {
                         text: "Open…"
                         compact: true

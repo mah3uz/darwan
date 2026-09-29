@@ -216,7 +216,7 @@ Popup {
             Label {
                 Layout.fillWidth: true
                 visible: dialog.running
-                text: "Hiding this keeps the command running; its result opens here when it's done."
+                text: "Hiding keeps it running; the result opens here."
                 color: Style.muted
                 font.pixelSize: 12
                 wrapMode: Text.WordWrap

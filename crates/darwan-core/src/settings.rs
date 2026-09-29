@@ -4,7 +4,7 @@ use crate::catalog::{Catalog, valid_id};
 use crate::config::{Target, UserConfig};
 use crate::custom::{self, Kind};
 use crate::manifest::OptionKind;
-use crate::saver::{self, LockAfter, Quality};
+use crate::saver::{self, LockAfter, Quality, ScreenOffLocked};
 
 pub struct DatePreset {
     pub format: &'static str,
@@ -58,6 +58,7 @@ pub enum Key {
     DateFormat,
     SaverLockAfter,
     SaverReturnAfter,
+    SaverScreenOffLocked,
     SaverQuality,
     GuiLook,
     WallpaperFolder,
@@ -77,6 +78,7 @@ impl Key {
             "date.format" => Key::DateFormat,
             "saver.lock_after" => Key::SaverLockAfter,
             "saver.return_after" => Key::SaverReturnAfter,
+            "saver.screen_off_locked" => Key::SaverScreenOffLocked,
             "saver.quality" => Key::SaverQuality,
             "gui.look" => Key::GuiLook,
             "wallpaper.folder" => Key::WallpaperFolder,
@@ -86,7 +88,7 @@ impl Key {
             _ => {
                 let (theme, key) = s.rsplit_once('.').filter(|(t, k)| valid_id(t) && !k.is_empty()).ok_or_else(|| {
                     format!(
-                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look, wallpaper.folder, wallpaper.allow, wallpaper.restart, wallpaper.colours or <theme-id>.<option>"
+                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.screen_off_locked, saver.quality, gui.look, wallpaper.folder, wallpaper.allow, wallpaper.restart, wallpaper.colours or <theme-id>.<option>"
                     )
                 })?;
                 Key::Option {
@@ -107,6 +109,7 @@ impl fmt::Display for Key {
             Key::DateFormat => f.write_str("date.format"),
             Key::SaverLockAfter => f.write_str("saver.lock_after"),
             Key::SaverReturnAfter => f.write_str("saver.return_after"),
+            Key::SaverScreenOffLocked => f.write_str("saver.screen_off_locked"),
             Key::SaverQuality => f.write_str("saver.quality"),
             Key::GuiLook => f.write_str("gui.look"),
             Key::WallpaperFolder => f.write_str("wallpaper.folder"),
@@ -128,6 +131,9 @@ pub fn get(config: &UserConfig, key: &Key) -> Result<Option<String>, String> {
         Key::SaverLockAfter => config.saver_lock_after().map(|v| v.map(|l| l.to_string())),
         Key::SaverReturnAfter => config
             .saver_return_after()
+            .map(|v| v.map(|s| s.to_string())),
+        Key::SaverScreenOffLocked => config
+            .saver_screen_off_locked()
             .map(|v| v.map(|s| s.to_string())),
         Key::SaverQuality => config.saver_quality().map(|v| v.map(|q| q.to_string())),
         Key::GuiLook => config.gui_look().map(owned),
@@ -200,6 +206,14 @@ pub fn set(
             let secs = saver::check_return_after(secs)?;
             config.set_global("saver", "return_after", toml_edit::value(i64::from(secs)))
         }
+        Key::SaverScreenOffLocked => match value.parse()? {
+            ScreenOffLocked::Never => {
+                config.set_global("saver", "screen_off_locked", toml_edit::value("never"))
+            }
+            ScreenOffLocked::Secs(n) => {
+                config.set_global("saver", "screen_off_locked", toml_edit::value(i64::from(n)))
+            }
+        },
         Key::SaverQuality => {
             let q: Quality = value.parse()?;
             config.set_global("saver", "quality", toml_edit::value(q.as_str()))
@@ -320,6 +334,7 @@ pub fn unset(config: &mut UserConfig, key: &Key) -> bool {
         Key::DateFormat => config.remove_global("date", "format"),
         Key::SaverLockAfter => config.remove_global("saver", "lock_after"),
         Key::SaverReturnAfter => config.remove_global("saver", "return_after"),
+        Key::SaverScreenOffLocked => config.remove_global("saver", "screen_off_locked"),
         Key::SaverQuality => config.remove_global("saver", "quality"),
         Key::GuiLook => config.remove_global("gui", "look"),
         Key::WallpaperFolder => config.remove_global("wallpaper", "folder"),
@@ -351,6 +366,7 @@ mod tests {
             "date.format",
             "saver.lock_after",
             "saver.return_after",
+            "saver.screen_off_locked",
             "saver.quality",
             "gui.look",
             "wallpaper.folder",
@@ -387,6 +403,8 @@ mod tests {
             ("saver.lock_after", "-1"),
             ("saver.return_after", "0"),
             ("saver.return_after", "never"),
+            ("saver.screen_off_locked", "5"),
+            ("saver.screen_off_locked", "soon"),
             ("saver.quality", "ultra"),
             ("gui.look", "windows"),
             ("wallpaper.folder", "relative/folder"),
@@ -443,6 +461,17 @@ mod tests {
         assert!(
             cfg.to_string().contains("return_after = 45\n"),
             "saved as a number, as the README shows it"
+        );
+
+        let off = Key::parse("saver.screen_off_locked").unwrap();
+        set(&mut cfg, &cat, &off, "600").unwrap();
+        assert_eq!(get(&cfg, &off), Ok(Some("600".into())));
+        assert!(cfg.to_string().contains("screen_off_locked = 600\n"));
+        set(&mut cfg, &cat, &off, "never").unwrap();
+        assert_eq!(
+            cfg.saver_screen_off_locked(),
+            Ok(Some(ScreenOffLocked::Never)),
+            "never keeps a locked screen on"
         );
     }
 

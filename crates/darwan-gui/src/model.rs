@@ -177,7 +177,10 @@ pub fn fields(
         .filter(|f| {
             !matches!(
                 f.key,
-                Key::SaverLockAfter | Key::SaverReturnAfter | Key::SaverQuality
+                Key::SaverLockAfter
+                    | Key::SaverReturnAfter
+                    | Key::SaverScreenOffLocked
+                    | Key::SaverQuality
             )
         })
         .map(|f| {
@@ -400,7 +403,12 @@ pub fn availability(env: &Environment) -> Value {
 }
 
 // What the Wall's Doctor button shows before anything runs: cheap checks only; the button runs the full doctor.
-pub fn health(env: &Environment, catalog: &Catalog, saver_problem: &str) -> Value {
+pub fn health(
+    env: &Environment,
+    catalog: &Catalog,
+    saver_problem: &str,
+    idle_shells: &[&str],
+) -> Value {
     let mut problems = Vec::new();
     if let Err(e) = &env.wayland {
         problems.push(format!("previews and locking can't run: {e}"));
@@ -424,6 +432,9 @@ pub fn health(env: &Environment, catalog: &Catalog, saver_problem: &str) -> Valu
         "stopped" => problems.push("hypridle isn't running, so the screensaver can't start".into()),
         "noconf" => problems.push("the screensaver isn't set up yet".into()),
         _ => problems.push("hypridle.conf needs a fix".into()),
+    }
+    for name in idle_shells {
+        problems.push(format!("{name} also acts when you step away"));
     }
     json!({ "ok": problems.is_empty(), "problems": problems })
 }
@@ -855,7 +866,7 @@ mod tests {
             sddm: Ok(()),
             helper: Err("the helper is not installed".into()),
         };
-        let h = health(&env, &catalog(), "stopped");
+        let h = health(&env, &catalog(), "stopped", &[]);
         assert_eq!(h["ok"], false);
         let problems: Vec<&str> = h["problems"]
             .as_array()
@@ -880,9 +891,17 @@ mod tests {
             .map(|t| t.missing_fonts())
             .sum::<usize>();
         assert_eq!(
-            health(&env, &catalog(), "")["ok"],
+            health(&env, &catalog(), "", &[])["ok"],
             fonts == 0,
             "nothing to look at means a green light"
+        );
+        assert!(
+            health(&env, &catalog(), "", &["DMS"])["problems"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|p| p == "DMS also acts when you step away"),
+            "a shell's own idle timer is something to look at"
         );
     }
 }

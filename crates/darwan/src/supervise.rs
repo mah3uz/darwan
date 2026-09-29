@@ -171,6 +171,8 @@ enum Event {
     LockRequest,
     SaverRequest,
     Activity,
+    LockedIdle,
+    LockedActive,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -208,6 +210,10 @@ pub fn run() -> ExitCode {
         saver_locks: lock_after >= 0,
         ..Policy::default()
     };
+    let screen = ScreenOff::from_env();
+    let mut watching_locked = false;
+    // Darwan turned the outputs off, so Darwan turns them on again.
+    let mut screens_off = false;
     let mut first = true;
     loop {
         let mut cmd = qs::command(&paths, "lock_shell.qml", &[]);
@@ -281,6 +287,26 @@ pub fn run() -> ExitCode {
                     let _ = ack.send(());
                     check = None;
                 }
+                Ok(Event::LockedIdle) => match &screen.commands {
+                    Some((off, _)) => {
+                        log(format!(
+                            "locked and untouched for {} s: turning the screens off",
+                            screen.after_ms.unwrap_or_default() / 1000
+                        ));
+                        screens_off = run_shell(off);
+                    }
+                    None => log(
+                        "locked and untouched, but only Hyprland's screens can be turned off"
+                            .into(),
+                    ),
+                },
+                Ok(Event::LockedActive) => {
+                    if screens_off && let Some((_, on)) = &screen.commands {
+                        log("input: turning the screens on".into());
+                        run_shell(on);
+                        screens_off = false;
+                    }
+                }
                 Ok(Event::OutputOn) if policy.locking() => {
                     ipc(pid, "resetFrames");
                     check = Some((Instant::now() + Duration::from_secs(3), Check::Wake(0)));
@@ -303,6 +329,10 @@ pub fn run() -> ExitCode {
                             Ok(h) if h.locked && h.secure => {
                                 policy.ever_secure = true;
                                 log("the session is locked".into());
+                                if !watching_locked && let Some(ms) = screen.after_ms {
+                                    watching_locked = true;
+                                    locked_idle::watch(tx.clone(), ms, log);
+                                }
                             }
                             _ if n < 9 => {
                                 check = Some((
@@ -345,6 +375,9 @@ pub fn run() -> ExitCode {
             compositor_alive(),
         ) {
             Decision::Done => {
+                if screens_off && let Some((_, on)) = &screen.commands {
+                    run_shell(on);
+                }
                 log(match outcome {
                     Outcome::Authenticated => "unlocked".into(),
                     _ => "the saver ended".into(),
@@ -365,6 +398,41 @@ pub fn run() -> ExitCode {
 }
 
 // A hung locker must not hang the supervisor, so every call has a deadline.
+// saver.screen_off_locked, from the environment `darwan lock` gives the supervisor, and the commands for it.
+struct ScreenOff {
+    after_ms: Option<u32>,
+    commands: Option<(String, String)>,
+}
+
+impl ScreenOff {
+    fn from_env() -> Self {
+        let setting = std::env::var("DARWAN_SCREEN_OFF_LOCKED")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(darwan_core::saver::ScreenOffLocked::DEFAULT);
+        let hyprland = std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some();
+        Self::new(setting, hyprland, darwan_core::hypridle::hyprland_lua())
+    }
+
+    fn new(setting: darwan_core::saver::ScreenOffLocked, hyprland: bool, lua: bool) -> Self {
+        use darwan_core::hypridle::dpms;
+        Self {
+            after_ms: setting.secs().map(|s| s.saturating_mul(1000)),
+            commands: hyprland.then(|| (dpms(lua, false), dpms(lua, true))),
+        }
+    }
+}
+
+fn run_shell(cmd: &str) -> bool {
+    Command::new("sh")
+        .args(["-c", cmd])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
 fn ipc(pid: u32, function: &str) -> Option<String> {
     let mut child = Command::new("quickshell")
         .args(["ipc", "--pid", &pid.to_string(), "call", "lock", function])
@@ -770,6 +838,112 @@ mod idle {
     }
 }
 
+// saver.screen_off_locked: idle counted from the moment the session is locked, and restarted by any input. Built from
+// get_input_idle_notification where the compositor has it, so a video playing behind the lock doesn't keep the
+// screens on.
+mod locked_idle {
+    use std::sync::mpsc::Sender;
+
+    use wayland_client::protocol::{wl_registry, wl_seat};
+    use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
+    use wayland_protocols::ext::idle_notify::v1::client::{
+        ext_idle_notification_v1::{self, ExtIdleNotificationV1},
+        ext_idle_notifier_v1::ExtIdleNotifierV1,
+    };
+
+    use super::Event;
+
+    struct State {
+        notifier: Option<ExtIdleNotifierV1>,
+        seat: Option<wl_seat::WlSeat>,
+        tx: Sender<Event>,
+    }
+
+    impl Dispatch<wl_registry::WlRegistry, ()> for State {
+        fn event(
+            s: &mut Self,
+            reg: &wl_registry::WlRegistry,
+            ev: wl_registry::Event,
+            _: &(),
+            _: &Connection,
+            qh: &QueueHandle<Self>,
+        ) {
+            if let wl_registry::Event::Global {
+                name,
+                interface,
+                version,
+            } = ev
+            {
+                match interface.as_str() {
+                    "ext_idle_notifier_v1" => {
+                        s.notifier = Some(reg.bind(name, version.min(2), qh, ()))
+                    }
+                    "wl_seat" if s.seat.is_none() => s.seat = Some(reg.bind(name, 1, qh, ())),
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    impl Dispatch<ExtIdleNotificationV1, ()> for State {
+        fn event(
+            s: &mut Self,
+            _: &ExtIdleNotificationV1,
+            ev: ext_idle_notification_v1::Event,
+            _: &(),
+            _: &Connection,
+            _: &QueueHandle<Self>,
+        ) {
+            let _ = s.tx.send(match ev {
+                ext_idle_notification_v1::Event::Idled => Event::LockedIdle,
+                _ => Event::LockedActive,
+            });
+        }
+    }
+
+    wayland_client::delegate_noop!(State: ignore ExtIdleNotifierV1);
+    wayland_client::delegate_noop!(State: ignore wl_seat::WlSeat);
+
+    pub fn watch(tx: Sender<Event>, timeout_ms: u32, log: impl Fn(String) + Send + 'static) {
+        std::thread::spawn(move || {
+            let Ok(conn) = Connection::connect_to_env() else {
+                return;
+            };
+            let mut queue = conn.new_event_queue();
+            let qh = queue.handle();
+            conn.display().get_registry(&qh, ());
+            let mut state = State {
+                notifier: None,
+                seat: None,
+                tx,
+            };
+            if queue.roundtrip(&mut state).is_err() {
+                return;
+            }
+            let (Some(notifier), Some(seat)) = (&state.notifier, &state.seat) else {
+                return log(
+                    "the compositor has no idle notifications; a locked screen stays on".into(),
+                );
+            };
+            log(format!(
+                "the screens turn off after {} s untouched while locked{}",
+                timeout_ms / 1000,
+                if notifier.version() >= 2 {
+                    ""
+                } else {
+                    " (idle inhibitors keep them on)"
+                }
+            ));
+            let _notification = if notifier.version() >= 2 {
+                notifier.get_input_idle_notification(timeout_ms, seat, &qh, ())
+            } else {
+                notifier.get_idle_notification(timeout_ms, seat, &qh, ())
+            };
+            while queue.blocking_dispatch(&mut state).is_ok() {}
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -777,6 +951,56 @@ mod tests {
     fn exit_code(code: i32) -> ExitStatus {
         use std::os::unix::process::ExitStatusExt;
         ExitStatus::from_raw(code << 8)
+    }
+
+    // Against the running compositor; changes nothing on screen. `cargo test -- --ignored locked_idle`, hands off.
+    #[test]
+    #[ignore]
+    fn locked_idle_reports_idle_after_its_timeout() {
+        let (tx, rx) = mpsc::channel();
+        locked_idle::watch(tx, 1500, |m| eprintln!("{m}"));
+        let started = Instant::now();
+        loop {
+            match rx.recv_timeout(Duration::from_secs(20)) {
+                Ok(Event::LockedIdle) => break,
+                Ok(_) => continue,
+                Err(e) => panic!("no idle event: {e:?}"),
+            }
+        }
+        assert!(
+            started.elapsed() >= Duration::from_millis(1400),
+            "counted from creation"
+        );
+    }
+
+    #[test]
+    fn a_locked_screen_turns_off_through_hyprland_in_its_own_syntax_and_nowhere_else() {
+        use darwan_core::saver::ScreenOffLocked;
+        let s = ScreenOff::new(ScreenOffLocked::DEFAULT, true, false);
+        assert_eq!(
+            s.after_ms,
+            Some(300_000),
+            "five minutes after the lock by default"
+        );
+        assert_eq!(
+            s.commands,
+            Some((
+                "hyprctl dispatch dpms off".into(),
+                "hyprctl dispatch dpms on".into()
+            ))
+        );
+        let lua = ScreenOff::new(ScreenOffLocked::Secs(60), true, true);
+        assert!(lua.commands.unwrap().0.contains("hl.dsp.dpms"));
+        assert_eq!(
+            ScreenOff::new(ScreenOffLocked::Never, true, false).after_ms,
+            None,
+            "never: no watcher at all"
+        );
+        assert_eq!(
+            ScreenOff::new(ScreenOffLocked::DEFAULT, false, false).commands,
+            None,
+            "no way to turn another compositor's screens off yet"
+        );
     }
 
     #[test]

@@ -285,7 +285,7 @@ FocusScope {
                 rightPadding: 10
                 topPadding: 8
                 bottomPadding: 8
-                text: "Sexual content in any form is never shown, from any source, whatever is switched on here."
+                text: "Sexual content is never shown, whatever is on here."
                 wrapMode: Text.WordWrap
                 font.family: Style.family
                 font.pixelSize: Style.caption

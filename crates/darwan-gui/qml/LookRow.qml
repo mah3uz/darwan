@@ -8,7 +8,7 @@ SettingRow {
     required property Backend backend
 
     label: "Look"
-    sub: Style.own ? "Darwan's own greys and blue, with see-through panels" : "Your Qt theme's colours and font"
+    sub: Style.own ? "Darwan's greys and blue, see-through panels" : "Your Qt theme's colours and font"
     Segmented {
         options: [{ value: "darwan", label: "Darwan" }, { value: "system", label: "System" }]
         current: Style.look

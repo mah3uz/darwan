@@ -57,6 +57,57 @@ pub fn check_return_after(secs: i64) -> Result<u32, String> {
         })
 }
 
+// saver.screen_off_locked: how long a locked screen nobody touches stays on before Darwan turns it off.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScreenOffLocked {
+    Never,
+    Secs(u32),
+}
+
+impl ScreenOffLocked {
+    pub const DEFAULT: Self = ScreenOffLocked::Secs(300);
+    // Any shorter and the screen would go dark while someone is still in front of it.
+    pub const MIN: u32 = 10;
+
+    pub fn secs(self) -> Option<u32> {
+        match self {
+            ScreenOffLocked::Never => None,
+            ScreenOffLocked::Secs(s) => Some(s),
+        }
+    }
+}
+
+impl FromStr for ScreenOffLocked {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, String> {
+        let bad = || {
+            format!(
+                "saver.screen_off_locked is {} or more seconds, or \"never\", not {s:?}",
+                Self::MIN
+            )
+        };
+        match s {
+            "never" => Ok(ScreenOffLocked::Never),
+            _ => s
+                .parse::<u32>()
+                .ok()
+                .filter(|&n| n >= Self::MIN)
+                .map(ScreenOffLocked::Secs)
+                .ok_or_else(bad),
+        }
+    }
+}
+
+impl fmt::Display for ScreenOffLocked {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ScreenOffLocked::Never => f.write_str("never"),
+            ScreenOffLocked::Secs(s) => write!(f, "{s}"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Quality {
     Auto,
@@ -133,6 +184,21 @@ mod tests {
             LockAfter::Secs(10),
             "an unconfigured saver locks, after a short grace"
         );
+    }
+
+    #[test]
+    fn a_locked_screen_stays_on_long_enough_to_read_and_may_stay_on_for_good() {
+        assert_eq!("300".parse(), Ok(ScreenOffLocked::Secs(300)));
+        assert_eq!("never".parse(), Ok(ScreenOffLocked::Never));
+        assert_eq!(
+            ScreenOffLocked::DEFAULT.secs(),
+            Some(300),
+            "five minutes by default"
+        );
+        for bad in ["0", "5", "-30", "soon", ""] {
+            assert!(bad.parse::<ScreenOffLocked>().is_err(), "{bad:?}");
+        }
+        assert_eq!(ScreenOffLocked::Never.to_string(), "never");
     }
 
     #[test]
