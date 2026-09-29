@@ -98,10 +98,15 @@ pub fn item(path: &Path) -> Option<Item> {
     })
 }
 
-// Every image and video in the folder and its subfolders (three levels, hidden ones skipped), newest first.
+// Subfolders read below the wallpaper folder.
+const DEPTH: usize = 4;
+
+// Every image and video in the folder and its subfolders, four levels down (hidden ones skipped), newest first. A
+// folder reached twice through symlinks is read once.
 pub fn scan(folder: &Path) -> Vec<Item> {
     let mut out = Vec::new();
-    walk(folder, 0, &mut out);
+    let mut seen = std::collections::HashSet::new();
+    walk(folder, 0, &mut seen, &mut out);
     out.sort_by(|a, b| {
         b.modified
             .cmp(&a.modified)
@@ -110,7 +115,18 @@ pub fn scan(folder: &Path) -> Vec<Item> {
     out
 }
 
-fn walk(dir: &Path, depth: usize, out: &mut Vec<Item>) {
+fn walk(
+    dir: &Path,
+    depth: usize,
+    seen: &mut std::collections::HashSet<PathBuf>,
+    out: &mut Vec<Item>,
+) {
+    let Ok(real) = std::fs::canonicalize(dir) else {
+        return;
+    };
+    if !seen.insert(real) {
+        return;
+    }
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
@@ -123,8 +139,8 @@ fn walk(dir: &Path, depth: usize, out: &mut Vec<Item>) {
             continue;
         };
         if meta.is_dir() {
-            if depth < 3 {
-                walk(&path, depth + 1, out);
+            if depth < DEPTH {
+                walk(&path, depth + 1, seen, out);
             }
         } else if let Some(kind) = Kind::of(&path) {
             out.push(Item {
@@ -360,7 +376,7 @@ pub struct Facts {
 }
 
 // Bumped when Facts or the way they're made changes, so old cache files are ignored.
-const FACTS_VERSION: u32 = 1;
+const FACTS_VERSION: u32 = 2;
 
 fn facts_file(cache_dir: &Path, item: &Item) -> PathBuf {
     let mut key = format!("{FACTS_VERSION}\0").into_bytes();
@@ -392,7 +408,12 @@ pub fn facts(cache_dir: &Path, item: &Item, thumb: &Path) -> Result<Facts, Strin
             .and_then(|t| t.text.parse().ok())
             .unwrap_or(0)
     };
-    let (width, height) = (size("Thumb::Image::Width"), size("Thumb::Image::Height"));
+    // Thumbnails other programs made may not record the original's size; its header is quick to read.
+    let (width, height) = match (size("Thumb::Image::Width"), size("Thumb::Image::Height")) {
+        (w, h) if w > 0 && h > 0 => (w, h),
+        _ if item.kind == Kind::Video => video_size(&item.path).unwrap_or((0, 0)),
+        _ => image::image_dimensions(&item.path).unwrap_or((0, 0)),
+    };
     let rgba = image::open(thumb).map_err(|e| e.to_string())?.into_rgba8();
     let summary = palette::summary(rgba);
     let facts = Facts {
@@ -453,7 +474,7 @@ mod tests {
     }
 
     #[test]
-    fn the_scan_finds_pictures_and_videos_in_subfolders_but_not_hidden_or_other_files() {
+    fn the_scan_reads_four_levels_of_subfolders_but_not_hidden_ones_or_a_link_twice() {
         let d = tempfile::tempdir().unwrap();
         let f = |p: &str| {
             let path = d.path().join(p);
@@ -470,9 +491,12 @@ mod tests {
             "nature/c.webp",
             ".trash/d.png",
             "a/b/c/d/deep.png",
+            "a/b/c/d/e/deeper.png",
         ] {
             f(p);
         }
+        // A link back to the top would list everything again without the guard.
+        std::os::unix::fs::symlink(d.path(), d.path().join("nature/back")).unwrap();
         let mut found: Vec<String> = scan(d.path())
             .iter()
             .map(|i| i.path.strip_prefix(d.path()).unwrap().display().to_string())
@@ -480,7 +504,15 @@ mod tests {
         found.sort();
         assert_eq!(
             found,
-            ["a.JPG", "b.png", "loop.mp4", "nature/c.webp", "spin.gif"]
+            [
+                "a.JPG",
+                "a/b/c/d/deep.png",
+                "b.png",
+                "loop.mp4",
+                "nature/c.webp",
+                "spin.gif"
+            ],
+            "four levels down is read, a fifth is not"
         );
         assert_eq!(Kind::of(Path::new("x.gif")), Some(Kind::Animated));
     }
@@ -530,6 +562,26 @@ mod tests {
             !valid(&thumb, &uri, item.modified + 1),
             "a changed file makes it stale"
         );
+    }
+
+    #[test]
+    fn a_thumbnail_another_program_made_without_the_size_still_gives_it() {
+        let d = tempfile::tempdir().unwrap();
+        let item = picture(d.path(), "p.png", [200, 40, 40]);
+        let thumb = d.path().join("gnome.png");
+        let uri = file_uri(&std::fs::canonicalize(&item.path).unwrap());
+        // As GNOME's thumbnailer writes one: URI and MTime only.
+        write_thumbnail(
+            &thumb,
+            &image::RgbaImage::from_pixel(256, 144, image::Rgba([200, 40, 40, 255])),
+            &[
+                ("Thumb::URI", uri),
+                ("Thumb::MTime", item.modified.to_string()),
+            ],
+        )
+        .unwrap();
+        let f = facts(&d.path().join("facts"), &item, &thumb).unwrap();
+        assert_eq!((f.width, f.height), (1920, 1080));
     }
 
     #[test]

@@ -79,6 +79,16 @@ Popover {
             SettingGroup {
                 visible: pop.tab === "general"
                 width: content.width
+                title: "Appearance"
+                LookRow {
+                    width: content.width
+                    first: true
+                    backend: pop.backend
+                }
+            }
+            SettingGroup {
+                visible: pop.tab === "general"
+                width: content.width
                 title: "Clock and date"
                 changed: pop.globals.changed
                 notes: pop.globals.notes.concat(["Used by every theme that shows a clock or date. Left at the default, each theme keeps its own design."])

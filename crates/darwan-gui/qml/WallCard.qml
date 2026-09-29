@@ -8,8 +8,10 @@ FocusScope {
     id: card
 
     required property var item
-    // "local" or "online"; online cards credit their author on hover.
-    property string mode: "local"
+    // "library" or "online"; online cards credit their author on hover.
+    property string mode: "library"
+    // The Home strip: the picture only, no words on hover.
+    property bool quiet: false
     readonly property bool lit: hover.hovered || activeFocus
 
     signal open()
@@ -50,13 +52,13 @@ FocusScope {
             anchors.fill: parent
             offset.y: card.lit ? 10 : 5
             blur: card.lit ? 26 : 16
-            radius: Style.radius
+            radius: 16
             color: Qt.rgba(0, 0, 0, card.lit ? 0.5 : 0.35)
         }
         Rectangle {
             anchors.fill: parent
             anchors.margins: -2
-            radius: Style.radius + 2
+            radius: 18
             color: "transparent"
             border.width: 2
             border.color: card.item.inUse ? Style.ok : Style.accent
@@ -65,7 +67,7 @@ FocusScope {
         }
         Rounded {
             anchors.fill: parent
-            radius: Style.radius
+            radius: 16
             Rectangle {
                 anchors.fill: parent
                 color: card.item.swatches && card.item.swatches.length ? card.item.swatches[0] : Style.bgDeep
@@ -90,7 +92,7 @@ FocusScope {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 height: parent.height * 0.55
-                opacity: card.lit ? 1 : 0
+                opacity: card.lit && !card.quiet ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: Style.fast } }
                 gradient: Gradient {
                     GradientStop { position: 0; color: "transparent" }
@@ -113,8 +115,8 @@ FocusScope {
                 tint: Style.lock
             }
             Badge {
-                visible: card.mode === "online" && card.item.saved === true
-                text: "SAVED"
+                visible: card.mode === "online" && card.item.downloaded === true
+                text: "✓ DOWNLOADED"
                 tint: Style.ok
             }
         }
@@ -131,8 +133,9 @@ FocusScope {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            anchors.margins: 12
+            anchors.margins: 14
             spacing: 2
+            visible: !card.quiet
             opacity: card.lit ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Style.fast } }
             Label {

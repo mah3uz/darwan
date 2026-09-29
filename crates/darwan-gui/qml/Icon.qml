@@ -43,7 +43,9 @@ Item {
         "download": "M12 4v11M7 10l5 5 5-5M5 20h14",
         "external": "M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4",
         "shield": "M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z",
-        "refresh": "M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"
+        "refresh": "M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6",
+        "plus": "M12 5v14M5 12h14",
+        "filter": "M4 6h16M7 12h10M10 18h4"
     })
 
     Shape {

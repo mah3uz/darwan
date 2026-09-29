@@ -27,7 +27,7 @@ Item {
     property bool jobReports: false
     property string jobDone: ""
     property bool quitting: false
-    // "themes" or "wallpapers", switched at the top of either page.
+    // "themes", or the wallpaper pages "home", "explore" and "library", switched by the pill at the top.
     property string page: "themes"
 
     // Where a notice goes: beside the Stage's bar, or in the Wall's corner.
@@ -209,20 +209,21 @@ Item {
         id: wallpapers
         anchors.fill: parent
         // Made the first time it's opened, so the Themes page starts as fast as before.
-        active: app.page === "wallpapers" || item !== null
-        visible: app.page === "wallpapers"
+        active: app.page !== "themes" || item !== null
+        visible: app.page !== "themes"
         sourceComponent: WallpaperPage {
             backend: app.backend
             focus: true
+            view: app.page === "themes" ? "home" : app.page
             onSwitchPage: p => app.page = p
-            onOpenItem: (item, mode) => wallpaperDetail.open(item, mode)
+            onOpenItem: (item, list, index) => wallpaperDetail.open(item, list, index)
         }
     }
     WallpaperDetail {
         id: wallpaperDetail
         anchors.fill: parent
         backend: backend
-        visible: app.page === "wallpapers" && opacity > 0
+        visible: app.page !== "themes" && opacity > 0
     }
 
     Stage {
@@ -267,12 +268,6 @@ Item {
             fontPicker.open()
         }
         onTestSddm: app.run(["sddm", "preview", stage.themeId], "SDDM test mode")
-    }
-
-    LookSwitch {
-        x: 6
-        anchors.verticalCenter: parent.verticalCenter
-        backend: backend
     }
 
     UseMenu {

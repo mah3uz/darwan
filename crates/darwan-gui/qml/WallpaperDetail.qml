@@ -20,15 +20,34 @@ FocusScope {
     property string noticeKind: ""
     property string appliedPath: ""
     property string lockNote: ""
+    // The list it was opened from, for ‹ › and the arrow keys.
+    property var list: []
+    property int index: -1
+    // The full-size picture: a Library file at once; an online one once fetched.
+    property string fullSource: ""
 
-    function open(it, m) {
+    function open(it, l, i) {
+        list = l || [it]
+        index = i >= 0 ? i : 0
+        show(it)
+        shown = true
+        forceActiveFocus()
+    }
+    function show(it) {
         item = it
-        mode = m
+        mode = it.key !== undefined ? "online" : "library"
         notice = ""
         noticeKind = ""
         lockNote = ""
-        shown = true
-        forceActiveFocus()
+        fullSource = mode === "library" ? (it.kind === "video" ? it.thumb : it.file) : ""
+        if (mode === "online")
+            backend.wallFull(it.key)
+    }
+    function step(by) {
+        if (list.length < 2)
+            return
+        index = (index + by + list.length) % list.length
+        show(list[index])
     }
     function close() {
         shown = false
@@ -41,11 +60,11 @@ FocusScope {
         const all = []
         for (let i = 0; i < screens.length; i++)
             all.push(screens[i].name)
-        const req = mode === "online" ? { online: item.id } : { path: item.path }
+        const req = mode === "online" ? { online: item.key } : { path: item.path }
         req.outputs = outputs
         req.all = all
         req.restart = restart === true
-        notice = mode === "online" && !item.saved ? "Downloading…" : "Setting…"
+        notice = mode === "online" && !item.downloaded ? "Downloading…" : "Setting…"
         noticeKind = "busy"
         backend.wallApply(JSON.stringify(req))
     }
@@ -64,9 +83,15 @@ FocusScope {
     opacity: shown ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: Style.medium; easing.type: Style.ease } }
     Keys.onEscapePressed: close()
+    Keys.onLeftPressed: step(-1)
+    Keys.onRightPressed: step(1)
 
     Connections {
         target: detail.backend
+        function onWallFullReady(key, path) {
+            if (detail.item && detail.item.key === key)
+                detail.fullSource = path
+        }
         function onWallProgress(text, image) {
             if (!detail.shown)
                 return
@@ -94,7 +119,7 @@ FocusScope {
     Image {
         id: preview
         anchors.fill: parent
-        source: !detail.item ? "" : detail.mode === "online" ? detail.item.thumb : (detail.item.kind === "video" ? detail.item.thumb : detail.item.file)
+        source: detail.fullSource
         sourceSize.width: Math.min(3840, detail.width * Screen.devicePixelRatio)
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
@@ -109,6 +134,55 @@ FocusScope {
         fillMode: Image.PreserveAspectCrop
     }
     TapHandler { onTapped: detail.close() }
+
+    // Full size is on its way.
+    Rectangle {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 22
+        visible: detail.shown && preview.status !== Image.Ready
+        width: loadingRow.width + 28
+        height: 36
+        radius: 18
+        color: Qt.rgba(0, 0, 0, 0.5)
+        Row {
+            id: loadingRow
+            anchors.centerIn: parent
+            spacing: 8
+            Spinner { anchors.verticalCenter: parent.verticalCenter; size: 14 }
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                text: preview.status === Image.Loading && preview.progress > 0 ? "Loading full size " + Math.round(preview.progress * 100) + "%" : "Loading full size…"
+                font.family: Style.family
+                font.pixelSize: Style.caption
+                color: "white"
+            }
+        }
+    }
+
+    // ‹ › through the list, as wallspace's preview; the arrow keys do the same.
+    Repeater {
+        model: detail.list.length > 1 ? [-1, 1] : []
+        delegate: AbstractButton {
+            id: stepper
+            required property int modelData
+            x: stepper.modelData < 0 ? 24 : detail.width - width - 24
+            anchors.verticalCenter: parent.verticalCenter
+            width: 52
+            height: 52
+            hoverEnabled: true
+            onClicked: detail.step(stepper.modelData)
+            ToolTip.visible: hovered
+            ToolTip.text: stepper.modelData < 0 ? "Previous (←)" : "Next (→)"
+            ToolTip.delay: 500
+            contentItem: Item { Icon { anchors.centerIn: parent; name: stepper.modelData < 0 ? "left" : "right"; size: 22; color: "white" } }
+            background: Rectangle {
+                radius: 26
+                color: stepper.hovered ? Qt.rgba(0, 0, 0, 0.6) : Qt.rgba(0, 0, 0, 0.38)
+                border.color: Qt.rgba(1, 1, 1, 0.15)
+            }
+        }
+    }
 
     ActionButton {
         x: 20
@@ -141,7 +215,7 @@ FocusScope {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 2
                 Label {
-                    text: !detail.item ? "" : detail.mode === "online" ? detail.item.title : detail.item.name
+                    text: !detail.item ? "" : detail.item.title || detail.item.name || ""
                     width: Math.min(implicitWidth, 360)
                     elide: Text.ElideRight
                     font.family: Style.family
@@ -150,7 +224,7 @@ FocusScope {
                     color: Style.text
                 }
                 Label {
-                    text: !detail.item ? "" : [detail.item.size, detail.item.bytes, detail.item.credit ? detail.item.credit.author : ""].filter(s => s).join("  ·  ")
+                    text: !detail.item ? "" : [detail.item.size, detail.item.bytes, detail.item.credit ? detail.item.credit.author : "", detail.item.downloaded ? "In your Library" : ""].filter(s => s).join("  ·  ")
                     width: Math.min(implicitWidth, 360)
                     elide: Text.ElideRight
                     font.family: Style.family

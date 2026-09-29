@@ -97,7 +97,22 @@ pub mod qobject {
         fn wall_library(self: &Backend, text: &QString, colour: &QString) -> QString;
 
         #[qinvokable]
-        fn wall_online(self: &Backend) -> QString;
+        fn wall_online(self: &Backend, channel: &QString) -> QString;
+
+        #[qinvokable]
+        fn wall_explore(self: &Backend) -> QString;
+
+        #[qinvokable]
+        fn wall_more(self: Pin<&mut Backend>, channel: &QString);
+
+        #[qinvokable]
+        fn wall_full(self: Pin<&mut Backend>, key: &QString);
+
+        #[qinvokable]
+        fn wall_add(self: Pin<&mut Backend>, files: &QString) -> QString;
+
+        #[qsignal]
+        fn wall_full_ready(self: Pin<&mut Backend>, key: QString, path: QString);
 
         #[qinvokable]
         fn wall_owner(self: &Backend) -> QString;
@@ -106,7 +121,7 @@ pub mod qobject {
         fn wall_scan(self: Pin<&mut Backend>);
 
         #[qinvokable]
-        fn wall_search(self: Pin<&mut Backend>, request: &QString);
+        fn wall_search(self: Pin<&mut Backend>, channel: &QString, request: &QString);
 
         #[qinvokable]
         fn wall_apply(self: Pin<&mut Backend>, request: &QString);
@@ -761,21 +776,17 @@ impl qobject::Backend {
         ))
     }
 
-    fn wall_online(&self) -> QString {
-        let r = self.rust();
-        let w = &r.walls;
-        let allowed = allowed(&r.config);
-        json(walls::online(&walls::OnlineView {
-            source: w.source,
-            items: &w.found,
-            thumbs: &w.thumbs,
-            loading: w.loading,
-            error: &w.error,
-            refused: &w.refused,
-            more: w.more,
-            allowed: &allowed,
-            folder: &w.folder,
-        }))
+    fn wall_online(&self, channel: &QString) -> QString {
+        let w = &self.rust().walls;
+        json(walls::online(
+            w.channels.get(&channel.to_string()),
+            &w.thumbs,
+            &w.folder,
+        ))
+    }
+
+    fn wall_explore(&self) -> QString {
+        json(walls::explore(&allowed(&self.rust().config)))
     }
 
     fn wall_owner(&self) -> QString {
@@ -835,17 +846,24 @@ impl qobject::Backend {
         std::thread::spawn(move || prepare(items, ticket, cancel, thread));
     }
 
-    // {"source","text","sort","ratio","topic","page"}; results arrive one by one, then their thumbnails.
-    fn wall_search(mut self: Pin<&mut Self>, request: &QString) {
-        use darwan_core::wallpaper::online::{Client, Query, Sort, Source};
-        use std::sync::atomic::Ordering;
+    // A channel starts over: {"sources": [...] (every one when empty), "text", "topic", "sort", "ratio", "first"}.
+    // The first 50 results by default, each shown as it passes.
+    fn wall_search(mut self: Pin<&mut Self>, channel: &QString, request: &QString) {
+        use darwan_core::wallpaper::online::{Query, Sort, Source};
         let v: serde_json::Value = serde_json::from_str(&request.to_string()).unwrap_or_default();
         let text = |k: &str| v.get(k).and_then(|x| x.as_str()).unwrap_or("").to_string();
-        let source = Source::parse(&text("source")).unwrap_or(Source::Bing);
-        let page = v
-            .get("page")
-            .and_then(serde_json::Value::as_u64)
-            .unwrap_or(1) as u32;
+        let mut sources: Vec<Source> = v
+            .get("sources")
+            .and_then(|x| x.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|s| s.as_str().and_then(Source::parse))
+                    .collect()
+            })
+            .unwrap_or_default();
+        if sources.is_empty() {
+            sources = Source::ALL.to_vec();
+        }
         let query = Query {
             text: text("text"),
             sort: match text("sort").as_str() {
@@ -854,74 +872,233 @@ impl qobject::Backend {
                 _ => Sort::Popular,
             },
             ratio: Some(text("ratio")).filter(|r| !r.is_empty()),
-            topic: Some(text("topic")).filter(|t| !t.is_empty()),
-            page: page.max(1),
+            topic: Some(text("subject")).filter(|t| !t.is_empty()),
             ..Query::default()
         };
-        let allowed = allowed(&self.rust().config);
-        let (ticket, cancel) = {
+        let feeds = walls::feeds(&sources, &query, &text("topic"));
+        let first = v
+            .get("first")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(50) as usize;
+        let name = channel.to_string();
+        {
             let mut r = self.as_mut().rust_mut();
-            let w = &mut r.walls;
-            if page <= 1 {
-                w.found.clear();
+            let old = r.walls.channels.get(&name).map(|c| c.ticket.clone());
+            let mut c = walls::Channel::new(feeds, first);
+            if let Some(t) = old {
+                // The same counter, bumped: a worker for the old query stops.
+                t.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                c.ticket = t;
             }
-            w.source = source;
-            w.query = query.clone();
-            w.loading = true;
-            w.searched = true;
-            w.error.clear();
-            w.refused.clear();
-            let ticket = w.search.fetch_add(1, Ordering::Relaxed) + 1;
-            (ticket, w.search.clone())
+            r.walls.channels.insert(name.clone(), c);
+        }
+        self.as_mut().wall_bump();
+        self.fetch_channel(name);
+    }
+
+    // 25 more for a channel scrolled to its end; fetched only when what's held runs short.
+    fn wall_more(mut self: Pin<&mut Self>, channel: &QString) {
+        let name = channel.to_string();
+        let fetch = {
+            let mut r = self.as_mut().rust_mut();
+            let Some(c) = r.walls.channels.get_mut(&name) else {
+                return;
+            };
+            if c.loading || (!c.more() && c.items.len() <= c.target) {
+                return;
+            }
+            c.target += 25;
+            c.items.len() < c.target && c.more()
         };
         self.as_mut().wall_bump();
+        if fetch {
+            self.fetch_channel(name);
+        }
+    }
+
+    // Pages in the background until the channel holds its target or the source runs out; each result is shown as
+    // soon as it passes, and thumbnails load four at a time.
+    fn fetch_channel(mut self: Pin<&mut Self>, name: String) {
+        use darwan_core::wallpaper::online::Client;
+        use std::sync::atomic::Ordering;
+        let allowed = allowed(&self.rust().config);
+        let started = {
+            let mut r = self.as_mut().rust_mut();
+            r.walls.channels.get_mut(&name).map(|c| {
+                c.loading = true;
+                let t = c.ticket.load(Ordering::Relaxed);
+                (
+                    c.feeds.clone(),
+                    c.target,
+                    c.items.len(),
+                    (t, c.ticket.clone()),
+                )
+            })
+        };
+        let (mut feeds, target, have, ticket) = match started {
+            Some(s) => s,
+            None => return,
+        };
         let thread = self.qt_thread();
         std::thread::spawn(move || {
-            let client = Client::new(paths::cache_dir().join("online"));
-            let live =
-                |cancel: &std::sync::atomic::AtomicU64| cancel.load(Ordering::Relaxed) == ticket;
-            let result = client.search_each(source, &query, &allowed, &mut |found| {
-                if !live(&cancel) {
-                    return;
-                }
-                let f = found.clone();
-                let _ = thread.queue(move |mut q| {
-                    if q.rust().walls.search.load(Ordering::Relaxed) == ticket
-                        && !q.rust().walls.found.iter().any(|x| x.id == f.id)
-                    {
-                        q.as_mut().rust_mut().walls.found.push(f);
-                        q.as_mut().wall_bump();
+            let (mine, counter) = ticket;
+            let live = || counter.load(Ordering::Relaxed) == mine;
+            let client = std::sync::Arc::new(Client::new(paths::cache_dir().join("online")));
+            let slots =
+                std::sync::Arc::new((std::sync::Mutex::new(0usize), std::sync::Condvar::new()));
+            let mut count = have;
+            let mut problem: Result<String, String> = Ok(String::new());
+            // One page from each source in turn, so every source shows early.
+            'pages: while live() && count < target && feeds.iter().any(|f| f.more) {
+                for feed in feeds.iter_mut().filter(|f| f.more) {
+                    if !live() || count >= target {
+                        break 'pages;
                     }
-                });
-                if let Ok(thumb) = client.thumbnail(found) {
-                    let id = found.id.clone();
-                    let _ = thread.queue(move |mut q| {
-                        if q.rust().walls.search.load(Ordering::Relaxed) == ticket {
-                            q.as_mut().rust_mut().walls.thumbs.insert(id, thumb);
-                            q.as_mut().wall_bump();
+                    let mut q = feed.query.clone();
+                    q.page = feed.next_page;
+                    let name2 = name.clone();
+                    let result = client.search_each(feed.source, &q, &allowed, &mut |found| {
+                        if !live() {
+                            return;
                         }
+                        count += 1;
+                        let f = found.clone();
+                        let key = f.key();
+                        let n = name2.clone();
+                        let _ = thread.queue(move |mut qo| {
+                            let fresh = qo.rust().walls.channels.get(&n).is_some_and(|c| {
+                                c.ticket.load(Ordering::Relaxed) == mine
+                                    && !c.items.iter().any(|x| x.key() == key)
+                            });
+                            if fresh {
+                                if let Some(c) = qo.as_mut().rust_mut().walls.channels.get_mut(&n) {
+                                    c.items.push(f);
+                                }
+                                qo.as_mut().wall_bump();
+                            }
+                        });
+                        // At most four thumbnails at once; a cached one is only a file check.
+                        let (client, slots, thread, found) =
+                            (client.clone(), slots.clone(), thread.clone(), found.clone());
+                        {
+                            let (lock, cv) = &*slots;
+                            let mut busy = lock.lock().unwrap();
+                            while *busy >= 4 {
+                                busy = cv.wait(busy).unwrap();
+                            }
+                            *busy += 1;
+                        }
+                        std::thread::spawn(move || {
+                            if let Ok(thumb) = client.thumbnail(&found) {
+                                let key = found.key();
+                                let _ = thread.queue(move |mut qo| {
+                                    qo.as_mut().rust_mut().walls.thumbs.insert(key, thumb);
+                                    qo.as_mut().wall_bump();
+                                });
+                            }
+                            let (lock, cv) = &*slots;
+                            *lock.lock().unwrap() -= 1;
+                            cv.notify_one();
+                        });
                     });
-                }
-            });
-            let _ = thread.queue(move |mut q| {
-                if q.rust().walls.search.load(Ordering::Relaxed) != ticket {
-                    return;
-                }
-                {
-                    let mut r = q.as_mut().rust_mut();
-                    let w = &mut r.walls;
-                    w.loading = false;
+                    feed.next_page += 1;
                     match result {
-                        Ok(p) => {
-                            w.more = p.more;
-                            w.refused = p.refused.unwrap_or_default();
+                        Ok(p) if p.refused.is_some() => {
+                            problem = Ok(p.refused.unwrap_or_default());
+                            feeds.iter_mut().for_each(|f| f.more = false);
+                            break 'pages;
                         }
-                        Err(e) => w.error = e,
+                        Ok(p) => feed.more = p.more,
+                        // One source down doesn't stop the others.
+                        Err(e) => {
+                            feed.more = false;
+                            problem = Err(e);
+                        }
                     }
                 }
-                q.as_mut().wall_bump();
+            }
+            let _ = thread.queue(move |mut qo| {
+                {
+                    let mut r = qo.as_mut().rust_mut();
+                    let Some(c) = r.walls.channels.get_mut(&name) else {
+                        return;
+                    };
+                    if c.ticket.load(Ordering::Relaxed) != mine {
+                        return;
+                    }
+                    c.loading = false;
+                    c.feeds = feeds;
+                    match problem {
+                        Ok(refused) => c.refused = refused,
+                        Err(e) if c.items.is_empty() => c.error = e,
+                        Err(_) => {}
+                    }
+                }
+                qo.as_mut().wall_bump();
             });
         });
+    }
+
+    // The full-size picture for the preview: a Library file is already here; an online one is fetched into the cache.
+    fn wall_full(mut self: Pin<&mut Self>, key: &QString) {
+        use darwan_core::wallpaper::online::Client;
+        let key = key.to_string();
+        if let Some(path) = self.rust().walls.full.get(&key).cloned() {
+            self.as_mut().wall_full_ready(
+                QString::from(key),
+                QString::from(format!("file://{}", path.display())),
+            );
+            return;
+        }
+        let Some(found) = self.rust().walls.find(&key).cloned() else {
+            return;
+        };
+        let thread = self.qt_thread();
+        std::thread::spawn(move || {
+            let folder_copy = Client::new(paths::cache_dir().join("online")).full(&found);
+            if let Ok(path) = folder_copy {
+                let _ = thread.queue(move |mut q| {
+                    q.as_mut()
+                        .rust_mut()
+                        .walls
+                        .full
+                        .insert(key.clone(), path.clone());
+                    q.as_mut().wall_full_ready(
+                        QString::from(key),
+                        QString::from(format!("file://{}", path.display())),
+                    );
+                });
+            }
+        });
+    }
+
+    // "+": pictures and videos copied into the wallpaper folder; returns what happened, for the notice.
+    fn wall_add(self: Pin<&mut Self>, files: &QString) -> QString {
+        let list: Vec<String> = serde_json::from_str(&files.to_string()).unwrap_or_default();
+        let folder = self.rust().walls.folder.clone();
+        if let Err(e) = std::fs::create_dir_all(&folder) {
+            return QString::from(format!("{}: {e}", folder.display()));
+        }
+        let mut added = 0;
+        for f in &list {
+            let src = std::path::PathBuf::from(f.strip_prefix("file://").unwrap_or(f));
+            let Some(name) = src.file_name() else {
+                continue;
+            };
+            if darwan_core::wallpaper::library::Kind::of(&src).is_none() {
+                continue;
+            }
+            let target = folder.join(name);
+            if target.exists() || std::fs::copy(&src, &target).is_ok() {
+                added += 1;
+            }
+        }
+        self.wall_scan();
+        QString::from(match added {
+            0 => "Nothing added: only pictures and videos can be".to_string(),
+            1 => "1 wallpaper added to your Library".to_string(),
+            n => format!("{n} wallpapers added to your Library"),
+        })
     }
 
     // {"path"} or {"online": id}, with {"outputs": chosen, "all": every screen, "restart": allowed once}.
@@ -954,7 +1131,7 @@ impl qobject::Backend {
             let online = v
                 .get("online")
                 .and_then(|x| x.as_str())
-                .and_then(|id| r.walls.found.iter().find(|f| f.id == id).cloned());
+                .and_then(|key| r.walls.find(key).cloned());
             (
                 online,
                 r.walls.folder.clone(),
@@ -1092,26 +1269,27 @@ impl qobject::Backend {
             &QString::from("wallpaper.allow"),
             &QString::from(list.join(",")),
         );
-        let again = {
-            let w = &self.rust().walls;
-            w.searched.then(|| {
-                serde_json::json!({
-                    "source": w.source.id(),
-                    "text": w.query.text,
-                    "topic": w.query.topic,
-                    "ratio": w.query.ratio,
-                    "sort": match w.query.sort {
-                        darwan_core::wallpaper::online::Sort::Latest => "latest",
-                        darwan_core::wallpaper::online::Sort::Random => "random",
-                        darwan_core::wallpaper::online::Sort::Popular => "popular",
-                    },
-                })
-                .to_string()
-            })
-        };
-        if let Some(req) = again {
-            self.wall_search(&QString::from(req));
+        // Every list asks again, with the new switches.
+        let names: Vec<String> = self.rust().walls.channels.keys().cloned().collect();
+        for name in names {
+            let restart = {
+                let mut r = self.as_mut().rust_mut();
+                let c = r.walls.channels.get_mut(&name).expect("listed above");
+                c.ticket.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                c.items.clear();
+                for f in &mut c.feeds {
+                    f.next_page = 1;
+                    f.more = true;
+                }
+                c.error.clear();
+                c.refused.clear();
+                true
+            };
+            if restart {
+                self.as_mut().fetch_channel(name);
+            }
         }
+        self.wall_bump();
     }
 
     fn wall_allow_restart(mut self: Pin<&mut Self>, tool: &QString) {

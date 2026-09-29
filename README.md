@@ -289,10 +289,10 @@ Run `darwan-gui`, or open *Darwan* from your launcher.
   motion, *All themes* for the clock and date. The preview shows every change at once; nothing is written until
   *Save* (`Ctrl+S`), and *Discard* takes it all back. Drop an image or video on the preview to use it as the
   background.
-- **Wallpapers**, the other side of *Themes | Wallpapers* at the top, shows your wallpaper folder and free
+- **Wallpapers**: *Home*, *Explore* and *Library* in the pill at the top show your wallpaper folder and free
   wallpapers online; open one and *Set Wallpaper* ([details](#wallpapers)).
-- **The look** switch on the left edge picks *Darwan*'s own or your *System* Qt theme's colours and font (`gui.look`),
-  saved as you pick. **⚙** holds the clock and date and the screensaver. **Doctor** at the top turns amber when
+- **⚙** holds the look (*Darwan*'s own, the default, or your *System* Qt theme's colours and font, `gui.look`, saved
+  as you pick), the clock and date, and the screensaver. **Doctor** at the top turns amber when
   something needs a look; click it for the full check.
 
 <a id="lockscreen-keybind"></a>
@@ -402,15 +402,19 @@ MATE, Xfce), sway, waypaper when its backend is what runs, or the wallpaper tool
 wpaperd, mpvpaper, gSlapper, swaybg, wbg). It checks the result by asking that tool what it shows, and says so plainly
 when something can't be done, e.g. a video with a tool that shows pictures only.
 
-- **Library** is your wallpaper folder: by default `Wallpapers` (or `wallpapers`) in your Pictures folder, however
-  your system names that. Thumbnails go to the shared `~/.cache/thumbnails`, so your file manager and Darwan make each
-  one once, and every picture's colours are kept too, for the colour chips.
-- **Online** has Wallhaven (search, popular / latest / random, aspect ratio), Bing's image of the day, NASA's
-  Astronomy Picture of the Day and Wikimedia Commons' featured pictures (nature, space, city, night). No account or
-  key. A picture you set is downloaded into your folder with its credit (author, licence, source page), shown with it.
+- **Home** features one of your wallpapers at full size, with a strip of others and rows from each online source.
+- **Library** is your wallpaper folder and its subfolders, four levels down: by default `Wallpapers` (or
+  `wallpapers`) in your Pictures folder, however your system names that. Thumbnails go to the shared
+  `$XDG_CACHE_HOME/thumbnails` (`~/.cache/thumbnails`), so your file manager and Darwan make each one once, and every
+  picture's colours are kept too, for the colour chips. **+** adds pictures to it.
+- **Explore** mixes Wallhaven (searchable), Bing's image of the day, NASA's Astronomy Picture of the Day and Wikimedia
+  Commons' featured pictures; the source chips narrow it to one. No account or key. The first 50 load at once, then
+  25 more as you scroll. Pictures and responses are cached under `$XDG_CACHE_HOME/darwan`, so a second visit is quick.
+  A picture you set is downloaded into your folder with its credit (author, licence, source page), shown with it,
+  and marked DOWNLOADED from then on.
 - **Sexual content in any form is never shown**, from any source; there is no switch for it. People and portraits,
   anime and manga, games, films and TV, war and weapons, gore and violence, and horror stay hidden until you allow
-  them under *Allowed* (or with `wallpaper.allow`). Wallhaven pictures appear one by one, as each one's own tags pass
+  them under *Filter* (or with `wallpaper.allow`). Wallhaven pictures appear one by one, as each one's own tags pass
   these checks.
 - **Set Wallpaper** asks which display when you have several and your tool can give each its own. Afterwards,
   *Use on lockscreen too* makes your lock theme show your desktop wallpaper.

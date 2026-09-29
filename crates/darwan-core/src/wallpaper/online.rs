@@ -87,6 +87,11 @@ impl Found {
         }
     }
 
+    // Unique across sources (APOD's ids are dates, Commons' page numbers).
+    pub fn key(&self) -> String {
+        format!("{}:{}", self.source.id(), self.id)
+    }
+
     // The name in the wallpaper folder: the source and its id, so a second download is the same file.
     pub fn file_name(&self) -> String {
         let safe: String = self
@@ -156,6 +161,25 @@ pub const COMMONS: &[(&str, &[&str])] = &[
         ],
     ),
     ("night", &["Featured night photography"]),
+];
+
+// Explore's topic chips as Wallhaven searches; a topic in an optional group shows only once the user allows it.
+pub const TOPICS: &[(&str, &str, Option<&str>)] = &[
+    ("Nature", "nature", None),
+    ("Space", "space", None),
+    ("City", "city", None),
+    ("Mountains", "mountains", None),
+    ("Ocean", "sea", None),
+    ("Forest", "forest", None),
+    ("Minimal", "minimalism", None),
+    ("Abstract", "abstract", None),
+    ("Cars", "car", None),
+    ("Sci-fi", "science fiction", None),
+    ("Fantasy", "fantasy art", None),
+    ("Cats", "cats", None),
+    ("Monochrome", "monochrome", None),
+    ("Anime", "anime", Some("anime")),
+    ("Video games", "video games", Some("games")),
 ];
 
 pub const USER_AGENT: &str = concat!(
@@ -310,6 +334,8 @@ impl Client {
         }
         match source {
             Source::Wallhaven => self.wallhaven(q, allowed, each),
+            // Bing keeps about two weeks, all on the first page.
+            Source::Bing if q.page > 1 => Ok(Page::default()),
             Source::Bing => {
                 let day = Duration::from_secs(6 * 3600);
                 let mut items = Vec::new();
@@ -323,19 +349,23 @@ impl Client {
                 items.dedup_by(|a, b| a.id == b.id);
                 Ok(keep(items, allowed))
             }
+            // Each page is 30 days further back; a past month never changes, so it's kept a month.
             Source::Apod => {
-                let (from, to) = (date_days_ago(30), date_days_ago(0));
+                let page = u64::from(q.page.max(1));
+                let (from, to) = (
+                    date_days_ago(30 * page),
+                    date_days_ago(30 * (page - 1) + u64::from(page > 1)),
+                );
                 let url = format!(
                     "https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&start_date={from}&end_date={to}&thumbs=true"
                 );
-                let text = self.cached(
-                    &format!("apod {from}"),
-                    Duration::from_secs(12 * 3600),
-                    &url,
-                )?;
+                let ttl = Duration::from_secs(if page == 1 { 12 * 3600 } else { 30 * 86400 });
+                let text = self.cached(&format!("apod {from} {to}"), ttl, &url)?;
                 let mut items = parse_apod(&text);
                 items.reverse();
-                Ok(keep(items, allowed))
+                let mut out = keep(items, allowed);
+                out.more = page < 24;
+                Ok(out)
             }
             Source::Commons => self.commons(q, allowed),
         }
@@ -414,18 +444,34 @@ impl Client {
             .map(|(_, c)| *c)
             .ok_or_else(|| format!("no Commons subject {topic}"))?;
         let mut items = Vec::new();
+        let mut more = false;
         for cat in cats {
-            let url = format!(
-                "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&generator=categorymembers&gcmtitle={}&gcmtype=file&gcmlimit=50&prop=imageinfo|categories&cllimit=max&clshow=!hidden&iiprop=url|size|mime|extmetadata&iiurlwidth=500&iiextmetadatafilter=LicenseShortName|LicenseUrl|Artist|ObjectName",
-                encode(&format!("Category:{cat}"))
-            );
-            // Commons asks for one request at a time, which this loop is.
-            items.extend(parse_commons(
-                &self.cached(&url, Duration::from_secs(86400), &url)?,
-                allowed,
-            ));
+            // Page N follows the API's continue token N-1 times; every step is cached, so paging on costs one request.
+            let mut token: Option<String> = None;
+            let mut text = String::new();
+            for step in 0..q.page.max(1) {
+                if step > 0 && token.is_none() {
+                    text.clear();
+                    break;
+                }
+                let mut url = format!(
+                    "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&generator=categorymembers&gcmtitle={}&gcmtype=file&gcmlimit=50&prop=imageinfo|categories&cllimit=max&clshow=!hidden&iiprop=url|size|mime|extmetadata&iiurlwidth=500&iiextmetadatafilter=LicenseShortName|LicenseUrl|Artist|ObjectName",
+                    encode(&format!("Category:{cat}"))
+                );
+                if let Some(t) = &token {
+                    url.push_str(&format!("&gcmcontinue={}", encode(t)));
+                }
+                // Commons asks for one request at a time, which this loop is.
+                text = self.cached(&url, Duration::from_secs(86400), &url)?;
+                token = serde_json::from_str::<Value>(&text)
+                    .ok()
+                    .and_then(|v| v["continue"]["gcmcontinue"].as_str().map(str::to_string));
+            }
+            more |= token.is_some();
+            items.extend(parse_commons(&text, allowed));
         }
         let mut page = keep(items, allowed);
+        page.more = more;
         if q.sort == Sort::Random {
             let seed = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -449,6 +495,44 @@ impl Client {
         Ok(file)
     }
 
+    fn full_cache(&self, found: &Found) -> PathBuf {
+        self.cache.join("full").join(found.file_name())
+    }
+
+    // The full-size picture for a preview, kept until it's downloaded or the cache is trimmed.
+    pub fn full(&self, found: &Found) -> Result<PathBuf, String> {
+        let file = self.full_cache(found);
+        if !file.is_file() {
+            self.fetch_to(&found.full, &file)?;
+            self.trim_full();
+        }
+        Ok(file)
+    }
+
+    // Previews not downloaded are kept for later, up to about 600 MB, the oldest going first.
+    fn trim_full(&self) {
+        let Ok(entries) = std::fs::read_dir(self.cache.join("full")) else {
+            return;
+        };
+        let mut files: Vec<(SystemTime, u64, PathBuf)> = entries
+            .flatten()
+            .filter_map(|e| {
+                let m = e.metadata().ok()?;
+                Some((m.modified().ok()?, m.len(), e.path()))
+            })
+            .collect();
+        files.sort();
+        let mut total: u64 = files.iter().map(|f| f.1).sum();
+        for (_, len, path) in files {
+            if total <= 600 * 1024 * 1024 {
+                break;
+            }
+            if std::fs::remove_file(&path).is_ok() {
+                total -= len;
+            }
+        }
+    }
+
     // Into the wallpaper folder under a stable name, with its credit kept beside Darwan's data.
     pub fn download(
         &self,
@@ -458,7 +542,15 @@ impl Client {
     ) -> Result<PathBuf, String> {
         let target = folder.join(found.file_name());
         if !target.is_file() {
-            self.fetch_to(&found.full, &target)?;
+            // A previewed picture moves in rather than being fetched again.
+            let previewed = self.full_cache(found);
+            let moved = previewed.is_file()
+                && std::fs::create_dir_all(folder).is_ok()
+                && (std::fs::rename(&previewed, &target).is_ok()
+                    || std::fs::copy(&previewed, &target).is_ok());
+            if !moved {
+                self.fetch_to(&found.full, &target)?;
+            }
         }
         save_credit(credits, &target, found);
         Ok(target)

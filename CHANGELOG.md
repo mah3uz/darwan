@@ -25,14 +25,24 @@ minutes.
 
 ### Wallpapers
 
-**A Wallpapers page in the GUI**, switched with *Themes | Wallpapers* at the top of the window. *Library* shows
-your wallpaper folder as cards, newest first, with NEW and IN USE badges, filtered by colour or searched by name;
-*Change folder* picks another. *Online* shows Wallhaven, Bing, NASA APOD and Wikimedia Commons, with Wallhaven's
-search, sort and aspect ratio, and Commons' subjects; *Allowed* holds the switches for the optional groups. Open a
-wallpaper to see it full-window with its size and credit, then *Set Wallpaper*: with several screens, choose one or
-All. An online picture is downloaded into your folder first. Once it is set, *Use on lockscreen too* makes your lock
-theme show your desktop wallpaper. When your wallpaper tool can only change by restarting (swaybg, for one), Darwan
-asks first: just this time, or always.
+**Wallpapers in the GUI.** The pill at the top of the window now reads *Themes · Home · Explore · Library*, over
+one of your wallpapers shown at full size.
+
+- *Home* features a picture from your Library, with *View Wallpaper* and a strip of others to feature instead, then
+  rows to browse: Today on Bing, Popular on Wallhaven, NASA's Astronomy Picture of the Day, Wikimedia Commons, and
+  what you added last.
+- *Explore* mixes every source by default; pick one with the source chips. Search Wallhaven, choose a shape
+  (ultrawide, 16:9, 16:10) and Popular, Latest or Random, or open a topic (Nature, Space, City, Mountains…). The
+  first 50 pictures load at once, 25 more each time you scroll to the end. *Filter* holds the switches for the
+  optional groups.
+- *Library* is your wallpaper folder and its subfolders, four levels down, newest first, with NEW and IN USE badges,
+  colour chips and a search. **+** adds pictures or videos to it; **⚙** changes the folder and holds the colour
+  generators.
+- Open a wallpaper to see it full-window at full size (an online one is fetched in the background), step with ‹ › or
+  the arrow keys, and *Set Wallpaper*: with several screens, choose one or All. An online picture you've already
+  downloaded shows DOWNLOADED and isn't fetched again. Once set, *Use on lockscreen too* makes your lock theme show
+  your desktop wallpaper. When your wallpaper tool can only change by restarting (swaybg, for one), Darwan asks
+  first: just this time, or always.
 
 **Colours from the wallpaper.** When a shell makes your colours from the wallpaper (DMS, Caelestia, Noctalia),
 Darwan sets the wallpaper through it, so the colours follow as they do from the shell's own settings, and runs
@@ -61,6 +71,8 @@ war and weapons, gore and violence, and horror are hidden too until you allow th
 
 ### Also
 
+- The *Darwan* / *System* look moved from the window's left edge into **⚙** (Settings → Appearance); Darwan's own
+  look is still the default.
 - Using your desktop wallpaper as a theme's background no longer mistakes an editor open on Omarchy's or Caelestia's
   files for those shells, and ignores a second awww or swww daemon drawing niri's overview backdrop.
 - The GUI's floating *Unsaved changes* bar no longer lets its Save button touch the bar's right edge.

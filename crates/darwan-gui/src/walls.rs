@@ -3,12 +3,105 @@ use std::path::{Path, PathBuf};
 
 use darwan_core::wallpaper::filter::{Allowed, GROUPS};
 use darwan_core::wallpaper::library::{COLOURS, Facts, Item, Kind};
-use darwan_core::wallpaper::online::{COMMONS, Found, Query, Source};
+use darwan_core::wallpaper::online::{COMMONS, Found, Query, Source, TOPICS};
 use darwan_core::wallpaper::set::Owner;
 use serde_json::{Value, json};
 
-// The page's data between calls; the workers write into it on the GUI thread. `scan` and `search` count requests,
-// so results from an older one are dropped; the cancel counters let a worker stop early.
+// One list of online results: Home's rows, Explore, a category page. It grows a page at a time until it holds
+// `target` results; `ticket` counts requests, so a worker for an older one stops and its results are dropped.
+// One source inside a channel, paged on its own.
+#[derive(Debug, Clone)]
+pub struct Feed {
+    pub source: Source,
+    pub query: Query,
+    pub next_page: u32,
+    pub more: bool,
+}
+
+pub struct Channel {
+    pub feeds: Vec<Feed>,
+    pub items: Vec<Found>,
+    pub loading: bool,
+    pub error: String,
+    pub refused: String,
+    pub target: usize,
+    pub ticket: std::sync::Arc<std::sync::atomic::AtomicU64>,
+}
+
+impl Channel {
+    pub fn new(feeds: Vec<Feed>, target: usize) -> Self {
+        Channel {
+            feeds,
+            items: Vec::new(),
+            loading: true,
+            error: String::new(),
+            refused: String::new(),
+            target,
+            ticket: Default::default(),
+        }
+    }
+
+    pub fn more(&self) -> bool {
+        self.feeds.iter().any(|f| f.more)
+    }
+}
+
+// The feeds for a request. Every source unless the user picked one; search words and topics go to Wallhaven, and to
+// Commons and APOD when the topic is one of their subjects.
+pub fn feeds(sources: &[Source], query: &Query, topic: &str) -> Vec<Feed> {
+    let feed = |source: Source, q: Query| Feed {
+        source,
+        query: q,
+        next_page: 1,
+        more: true,
+    };
+    let searching = !query.text.trim().is_empty() || !topic.is_empty();
+    // The quick sources first; Wallhaven checks every picture before it shows, so it comes last.
+    let mut sources = sources.to_vec();
+    sources.sort_by_key(|s| *s == Source::Wallhaven);
+    sources
+        .iter()
+        .filter_map(|s| match s {
+            Source::Wallhaven => Some(feed(
+                *s,
+                Query {
+                    text: if topic.is_empty() {
+                        query.text.clone()
+                    } else {
+                        topic.to_string()
+                    },
+                    ..query.clone()
+                },
+            )),
+            Source::Commons if !searching => Some(feed(*s, query.clone())),
+            Source::Commons => COMMONS
+                .iter()
+                .find(|(t, _)| topic.contains(t) || query.text.to_lowercase().contains(t))
+                .map(|(t, _)| {
+                    feed(
+                        *s,
+                        Query {
+                            topic: Some(t.to_string()),
+                            ..query.clone()
+                        },
+                    )
+                }),
+            Source::Apod
+                if !searching
+                    || topic == "space"
+                    || query.text.to_lowercase().contains("space") =>
+            {
+                Some(feed(*s, query.clone()))
+            }
+            Source::Bing if !searching => Some(feed(*s, query.clone())),
+            _ => None,
+        })
+        .collect()
+}
+
+// The page's data between calls; the workers write into it on the GUI thread. `scan` counts folder scans, so the
+// results of an older one are dropped and its workers stop early.
+#[derive(Default)]
 pub struct State {
     pub folder: PathBuf,
     pub items: Vec<Item>,
@@ -17,39 +110,18 @@ pub struct State {
     pub current: Option<PathBuf>,
     pub owner: Option<Owner>,
     pub scan: std::sync::Arc<std::sync::atomic::AtomicU64>,
-    pub source: Source,
-    pub query: Query,
-    pub found: Vec<Found>,
+    pub channels: HashMap<String, Channel>,
+    // By `Found::key`: grid thumbnails and full-size previews on disk.
     pub thumbs: HashMap<String, PathBuf>,
-    pub loading: bool,
-    pub error: String,
-    pub refused: String,
-    pub more: bool,
-    pub search: std::sync::Arc<std::sync::atomic::AtomicU64>,
-    pub searched: bool,
+    pub full: HashMap<String, PathBuf>,
 }
 
-impl Default for State {
-    fn default() -> Self {
-        State {
-            folder: PathBuf::new(),
-            items: Vec::new(),
-            ready: HashMap::new(),
-            credits: HashMap::new(),
-            current: None,
-            owner: None,
-            scan: Default::default(),
-            source: Source::Bing,
-            query: Query::default(),
-            found: Vec::new(),
-            thumbs: HashMap::new(),
-            loading: false,
-            error: String::new(),
-            refused: String::new(),
-            more: false,
-            search: Default::default(),
-            searched: false,
-        }
+impl State {
+    pub fn find(&self, key: &str) -> Option<&Found> {
+        self.channels
+            .values()
+            .flat_map(|c| c.items.iter())
+            .find(|f| f.key() == key)
     }
 }
 
@@ -186,51 +258,68 @@ fn capital(s: &str) -> String {
         .unwrap_or_default()
 }
 
-pub struct OnlineView<'a> {
-    pub source: Source,
-    pub items: &'a [Found],
-    pub thumbs: &'a HashMap<String, PathBuf>,
-    pub loading: bool,
-    pub error: &'a str,
-    pub refused: &'a str,
-    pub more: bool,
-    pub allowed: &'a Allowed,
-    pub folder: &'a Path,
+pub fn found_json(f: &Found, thumbs: &HashMap<String, PathBuf>, folder: &Path) -> Value {
+    json!({
+        "key": f.key(),
+        "title": if f.title.is_empty() { f.source.name().to_string() } else { f.title.clone() },
+        "thumb": thumbs.get(&f.key()).map(|p| format!("file://{}", p.display())).unwrap_or_default(),
+        "size": size_text(f.width, f.height),
+        "bytes": megabytes(f.bytes),
+        "credit": credit_json(f),
+        "downloaded": folder.join(f.file_name()).is_file(),
+    })
 }
 
-pub fn online(v: &OnlineView) -> Value {
-    let items: Vec<Value> = v
-        .items
-        .iter()
-        .map(|f| {
-            json!({
-                "id": f.id,
-                "title": if f.title.is_empty() { f.source.name().to_string() } else { f.title.clone() },
-                "thumb": v.thumbs.get(&f.id).map(|p| format!("file://{}", p.display())).unwrap_or_default(),
-                "size": size_text(f.width, f.height),
-                "bytes": megabytes(f.bytes),
-                "credit": credit_json(f),
-                "saved": v.folder.join(f.file_name()).is_file(),
-            })
-        })
+// One from each source in turn, each keeping its own order, so "every source" reads as a mix, not blocks.
+fn mixed(items: &[Found]) -> Vec<&Found> {
+    let mut by_source: Vec<(Source, std::collections::VecDeque<&Found>)> = Vec::new();
+    for f in items {
+        match by_source.iter_mut().find(|(s, _)| *s == f.source) {
+            Some((_, q)) => q.push_back(f),
+            None => by_source.push((f.source, std::collections::VecDeque::from([f]))),
+        }
+    }
+    let mut out = Vec::with_capacity(items.len());
+    while by_source.iter().any(|(_, q)| !q.is_empty()) {
+        for (_, q) in &mut by_source {
+            if let Some(f) = q.pop_front() {
+                out.push(f);
+            }
+        }
+    }
+    out
+}
+
+// A channel as the page shows it: at most `target` results, and whether there are more to load.
+pub fn online(c: Option<&Channel>, thumbs: &HashMap<String, PathBuf>, folder: &Path) -> Value {
+    let Some(c) = c else {
+        return json!({ "items": [], "loading": false, "error": "", "refused": "", "more": false, "source": "" });
+    };
+    let shown: Vec<Value> = mixed(&c.items)
+        .into_iter()
+        .take(c.target)
+        .map(|f| found_json(f, thumbs, folder))
         .collect();
     json!({
-        "source": v.source.id(),
-        "searchable": v.source.searchable(),
+        "sources": c.feeds.iter().map(|f| f.source.id()).collect::<Vec<_>>(),
+        "items": shown,
+        "loading": c.loading,
+        "error": c.error,
+        "refused": c.refused,
+        "more": c.more() || c.items.len() > c.target,
+    })
+}
+
+// Explore's chips and the Filter's switches, following what the user allows.
+pub fn explore(allowed: &Allowed) -> Value {
+    json!({
+        "topics": TOPICS
+            .iter()
+            .filter(|(_, _, group)| group.is_none_or(|g| allowed.has(g)))
+            .map(|(label, query, _)| json!({ "label": label, "query": query }))
+            .collect::<Vec<_>>(),
         "sources": Source::ALL.iter().map(|s| json!({ "value": s.id(), "label": s.name() })).collect::<Vec<_>>(),
-        "topics": COMMONS.iter().map(|(t, _)| json!({ "value": t, "label": capital(t) })).collect::<Vec<_>>(),
-        "items": items,
-        "loading": v.loading,
-        "error": v.error,
-        "refused": v.refused,
-        "more": v.more,
-        "groups": GROUPS.iter().map(|g| json!({ "id": g.id, "label": g.label, "on": v.allowed.has(g.id) })).collect::<Vec<_>>(),
-        "note": match v.source {
-            Source::Wallhaven => "Images belong to their owners; for personal use. Each is checked before it shows, so the grid fills gradually.",
-            Source::Bing => "Bing's recent images of the day, offered for use as wallpapers only.",
-            Source::Apod => "NASA's Astronomy Picture of the Day, the last 30 days.",
-            Source::Commons => "Wikimedia Commons' featured pictures, freely licensed; credit the author.",
-        },
+        "groups": GROUPS.iter().map(|g| json!({ "id": g.id, "label": g.label, "on": allowed.has(g.id) })).collect::<Vec<_>>(),
     })
 }
 
@@ -358,31 +447,75 @@ mod tests {
     }
 
     #[test]
-    fn online_items_carry_their_credit_and_the_groups_show_their_switches() {
+    fn a_channel_shows_its_target_and_the_filter_shows_every_optional_group() {
         let f = darwan_core::wallpaper::online::parse_apod(
-            r#"[{"copyright":"Jeff Dai","date":"2026-09-26","hdurl":"https://h.jpg","media_type":"image","title":"Meteor","url":"https://s.jpg"}]"#,
+            r#"[{"copyright":"Jeff Dai","date":"2026-09-26","hdurl":"https://h.jpg","media_type":"image","title":"Meteor","url":"https://s.jpg"},
+                {"date":"2026-09-27","hdurl":"https://h2.jpg","media_type":"image","title":"Nebula","url":"https://s2.jpg"}]"#,
         );
-        let thumbs = HashMap::new();
-        let allowed = Allowed(vec!["anime".into()]);
-        let v = OnlineView {
-            source: Source::Apod,
-            items: &f,
-            thumbs: &thumbs,
-            loading: false,
-            error: "",
-            refused: "",
-            more: false,
-            allowed: &allowed,
-            folder: Path::new("/nowhere"),
-        };
-        let j = online(&v);
+        let mut c = Channel::new(feeds(&[Source::Apod], &Query::default(), ""), 1);
+        c.items = f;
+        c.feeds[0].more = false;
+        let j = online(Some(&c), &HashMap::new(), Path::new("/nowhere"));
+        assert_eq!(
+            j["items"].as_array().unwrap().len(),
+            1,
+            "only the target is shown"
+        );
+        assert_eq!(j["more"], true, "the rest is there for scrolling");
         assert_eq!(j["items"][0]["credit"]["licence"], "© Jeff Dai");
-        assert_eq!(j["searchable"], false, "only Wallhaven has a search field");
-        let groups = j["groups"].as_array().unwrap();
-        assert!(groups.iter().any(|g| g["id"] == "anime" && g["on"] == true));
+        assert_eq!(j["items"][0]["key"], "apod:2026-09-26");
+
+        let allowed = Allowed(vec!["anime".into()]);
+        let e = explore(&allowed);
+        let topics: Vec<&str> = e["topics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t["label"].as_str().unwrap())
+            .collect();
         assert!(
-            groups.iter().all(|g| g["id"] != "sexual"),
+            topics.contains(&"Anime") && !topics.contains(&"Video games"),
+            "a topic shows once its group is allowed"
+        );
+        assert!(
+            e["groups"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|g| g["id"] != "sexual"),
             "sexual content has no switch"
+        );
+
+        let every = feeds(&Source::ALL, &Query::default(), "");
+        assert_eq!(every.len(), 4, "every source, until the user picks one");
+        let space = feeds(&Source::ALL, &Query::default(), "space");
+        let sources: Vec<Source> = space.iter().map(|f| f.source).collect();
+        assert_eq!(
+            sources,
+            [Source::Apod, Source::Commons, Source::Wallhaven],
+            "Bing can't be searched; APOD and Commons have space; Wallhaven, the slowest, comes last"
+        );
+        assert_eq!(space[2].query.text, "space");
+
+        let mut two = Channel::new(
+            feeds(&[Source::Apod, Source::Bing], &Query::default(), ""),
+            10,
+        );
+        let bing = darwan_core::wallpaper::online::parse_bing(
+            r#"{"images":[{"urlbase":"/a","copyright":"x (© y)","title":"A","wp":true,"hsh":"1"},{"urlbase":"/b","copyright":"x (© y)","title":"B","wp":true,"hsh":"2"}]}"#,
+        );
+        two.items = [c.items.clone(), bing].concat();
+        let shown = online(Some(&two), &HashMap::new(), Path::new("/nowhere"));
+        let order: Vec<&str> = shown["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| i["key"].as_str().unwrap())
+            .collect();
+        assert_eq!(
+            order,
+            ["apod:2026-09-26", "bing:1", "apod:2026-09-27", "bing:2"],
+            "every source reads as a mix"
         );
     }
 }
