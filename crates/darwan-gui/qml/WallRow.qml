@@ -9,17 +9,17 @@ Column {
 
     property string title: ""
     property string subtitle: ""
-    property var items: []
+    required property WallFeed feed
     property string mode: "online"
     property real cardWidth: 460
-    property bool loading: false
+    readonly property bool loading: feed.info.loading === true
     property bool canSeeAll: true
 
     signal open(var item, int index)
     signal seeAll()
 
     spacing: 14
-    visible: items.length > 0 || loading
+    visible: feed.model.count > 0 || loading
 
     Item {
         width: row.width
@@ -84,21 +84,24 @@ Column {
         orientation: ListView.Horizontal
         spacing: 18
         clip: false
-        model: row.items.length
+        model: row.feed.model
         boundsBehavior: Flickable.StopAtBounds
+        reuseItems: true
         Behavior on contentX { NumberAnimation { duration: Style.slow; easing.type: Style.ease } }
         delegate: WallCard {
             required property int index
+            required property string json
             width: row.cardWidth
             height: row.cardWidth * 9 / 16
-            item: row.items[index]
+            item: JSON.parse(json)
             mode: row.mode
-            onOpen: row.open(row.items[index], index)
+            backend: row.feed.backend
+            onOpen: row.open(row.feed.items[index], index)
         }
         Spinner {
             anchors.verticalCenter: parent.verticalCenter
             x: 10
-            visible: row.loading && row.items.length === 0
+            visible: row.loading && row.feed.model.count === 0
             color: Qt.rgba(1, 1, 1, 0.7)
             size: 22
         }

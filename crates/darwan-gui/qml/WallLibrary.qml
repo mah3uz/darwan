@@ -27,14 +27,18 @@ Item {
                                     && words.every(w => (i.name + " " + i.folder).toLowerCase().includes(w)))
     }
 
+    readonly property WallFeed feed: WallFeed { backend: lib.backend }
+    onShownChanged: feed.set(shown)
+    Component.onCompleted: feed.set(shown)
+
     WallGrid {
         id: grid
         anchors.fill: parent
         anchors.leftMargin: 46
         anchors.rightMargin: 46
         mode: "library"
-        items: lib.shown
-        onOpen: (item, index) => lib.open(item, lib.shown, index)
+        feed: lib.feed
+        onOpen: (item, index) => lib.open(item, lib.feed.items, index)
 
         header: Column {
             width: grid.width

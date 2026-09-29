@@ -21,6 +21,7 @@ pub mod qobject {
         #[qproperty(QString, sessions, READ, CONSTANT)]
         #[qproperty(QString, icon_path, READ, CONSTANT)]
         #[qproperty(i32, wall_revision, READ, NOTIFY)]
+        #[qproperty(i32, wall_feed_revision, READ, NOTIFY)]
         #[qproperty(bool, wall_busy, READ, NOTIFY)]
         type Backend = super::BackendRust;
 
@@ -94,7 +95,7 @@ pub mod qobject {
         fn finished(self: Pin<&mut Backend>, ok: bool, command: QString, output: QString);
 
         #[qinvokable]
-        fn wall_library(self: &Backend, text: &QString, colour: &QString) -> QString;
+        fn wall_library(self: Pin<&mut Backend>, text: &QString, colour: &QString) -> QString;
 
         #[qinvokable]
         fn wall_online(self: &Backend, channel: &QString) -> QString;
@@ -107,6 +108,9 @@ pub mod qobject {
 
         #[qinvokable]
         fn wall_full(self: Pin<&mut Backend>, key: &QString);
+
+        #[qinvokable]
+        fn wall_hide(self: Pin<&mut Backend>, key: &QString);
 
         #[qinvokable]
         fn wall_add(self: Pin<&mut Backend>, files: &QString) -> QString;
@@ -193,6 +197,7 @@ pub struct BackendRust {
     sessions: QString,
     icon_path: QString,
     wall_revision: i32,
+    wall_feed_revision: i32,
     wall_busy: bool,
     walls: walls::State,
 }
@@ -216,6 +221,7 @@ impl Default for BackendRust {
             env: environment(),
             revision: 0,
             wall_revision: 0,
+            wall_feed_revision: 0,
             wall_busy: false,
             walls: walls::State::default(),
             busy: false,
@@ -748,10 +754,68 @@ fn prepare(
 }
 
 impl qobject::Backend {
+    // The Library, what draws the wallpaper, the switches changed: announced within ~120 ms, once however many
+    // changes came meanwhile.
     fn wall_bump(mut self: Pin<&mut Self>) {
-        let n = self.rust().wall_revision.wrapping_add(1);
-        self.as_mut().rust_mut().wall_revision = n;
-        self.wall_revision_changed();
+        self.as_mut().rust_mut().walls.library_json = None;
+        if self.rust().walls.library_pending {
+            return;
+        }
+        self.as_mut().rust_mut().walls.library_pending = true;
+        let thread = self.qt_thread();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(120));
+            let _ = thread.queue(|mut q| {
+                q.as_mut().rust_mut().walls.library_pending = false;
+                let n = q.rust().wall_revision.wrapping_add(1);
+                q.as_mut().rust_mut().wall_revision = n;
+                q.as_mut().wall_revision_changed();
+            });
+        });
+    }
+
+    // Online results and their thumbnails: the same, on their own revision, so the Library isn't read again.
+    fn feed_bump(mut self: Pin<&mut Self>) {
+        if self.rust().walls.feed_pending {
+            return;
+        }
+        self.as_mut().rust_mut().walls.feed_pending = true;
+        let thread = self.qt_thread();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(120));
+            let _ = thread.queue(|mut q| {
+                q.as_mut().rust_mut().walls.feed_pending = false;
+                let n = q.rust().wall_feed_revision.wrapping_add(1);
+                q.as_mut().rust_mut().wall_feed_revision = n;
+                q.as_mut().wall_feed_revision_changed();
+            });
+        });
+    }
+
+    fn refresh_owner(mut self: Pin<&mut Self>) {
+        let text = {
+            let r = self.rust();
+            let env = darwan_core::wallpaper::Env::system();
+            let found = darwan_core::wallpaper::colours::found(&env, r.walls.owner.as_ref());
+            walls::owner(
+                r.walls.owner.as_ref(),
+                &r.config.wallpaper_restart(),
+                &found,
+                &r.config.wallpaper_colours(),
+            )
+            .to_string()
+        };
+        self.as_mut().rust_mut().walls.owner_json = text;
+    }
+
+    fn wall_hide(mut self: Pin<&mut Self>, key: &QString) {
+        self.as_mut()
+            .rust_mut()
+            .walls
+            .hidden
+            .insert(key.to_string());
+        self.as_mut().feed_bump();
+        self.wall_bump();
     }
 
     fn set_wall_busy(mut self: Pin<&mut Self>, busy: bool) {
@@ -759,21 +823,29 @@ impl qobject::Backend {
         self.wall_busy_changed();
     }
 
-    fn wall_library(&self, text: &QString, colour: &QString) -> QString {
-        let w = &self.rust().walls;
-        let view = walls::LibraryView {
-            folder: &w.folder,
-            items: &w.items,
-            ready: &w.ready,
-            credits: &w.credits,
-            current: w.current.as_deref(),
-            now: now(),
+    // Read at every revision, so the whole Library is made into JSON once per change, not once per read.
+    fn wall_library(mut self: Pin<&mut Self>, text: &QString, colour: &QString) -> QString {
+        let plain = text.is_empty() && colour.is_empty();
+        if plain && let Some(cached) = &self.rust().walls.library_json {
+            return QString::from(cached);
+        }
+        let made = {
+            let w = &self.rust().walls;
+            let view = walls::LibraryView {
+                folder: &w.folder,
+                items: &w.items,
+                ready: &w.ready,
+                credits: &w.credits,
+                current: w.current.as_deref(),
+                now: now(),
+                hidden: &w.hidden,
+            };
+            walls::library(&view, &text.to_string(), &colour.to_string()).to_string()
         };
-        json(walls::library(
-            &view,
-            &text.to_string(),
-            &colour.to_string(),
-        ))
+        if plain {
+            self.as_mut().rust_mut().walls.library_json = Some(made.clone());
+        }
+        QString::from(made)
     }
 
     fn wall_online(&self, channel: &QString) -> QString {
@@ -782,6 +854,7 @@ impl qobject::Backend {
             w.channels.get(&channel.to_string()),
             &w.thumbs,
             &w.folder,
+            &w.hidden,
         ))
     }
 
@@ -790,15 +863,8 @@ impl qobject::Backend {
     }
 
     fn wall_owner(&self) -> QString {
-        let r = self.rust();
-        let env = darwan_core::wallpaper::Env::system();
-        let found = darwan_core::wallpaper::colours::found(&env, r.walls.owner.as_ref());
-        json(walls::owner(
-            r.walls.owner.as_ref(),
-            &r.config.wallpaper_restart(),
-            &found,
-            &r.config.wallpaper_colours(),
-        ))
+        let text = &self.rust().walls.owner_json;
+        QString::from(if text.is_empty() { "null" } else { text })
     }
 
     fn wall_colours(mut self: Pin<&mut Self>, generator: &QString, on: bool) {
@@ -812,6 +878,7 @@ impl qobject::Backend {
             &QString::from("wallpaper.colours"),
             &QString::from(list.join(",")),
         );
+        self.as_mut().refresh_owner();
         self.wall_bump();
     }
 
@@ -841,6 +908,7 @@ impl qobject::Backend {
             let ticket = w.scan.fetch_add(1, Ordering::Relaxed) + 1;
             (ticket, w.scan.clone())
         };
+        self.as_mut().refresh_owner();
         self.as_mut().wall_bump();
         let thread = self.qt_thread();
         std::thread::spawn(move || prepare(items, ticket, cancel, thread));
@@ -892,7 +960,7 @@ impl qobject::Backend {
             }
             r.walls.channels.insert(name.clone(), c);
         }
-        self.as_mut().wall_bump();
+        self.as_mut().feed_bump();
         self.fetch_channel(name);
     }
 
@@ -910,7 +978,7 @@ impl qobject::Backend {
             c.target += 25;
             c.items.len() < c.target && c.more()
         };
-        self.as_mut().wall_bump();
+        self.as_mut().feed_bump();
         if fetch {
             self.fetch_channel(name);
         }
@@ -949,34 +1017,54 @@ impl qobject::Backend {
             let mut count = have;
             let mut problem: Result<String, String> = Ok(String::new());
             // One page from each source in turn, so every source shows early.
+            // Results only ever join at the end, so nothing moves above what's on screen: a mixed round's quick
+            // sources are interleaved once and appended together; Wallhaven, checking each picture, streams after them.
+            let push = |batch: Vec<darwan_core::wallpaper::online::Found>| {
+                let n = name.clone();
+                let _ = thread.queue(move |mut qo| {
+                    let mut added = false;
+                    if let Some(c) = qo.as_mut().rust_mut().walls.channels.get_mut(&n)
+                        && c.ticket.load(Ordering::Relaxed) == mine
+                    {
+                        for f in batch {
+                            if !c.items.iter().any(|x| x.key() == f.key()) {
+                                c.items.push(f);
+                                added = true;
+                            }
+                        }
+                    }
+                    if added {
+                        qo.as_mut().feed_bump();
+                    }
+                });
+            };
+            let mixing = feeds.len() > 1;
             'pages: while live() && count < target && feeds.iter().any(|f| f.more) {
+                let mut round: Vec<darwan_core::wallpaper::online::Found> = Vec::new();
+                let mut stop = false;
                 for feed in feeds.iter_mut().filter(|f| f.more) {
                     if !live() || count >= target {
-                        break 'pages;
+                        stop = true;
+                        break;
+                    }
+                    let buffered =
+                        mixing && feed.source != darwan_core::wallpaper::online::Source::Wallhaven;
+                    if !buffered && !round.is_empty() {
+                        push(walls::mixed(&round).into_iter().cloned().collect());
+                        round.clear();
                     }
                     let mut q = feed.query.clone();
                     q.page = feed.next_page;
-                    let name2 = name.clone();
                     let result = client.search_each(feed.source, &q, &allowed, &mut |found| {
                         if !live() {
                             return;
                         }
                         count += 1;
-                        let f = found.clone();
-                        let key = f.key();
-                        let n = name2.clone();
-                        let _ = thread.queue(move |mut qo| {
-                            let fresh = qo.rust().walls.channels.get(&n).is_some_and(|c| {
-                                c.ticket.load(Ordering::Relaxed) == mine
-                                    && !c.items.iter().any(|x| x.key() == key)
-                            });
-                            if fresh {
-                                if let Some(c) = qo.as_mut().rust_mut().walls.channels.get_mut(&n) {
-                                    c.items.push(f);
-                                }
-                                qo.as_mut().wall_bump();
-                            }
-                        });
+                        if buffered {
+                            round.push(found.clone());
+                        } else {
+                            push(vec![found.clone()]);
+                        }
                         // At most four thumbnails at once; a cached one is only a file check.
                         let (client, slots, thread, found) =
                             (client.clone(), slots.clone(), thread.clone(), found.clone());
@@ -991,9 +1079,26 @@ impl qobject::Backend {
                         std::thread::spawn(move || {
                             if let Ok(thumb) = client.thumbnail(&found) {
                                 let key = found.key();
+                                let print =
+                                    std::fs::read(&thumb).map(|b| walls::print(&b)).unwrap_or(0);
                                 let _ = thread.queue(move |mut qo| {
-                                    qo.as_mut().rust_mut().walls.thumbs.insert(key, thumb);
-                                    qo.as_mut().wall_bump();
+                                    {
+                                        let mut r = qo.as_mut().rust_mut();
+                                        let w = &mut r.walls;
+                                        // Two pictures with the very same thumbnail are a placeholder, not wallpapers.
+                                        match w.thumb_prints.get(&print) {
+                                            Some(other) if other != &key && print != 0 => {
+                                                let other = other.clone();
+                                                w.hidden.insert(other);
+                                                w.hidden.insert(key.clone());
+                                            }
+                                            _ => {
+                                                w.thumb_prints.insert(print, key.clone());
+                                            }
+                                        }
+                                        w.thumbs.insert(key, thumb);
+                                    }
+                                    qo.as_mut().feed_bump();
                                 });
                             }
                             let (lock, cv) = &*slots;
@@ -1016,6 +1121,12 @@ impl qobject::Backend {
                         }
                     }
                 }
+                if !round.is_empty() {
+                    push(walls::mixed(&round).into_iter().cloned().collect());
+                }
+                if stop {
+                    break;
+                }
             }
             let _ = thread.queue(move |mut qo| {
                 {
@@ -1034,7 +1145,7 @@ impl qobject::Backend {
                         Err(_) => {}
                     }
                 }
-                qo.as_mut().wall_bump();
+                qo.as_mut().feed_bump();
             });
         });
     }
@@ -1289,6 +1400,7 @@ impl qobject::Backend {
                 self.as_mut().fetch_channel(name);
             }
         }
+        self.as_mut().feed_bump();
         self.wall_bump();
     }
 
@@ -1302,6 +1414,7 @@ impl qobject::Backend {
             &QString::from("wallpaper.restart"),
             &QString::from(list.join(",")),
         );
+        self.as_mut().refresh_owner();
         self.wall_bump();
     }
 

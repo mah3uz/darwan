@@ -116,6 +116,13 @@ FocusScope {
     }
 
     Rectangle { anchors.fill: parent; color: "black" }
+    // The thumbnail is always underneath, so there is never a black frame; the full picture fades in over it.
+    Image {
+        id: standIn
+        anchors.fill: parent
+        source: detail.item ? detail.item.thumb : ""
+        fillMode: Image.PreserveAspectCrop
+    }
     Image {
         id: preview
         anchors.fill: parent
@@ -123,15 +130,19 @@ FocusScope {
         sourceSize.width: Math.min(3840, detail.width * Screen.devicePixelRatio)
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
-        opacity: status === Image.Ready ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: Style.slow } }
-    }
-    // The grid's picture stands in while the full one loads.
-    Image {
-        anchors.fill: parent
-        visible: preview.status !== Image.Ready && detail.item !== null
-        source: detail.item ? detail.item.thumb : ""
-        fillMode: Image.PreserveAspectCrop
+        opacity: 0
+        onSourceChanged: {
+            fadeIn.stop()
+            opacity = 0
+        }
+        onStatusChanged: if (status === Image.Ready) fadeIn.restart()
+        NumberAnimation on opacity {
+            id: fadeIn
+            running: false
+            to: 1
+            duration: 450
+            easing.type: Easing.InOutQuad
+        }
     }
     TapHandler { onTapped: detail.close() }
 

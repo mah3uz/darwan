@@ -44,6 +44,7 @@ fn main() {
         QmlFile::from("qml/WallHome.qml"),
         QmlFile::from("qml/WallGrid.qml"),
         QmlFile::from("qml/WallExplore.qml"),
+        QmlFile::from("qml/WallFeed.qml"),
         QmlFile::from("qml/WallCategory.qml"),
         QmlFile::from("qml/Chip.qml"),
         QmlFile::from("qml/WallpaperPage.qml"),

@@ -3,14 +3,15 @@ import QtQuick
 import QtQuick.Controls.Basic
 import org.darwan
 
-// Wallpapers in big cards, three or four across, asking for more near the end.
+// Wallpapers in big cards, three or four across, asking for more near the end. The model changes in place, so the
+// grid keeps its place while pictures arrive.
 GridView {
     id: grid
 
-    property var items: []
+    required property WallFeed feed
     property string mode: "online"
-    property bool loading: false
-    property bool more: false
+    readonly property bool loading: feed.info.loading === true
+    readonly property bool more: feed.info.more === true
     readonly property int columns: Math.max(2, Math.floor((width + 20) / (400 + 20)))
 
     signal open(var item, int index)
@@ -18,26 +19,30 @@ GridView {
 
     cellWidth: width / columns
     cellHeight: cellWidth * 9 / 16 + 20
-    model: items.length
+    model: feed.model
     boundsBehavior: Flickable.StopAtBounds
-    cacheBuffer: 800
+    cacheBuffer: cellHeight * 2
+    reuseItems: true
     clip: true
-    ScrollBar.vertical: ScrollBar {}
+    // Only while scrolling, as wallspace shows it.
+    ScrollIndicator.vertical: ScrollIndicator {}
     // Near the end, the next 25.
     onContentYChanged: if (more && !loading && contentHeight > 0 && contentY + height > contentHeight - cellHeight * 2) wantMore()
 
     delegate: Item {
         id: cell
         required property int index
+        required property string json
         width: grid.cellWidth
         height: grid.cellHeight
         WallCard {
             x: 10
             width: cell.width - 20
             height: width * 9 / 16
-            item: grid.items[cell.index]
+            item: JSON.parse(cell.json)
             mode: grid.mode
-            onOpen: grid.open(grid.items[cell.index], cell.index)
+            backend: grid.feed.backend
+            onOpen: grid.open(grid.feed.items[cell.index], cell.index)
         }
     }
     footer: Item {

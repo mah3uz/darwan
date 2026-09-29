@@ -114,6 +114,23 @@ pub struct State {
     // By `Found::key`: grid thumbnails and full-size previews on disk.
     pub thumbs: HashMap<String, PathBuf>,
     pub full: HashMap<String, PathBuf>,
+    // Pictures not to show: one whose image failed to load, and placeholders (two pictures with the very same
+    // thumbnail, as NASA's "moved to science.nasa.gov" image for old addresses). Keys, or Library paths.
+    pub hidden: std::collections::HashSet<String>,
+    pub thumb_prints: HashMap<u64, String>,
+    // Made once per change rather than on every read: the page reads them at every revision.
+    pub owner_json: String,
+    pub library_json: Option<String>,
+    // A revision is announced at most every ~120 ms, however many results arrive meanwhile.
+    pub feed_pending: bool,
+    pub library_pending: bool,
+}
+
+// FNV-1a 64 over a thumbnail's bytes, to tell identical placeholder pictures apart from real ones.
+pub fn print(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf29ce484222325, |h, b| {
+        (h ^ u64::from(*b)).wrapping_mul(0x100000001b3)
+    })
 }
 
 impl State {
@@ -134,6 +151,7 @@ pub struct LibraryView<'a> {
     pub credits: &'a HashMap<PathBuf, Found>,
     pub current: Option<&'a Path>,
     pub now: u64,
+    pub hidden: &'a std::collections::HashSet<String>,
 }
 
 const WEEK: u64 = 7 * 86400;
@@ -187,7 +205,14 @@ pub fn library(v: &LibraryView, text: &str, colour: &str) -> Value {
         .collect();
     let mut counts: HashMap<&str, usize> = HashMap::new();
     let mut shown = Vec::new();
+    // Resolved once; an item is resolved only when its file name already matches.
+    let current = v
+        .current
+        .map(|c| std::fs::canonicalize(c).unwrap_or_else(|_| c.to_path_buf()));
     for item in v.items {
+        if v.hidden.contains(&item.path.display().to_string()) {
+            continue;
+        }
         let facts = v.ready.get(&item.path).map(|(_, f)| f);
         if let Some(f) = facts {
             *counts.entry(f.colour.as_str()).or_default() += 1;
@@ -214,9 +239,10 @@ pub fn library(v: &LibraryView, text: &str, colour: &str) -> Value {
             ),
             None => (String::new(), 0, 0, Vec::new(), String::new()),
         };
-        let in_use = v.current.is_some_and(|c| {
-            std::fs::canonicalize(c).unwrap_or_else(|_| c.to_path_buf())
-                == std::fs::canonicalize(&item.path).unwrap_or_else(|_| item.path.clone())
+        let in_use = current.as_ref().is_some_and(|c| {
+            &item.path == c
+                || (item.path.file_name() == c.file_name()
+                    && std::fs::canonicalize(&item.path).is_ok_and(|p| &p == c))
         });
         shown.push(json!({
             "path": item.path.display().to_string(),
@@ -271,7 +297,7 @@ pub fn found_json(f: &Found, thumbs: &HashMap<String, PathBuf>, folder: &Path) -
 }
 
 // One from each source in turn, each keeping its own order, so "every source" reads as a mix, not blocks.
-fn mixed(items: &[Found]) -> Vec<&Found> {
+pub fn mixed(items: &[Found]) -> Vec<&Found> {
     let mut by_source: Vec<(Source, std::collections::VecDeque<&Found>)> = Vec::new();
     for f in items {
         match by_source.iter_mut().find(|(s, _)| *s == f.source) {
@@ -291,12 +317,19 @@ fn mixed(items: &[Found]) -> Vec<&Found> {
 }
 
 // A channel as the page shows it: at most `target` results, and whether there are more to load.
-pub fn online(c: Option<&Channel>, thumbs: &HashMap<String, PathBuf>, folder: &Path) -> Value {
+pub fn online(
+    c: Option<&Channel>,
+    thumbs: &HashMap<String, PathBuf>,
+    folder: &Path,
+    hidden: &std::collections::HashSet<String>,
+) -> Value {
     let Some(c) = c else {
         return json!({ "items": [], "loading": false, "error": "", "refused": "", "more": false, "source": "" });
     };
-    let shown: Vec<Value> = mixed(&c.items)
-        .into_iter()
+    let shown: Vec<Value> = c
+        .items
+        .iter()
+        .filter(|f| !hidden.contains(&f.key()))
         .take(c.target)
         .map(|f| found_json(f, thumbs, folder))
         .collect();
@@ -413,6 +446,7 @@ mod tests {
             (PathBuf::from("/t/2.png"), facts("blue")),
         );
         let credits = HashMap::new();
+        let hidden = std::collections::HashSet::from(["/w/gone.png".to_string()]);
         let v = LibraryView {
             folder: Path::new("/w"),
             items: &items,
@@ -420,6 +454,7 @@ mod tests {
             credits: &credits,
             current: Some(Path::new("/w/sub/blue-lake.png")),
             now: 1_000_100,
+            hidden: &hidden,
         };
 
         let all = library(&v, "", "");
@@ -455,7 +490,12 @@ mod tests {
         let mut c = Channel::new(feeds(&[Source::Apod], &Query::default(), ""), 1);
         c.items = f;
         c.feeds[0].more = false;
-        let j = online(Some(&c), &HashMap::new(), Path::new("/nowhere"));
+        let j = online(
+            Some(&c),
+            &HashMap::new(),
+            Path::new("/nowhere"),
+            &Default::default(),
+        );
         assert_eq!(
             j["items"].as_array().unwrap().len(),
             1,
@@ -505,17 +545,16 @@ mod tests {
             r#"{"images":[{"urlbase":"/a","copyright":"x (© y)","title":"A","wp":true,"hsh":"1"},{"urlbase":"/b","copyright":"x (© y)","title":"B","wp":true,"hsh":"2"}]}"#,
         );
         two.items = [c.items.clone(), bing].concat();
-        let shown = online(Some(&two), &HashMap::new(), Path::new("/nowhere"));
-        let order: Vec<&str> = shown["items"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|i| i["key"].as_str().unwrap())
-            .collect();
+        let order: Vec<String> = mixed(&two.items).iter().map(|f| f.key()).collect();
         assert_eq!(
             order,
             ["apod:2026-09-26", "bing:1", "apod:2026-09-27", "bing:2"],
-            "every source reads as a mix"
+            "a round of every source reads as a mix"
         );
+
+        // A placeholder, or a picture that failed to load, is left out.
+        let hidden = std::collections::HashSet::from(["bing:1".to_string()]);
+        let shown = online(Some(&two), &HashMap::new(), Path::new("/nowhere"), &hidden);
+        assert_eq!(shown["items"].as_array().unwrap().len(), 3);
     }
 }

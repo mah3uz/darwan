@@ -16,14 +16,16 @@ Flickable {
     signal open(var item, var list, int index)
     signal seeAll(string title, var sources, string subject)
 
-    readonly property var bing: backend.wallRevision >= 0 ? JSON.parse(backend.wallOnline("home-bing")) : null
-    readonly property var wallhaven: backend.wallRevision >= 0 ? JSON.parse(backend.wallOnline("home-wallhaven")) : null
-    readonly property var apod: backend.wallRevision >= 0 ? JSON.parse(backend.wallOnline("home-apod")) : null
-    readonly property var commons: backend.wallRevision >= 0 ? JSON.parse(backend.wallOnline("home-commons")) : null
+    readonly property WallFeed bing: WallFeed { backend: home.backend; channel: "home-bing" }
+    readonly property WallFeed wallhaven: WallFeed { backend: home.backend; channel: "home-wallhaven" }
+    readonly property WallFeed apod: WallFeed { backend: home.backend; channel: "home-apod" }
+    readonly property WallFeed commons: WallFeed { backend: home.backend; channel: "home-commons" }
+    readonly property WallFeed recent: WallFeed { backend: home.backend }
+    onLibraryChanged: if (library) recent.set(library.items.slice(0, 16))
 
     contentHeight: body.height + 60
     boundsBehavior: Flickable.StopAtBounds
-    ScrollBar.vertical: ScrollBar {}
+    ScrollIndicator.vertical: ScrollIndicator {}
 
     Component.onCompleted: {
         backend.wallSearch("home-bing", JSON.stringify({ sources: ["bing"], first: 16 }))
@@ -138,8 +140,7 @@ Flickable {
             width: body.width
             title: "Today on Bing"
             subtitle: "Microsoft's images of the day, for use as wallpapers"
-            items: home.bing ? home.bing.items : []
-            loading: home.bing ? home.bing.loading : true
+            feed: home.bing
             onOpen: (item, index) => home.open(item, home.bing.items, index)
             onSeeAll: home.seeAll("Bing", ["bing"], "")
         }
@@ -147,8 +148,7 @@ Flickable {
             width: body.width
             title: "Popular on Wallhaven"
             subtitle: "This year's favourites, each checked before it shows"
-            items: home.wallhaven ? home.wallhaven.items : []
-            loading: home.wallhaven ? home.wallhaven.loading : true
+            feed: home.wallhaven
             onOpen: (item, index) => home.open(item, home.wallhaven.items, index)
             onSeeAll: home.seeAll("Wallhaven", ["wallhaven"], "")
         }
@@ -156,8 +156,7 @@ Flickable {
             width: body.width
             title: "Astronomy Picture of the Day"
             subtitle: "From NASA, day by day"
-            items: home.apod ? home.apod.items : []
-            loading: home.apod ? home.apod.loading : true
+            feed: home.apod
             onOpen: (item, index) => home.open(item, home.apod.items, index)
             onSeeAll: home.seeAll("NASA APOD", ["apod"], "")
         }
@@ -165,8 +164,7 @@ Flickable {
             width: body.width
             title: "Featured on Wikimedia Commons"
             subtitle: "Freely licensed nature photography"
-            items: home.commons ? home.commons.items : []
-            loading: home.commons ? home.commons.loading : true
+            feed: home.commons
             onOpen: (item, index) => home.open(item, home.commons.items, index)
             onSeeAll: home.seeAll("Wikimedia Commons", ["commons"], "nature")
         }
@@ -176,8 +174,8 @@ Flickable {
             subtitle: "The newest in your Library"
             mode: "library"
             canSeeAll: false
-            items: home.library ? home.library.items.slice(0, 16) : []
-            onOpen: (item, index) => home.open(item, home.library.items, index)
+            feed: home.recent
+            onOpen: (item, index) => home.open(item, home.recent.items, index)
         }
     }
 }

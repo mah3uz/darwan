@@ -18,7 +18,7 @@ Item {
     signal back()
     signal open(var item, var list, int index)
 
-    readonly property var feed: backend.wallRevision >= 0 ? JSON.parse(backend.wallOnline("category")) : null
+    readonly property WallFeed feed: WallFeed { backend: category.backend; channel: "category" }
 
     function ask() {
         backend.wallSearch("category", JSON.stringify({ sources: sources, topic: topic, subject: subject, sort: sort, first: 50 }))
@@ -38,9 +38,7 @@ Item {
         anchors.fill: parent
         anchors.leftMargin: 46
         anchors.rightMargin: 46
-        items: category.feed ? category.feed.items : []
-        loading: category.feed ? category.feed.loading : false
-        more: category.feed ? category.feed.more : false
+        feed: category.feed
         onOpen: (item, index) => category.open(item, category.feed.items, index)
         onWantMore: category.backend.wallMore("category")
 
@@ -83,9 +81,9 @@ Item {
                 }
             }
             Label {
-                visible: category.feed !== null && category.feed.items.length === 0 && !category.feed.loading
+                visible: category.feed.model.count === 0 && !category.feed.info.loading
                 topPadding: 30
-                text: category.feed && category.feed.error ? "Couldn't reach it: " + category.feed.error : "Nothing here with your Filter."
+                text: category.feed.info.error ? "Couldn't reach it: " + category.feed.info.error : "Nothing here with your Filter."
                 font.family: Style.family
                 font.pixelSize: Style.body
                 color: Qt.rgba(1, 1, 1, 0.6)

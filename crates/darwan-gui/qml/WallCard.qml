@@ -12,6 +12,8 @@ FocusScope {
     property string mode: "library"
     // The Home strip: the picture only, no words on hover.
     property bool quiet: false
+    // Told when the picture can't be shown, so the card is left out rather than showing a hole.
+    property var backend: null
     readonly property bool lit: hover.hovered || activeFocus
 
     signal open()
@@ -48,13 +50,6 @@ FocusScope {
         y: card.lit ? -2 : 0
         Behavior on y { NumberAnimation { duration: Style.medium; easing.type: Style.ease } }
 
-        RectangularShadow {
-            anchors.fill: parent
-            offset.y: card.lit ? 10 : 5
-            blur: card.lit ? 26 : 16
-            radius: 16
-            color: Qt.rgba(0, 0, 0, card.lit ? 0.5 : 0.35)
-        }
         Rectangle {
             anchors.fill: parent
             anchors.margins: -2
@@ -86,6 +81,7 @@ FocusScope {
                 asynchronous: true
                 opacity: status === Image.Ready ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: Style.medium } }
+                onStatusChanged: if (status === Image.Error && card.backend) card.backend.wallHide(card.item.key || card.item.path)
             }
             Rectangle {
                 anchors.left: parent.left

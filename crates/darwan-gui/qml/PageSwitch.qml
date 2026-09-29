@@ -14,8 +14,8 @@ Rectangle {
     readonly property var pages: [
         { value: "themes", label: "Themes" },
         { value: "home", label: "Home" },
-        { value: "explore", label: "Explore" },
-        { value: "library", label: "Library" }
+        { value: "library", label: "Library" },
+        { value: "explore", label: "Explore" }
     ]
 
     signal picked(string value)

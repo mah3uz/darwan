@@ -20,7 +20,7 @@ Item {
     signal filter(Item from)
 
     readonly property var meta: backend.wallRevision >= 0 ? JSON.parse(backend.wallExplore()) : null
-    readonly property var feed: backend.wallRevision >= 0 ? JSON.parse(backend.wallOnline("explore")) : null
+    readonly property WallFeed feed: WallFeed { backend: explore.backend; channel: "explore" }
 
     function ask() {
         backend.wallSearch("explore", JSON.stringify({ sources: sources, text: query, sort: sort, ratio: ratio, first: 50 }))
@@ -32,9 +32,7 @@ Item {
         anchors.fill: parent
         anchors.leftMargin: 46
         anchors.rightMargin: 46
-        items: explore.feed ? explore.feed.items : []
-        loading: explore.feed ? explore.feed.loading : false
-        more: explore.feed ? explore.feed.more : false
+        feed: explore.feed
         onOpen: (item, index) => explore.open(item, explore.feed.items, index)
         onWantMore: explore.backend.wallMore("explore")
 
@@ -187,8 +185,8 @@ Item {
                         color: "white"
                     }
                     Label {
-                        text: explore.feed && explore.feed.refused ? "That search has a word Darwan doesn't search for (" + explore.feed.refused + ")."
-                              : explore.feed && explore.feed.error ? "Couldn't reach a source: " + explore.feed.error
+                        text: explore.feed.info.refused ? "That search has a word Darwan doesn't search for (" + explore.feed.info.refused + ")."
+                              : explore.feed.info.error ? "Couldn't reach a source: " + explore.feed.info.error
                               : explore.sources.length === 0 ? "From every source, mixed" : "From " + explore.sources.join(", ")
                         font.family: Style.family
                         font.pixelSize: Style.body
