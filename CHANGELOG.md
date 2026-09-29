@@ -25,6 +25,15 @@ minutes.
 
 ### Wallpapers
 
+**A Wallpapers page in the GUI**, switched with *Themes | Wallpapers* at the top of the window. *Library* shows
+your wallpaper folder as cards, newest first, with NEW and IN USE badges, filtered by colour or searched by name;
+*Change folder* picks another. *Online* shows Wallhaven, Bing, NASA APOD and Wikimedia Commons, with Wallhaven's
+search, sort and aspect ratio, and Commons' subjects; *Allowed* holds the switches for the optional groups. Open a
+wallpaper to see it full-window with its size and credit, then *Set Wallpaper*: with several screens, choose one or
+All. An online picture is downloaded into your folder first. Once it is set, *Use on lockscreen too* makes your lock
+theme show your desktop wallpaper. When your wallpaper tool can only change by restarting (swaybg, for one), Darwan
+asks first: just this time, or always.
+
 `darwan wallpaper set <file>` sets the desktop wallpaper through whatever draws it on your desktop: DMS, Noctalia,
 Caelestia, Omarchy, KDE Plasma, GNOME, Cinnamon, MATE, Xfce, sway, waypaper, hyprpaper, awww/swww, wpaperd,
 mpvpaper, gSlapper, swaybg or wbg. Name screens with `-o DP-1`. Darwan checks the result by asking the tool what it

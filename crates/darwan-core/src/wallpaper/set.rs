@@ -639,6 +639,9 @@ fn respawn(
 
 pub const UNIT_PREFIX: &str = "darwan-wallpaper-";
 
+// The tools Darwan may have to restart to change the wallpaper; the user allows each once (`wallpaper.restart`).
+pub const RESTARTED: &[Tool] = &[Tool::Swaybg, Tool::Mpvpaper, Tool::Gslapper, Tool::Wbg];
+
 fn flag_after(argv: &[String], flags: &[&str]) -> Option<String> {
     argv.windows(2)
         .find(|w| flags.contains(&w[0].as_str()))
@@ -871,6 +874,51 @@ impl Runner for System {
             let _ = rustix::process::kill_process(pid, rustix::process::Signal::TERM);
         }
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Outcome {
+    // The owner reports the new file.
+    Shown,
+    // It took the command but can't be asked what it shows.
+    Sent,
+}
+
+// Runs the plan, then waits up to two seconds for the owner to report the file (tools apply a change a moment after
+// they answer); a disagreeing read-back tries the fallback (hyprpaper ≤0.7) once.
+pub fn carry_out(
+    env: &Env,
+    owner: &Owner,
+    req: &Request,
+    plan: &Plan,
+    runner: &dyn Runner,
+) -> Result<Outcome, String> {
+    apply(&plan.steps, runner)?;
+    let mut shown = wait_for(env, owner, req);
+    if shown == Some(false) && !plan.fallback.is_empty() {
+        apply(&plan.fallback, runner)?;
+        shown = wait_for(env, owner, req);
+    }
+    match shown {
+        Some(true) => Ok(Outcome::Shown),
+        None => Ok(Outcome::Sent),
+        Some(false) => Err(format!(
+            "{} took the command but doesn't show {}",
+            owner.tool.name(),
+            req.path.display()
+        )),
+    }
+}
+
+fn wait_for(env: &Env, owner: &Owner, req: &Request) -> Option<bool> {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    loop {
+        let shown = shows(env, owner, req);
+        if shown != Some(false) || std::time::Instant::now() > deadline {
+            return shown;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(150));
     }
 }
 

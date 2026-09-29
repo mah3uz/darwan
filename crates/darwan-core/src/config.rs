@@ -159,6 +159,18 @@ impl UserConfig {
         }
     }
 
+    // Wallpaper tools the user let Darwan restart (swaybg, mpvpaper, gSlapper, wbg), by name.
+    pub fn wallpaper_restart(&self) -> Vec<String> {
+        self.item("wallpaper", "restart")
+            .and_then(Item::as_array)
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     // The GUI's look: "darwan", its own, or "system" to follow the Qt theme's palette and font.
     pub fn gui_look(&self) -> Result<Option<&str>, String> {
         self.string("gui", "look")

@@ -27,6 +27,8 @@ Item {
     property bool jobReports: false
     property string jobDone: ""
     property bool quitting: false
+    // "themes" or "wallpapers", switched at the top of either page.
+    property string page: "themes"
 
     // Where a notice goes: beside the Stage's bar, or in the Wall's corner.
     function notify(text, image, progress, kind) {
@@ -155,8 +157,9 @@ Item {
         anchors.fill: parent
         backend: backend
         focus: true
-        // Nothing to draw under a Stage that has settled over it.
-        visible: !(stage.shown && stage.settled)
+        // Nothing to draw under a Stage that has settled over it, or under the Wallpapers page.
+        visible: app.page === "themes" && !(stage.shown && stage.settled)
+        onSwitchPage: p => app.page = p
         onOpenTheme: (id, from) => app.openTheme(id, from)
         onLockNow: id => app.run(["lock", id], "Locking")
         onTestSddm: id => app.run(["sddm", "preview", id], "SDDM test mode")
@@ -200,6 +203,26 @@ Item {
             ActionButton { text: "Discard"; pill: true; onActivated: backend.discardChanges() }
             ActionButton { text: "Save"; primary: true; pill: true; tip: "Ctrl+S"; onActivated: backend.saveChanges() }
         }
+    }
+
+    Loader {
+        id: wallpapers
+        anchors.fill: parent
+        // Made the first time it's opened, so the Themes page starts as fast as before.
+        active: app.page === "wallpapers" || item !== null
+        visible: app.page === "wallpapers"
+        sourceComponent: WallpaperPage {
+            backend: app.backend
+            focus: true
+            onSwitchPage: p => app.page = p
+            onOpenItem: (item, mode) => wallpaperDetail.open(item, mode)
+        }
+    }
+    WallpaperDetail {
+        id: wallpaperDetail
+        anchors.fill: parent
+        backend: backend
+        visible: app.page === "wallpapers" && opacity > 0
     }
 
     Stage {

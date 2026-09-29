@@ -263,6 +263,10 @@ fn values_for(catalog: &Catalog, config: &UserConfig, key: &str) -> Vec<Completi
             .map(|q| candidate(q.as_str(), q.describe()))
             .collect(),
         Key::WallpaperFolder => Vec::new(),
+        Key::WallpaperRestart => darwan_core::wallpaper::set::RESTARTED
+            .iter()
+            .map(|t| candidate(t.name(), "may be restarted to change the wallpaper"))
+            .collect(),
         Key::WallpaperAllow => darwan_core::wallpaper::filter::GROUPS
             .iter()
             .map(|g| candidate(g.id, g.label))

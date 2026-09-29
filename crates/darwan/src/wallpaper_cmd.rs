@@ -1,12 +1,12 @@
 use std::path::Path;
 use std::process::ExitCode;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use darwan_core::config::UserConfig;
 use darwan_core::paths::{self, Paths};
 use darwan_core::wallpaper::Env;
 use darwan_core::wallpaper::library::{self, Item, Size};
-use darwan_core::wallpaper::set::{self, Owner, Request, Target};
+use darwan_core::wallpaper::set::{self, Request, Target};
 
 use crate::style;
 
@@ -84,58 +84,38 @@ pub fn set_file(file: &Path, chosen: &[String], allow_restart: bool) -> Result<E
         outputs,
     };
     let plan = set::plan(&env, &owner, &req)?;
+    let remembered = UserConfig::load(&paths::config_file())
+        .map(|c| c.wallpaper_restart())
+        .unwrap_or_default();
     if let Some(tool) = plan.restarts
         && !allow_restart
+        && !remembered.iter().any(|t| t == tool.name())
     {
         return Err(format!(
-            "{} can only change the wallpaper by being restarted, and Darwan didn't start it; run again with --allow-restart",
+            "{} can only change the wallpaper by being restarted, and Darwan didn't start it; run again with --allow-restart, or allow it for good with `darwan set wallpaper.restart {}`",
+            tool.name(),
             tool.name()
         ));
     }
     for note in &plan.notes {
         println!("{}", style::dim(note));
     }
-    set::apply(&plan.steps, &set::System)?;
-    let mut shown = wait_for(&env, &owner, &req);
-    if shown == Some(false) && !plan.fallback.is_empty() {
-        set::apply(&plan.fallback, &set::System)?;
-        shown = wait_for(&env, &owner, &req);
-    }
-    match shown {
-        Some(true) => println!(
+    match set::carry_out(&env, &owner, &req, &plan, &set::System)? {
+        set::Outcome::Shown => println!(
             "{} {} with {}",
             style::ok("Set"),
             req.path.display(),
             owner.tool.name()
         ),
-        None => println!(
+        set::Outcome::Sent => println!(
             "{} {} with {} {}",
             style::ok("Sent"),
             req.path.display(),
             owner.tool.name(),
             style::dim("(it can't be asked what it shows)")
         ),
-        Some(false) => {
-            return Err(format!(
-                "{} took the command but doesn't show {}",
-                owner.tool.name(),
-                req.path.display()
-            ));
-        }
     }
     Ok(ExitCode::SUCCESS)
-}
-
-// Tools apply a change a moment after they answer.
-fn wait_for(env: &Env, owner: &Owner, req: &Request) -> Option<bool> {
-    let deadline = Instant::now() + Duration::from_secs(2);
-    loop {
-        let shown = set::shows(env, owner, req);
-        if shown != Some(false) || Instant::now() > deadline {
-            return shown;
-        }
-        std::thread::sleep(Duration::from_millis(150));
-    }
 }
 
 // Connector names from the compositor itself (wl_output v4), so any compositor works.

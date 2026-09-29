@@ -39,6 +39,10 @@ fn main() {
         QmlFile::from("qml/UnsavedDialog.qml"),
         QmlFile::from("qml/UseMenu.qml"),
         QmlFile::from("qml/Wall.qml"),
+        QmlFile::from("qml/WallpaperPage.qml"),
+        QmlFile::from("qml/WallpaperDetail.qml"),
+        QmlFile::from("qml/WallCard.qml"),
+        QmlFile::from("qml/PageSwitch.qml"),
     ]);
     CxxQtBuilder::new_qml_module(qml)
         .files(["src/bridge.rs"])

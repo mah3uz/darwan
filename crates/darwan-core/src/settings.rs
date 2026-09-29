@@ -62,6 +62,7 @@ pub enum Key {
     GuiLook,
     WallpaperFolder,
     WallpaperAllow,
+    WallpaperRestart,
     Option { theme: String, key: String },
 }
 
@@ -79,10 +80,11 @@ impl Key {
             "gui.look" => Key::GuiLook,
             "wallpaper.folder" => Key::WallpaperFolder,
             "wallpaper.allow" => Key::WallpaperAllow,
+            "wallpaper.restart" => Key::WallpaperRestart,
             _ => {
                 let (theme, key) = s.rsplit_once('.').filter(|(t, k)| valid_id(t) && !k.is_empty()).ok_or_else(|| {
                     format!(
-                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look, wallpaper.folder, wallpaper.allow or <theme-id>.<option>"
+                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look, wallpaper.folder, wallpaper.allow, wallpaper.restart or <theme-id>.<option>"
                     )
                 })?;
                 Key::Option {
@@ -107,6 +109,7 @@ impl fmt::Display for Key {
             Key::GuiLook => f.write_str("gui.look"),
             Key::WallpaperFolder => f.write_str("wallpaper.folder"),
             Key::WallpaperAllow => f.write_str("wallpaper.allow"),
+            Key::WallpaperRestart => f.write_str("wallpaper.restart"),
             Key::Option { theme, key } => write!(f, "{theme}.{key}"),
         }
     }
@@ -127,6 +130,9 @@ pub fn get(config: &UserConfig, key: &Key) -> Result<Option<String>, String> {
         Key::GuiLook => config.gui_look().map(owned),
         Key::WallpaperFolder => config.wallpaper_folder().map(owned),
         Key::WallpaperAllow => config.wallpaper_allow().map(|v| v.map(|l| l.join(","))),
+        Key::WallpaperRestart => {
+            Ok(Some(config.wallpaper_restart().join(",")).filter(|s| !s.is_empty()))
+        }
         Key::Option { theme, key } => config
             .theme_values(theme)
             .into_iter()
@@ -212,6 +218,21 @@ pub fn set(
             }
             config.set_global("wallpaper", "allow", toml_edit::value(list))
         }
+        Key::WallpaperRestart => {
+            let tools = crate::wallpaper::set::RESTARTED;
+            let mut list = toml_edit::Array::new();
+            for name in value.split(',').map(str::trim).filter(|v| !v.is_empty()) {
+                if !tools.iter().any(|t| t.name() == name) {
+                    let names: Vec<&str> = tools.iter().map(|t| t.name()).collect();
+                    return Err(format!(
+                        "wallpaper.restart takes {}, not {name:?}",
+                        names.join(", ")
+                    ));
+                }
+                list.push(name);
+            }
+            config.set_global("wallpaper", "restart", toml_edit::value(list))
+        }
         // Absolute or under the home folder: Darwan runs from different working folders.
         Key::WallpaperFolder => {
             if value.starts_with('/') || value.starts_with("~/") {
@@ -280,6 +301,7 @@ pub fn unset(config: &mut UserConfig, key: &Key) -> bool {
         Key::GuiLook => config.remove_global("gui", "look"),
         Key::WallpaperFolder => config.remove_global("wallpaper", "folder"),
         Key::WallpaperAllow => config.remove_global("wallpaper", "allow"),
+        Key::WallpaperRestart => config.remove_global("wallpaper", "restart"),
         Key::Option { theme, key } => config.remove_theme_value(theme, key),
     }
 }
@@ -309,6 +331,7 @@ mod tests {
             "gui.look",
             "wallpaper.folder",
             "wallpaper.allow",
+            "wallpaper.restart",
             "clockwork/orbital.themeMode",
         ] {
             assert_eq!(Key::parse(s).unwrap().to_string(), s);
@@ -344,6 +367,7 @@ mod tests {
             ("wallpaper.folder", "relative/folder"),
             ("wallpaper.folder", ""),
             ("wallpaper.allow", "anime,nsfw"),
+            ("wallpaper.restart", "hyprpaper"),
         ] {
             assert!(
                 set(&mut cfg, &cat, &Key::parse(k).unwrap(), v).is_err(),

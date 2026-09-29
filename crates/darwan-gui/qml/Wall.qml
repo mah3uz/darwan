@@ -38,6 +38,7 @@ FocusScope {
     signal settings(Item from)
     signal doctor()
     signal saverPreview()
+    signal switchPage(string page)
 
     // Measured from where the scroll is heading, so keys pressed during a scroll still land the card in view.
     function reveal(item) {
@@ -303,6 +304,12 @@ FocusScope {
                 font.weight: Font.DemiBold
                 color: Style.text
             }
+        }
+
+        PageSwitch {
+            anchors.centerIn: parent
+            current: "themes"
+            onPicked: v => wall.switchPage(v)
         }
 
         Row {

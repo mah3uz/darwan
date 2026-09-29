@@ -1,6 +1,7 @@
 mod bridge;
 mod idle;
 mod model;
+mod walls;
 
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
 use darwan_core::paths::Paths;

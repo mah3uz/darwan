@@ -276,6 +276,32 @@ impl Client {
     }
 
     pub fn search(&self, source: Source, q: &Query, allowed: &Allowed) -> Result<Page, String> {
+        self.search_each(source, q, allowed, &mut |_| {})
+    }
+
+    // As `search`, telling `each` about every result as soon as it has passed, so a grid can fill while Wallhaven's
+    // per-image checks are still running.
+    pub fn search_each(
+        &self,
+        source: Source,
+        q: &Query,
+        allowed: &Allowed,
+        each: &mut dyn FnMut(&Found),
+    ) -> Result<Page, String> {
+        let page = self.search_all(source, q, allowed, each)?;
+        if source != Source::Wallhaven {
+            page.items.iter().for_each(&mut *each);
+        }
+        Ok(page)
+    }
+
+    fn search_all(
+        &self,
+        source: Source,
+        q: &Query,
+        allowed: &Allowed,
+        each: &mut dyn FnMut(&Found),
+    ) -> Result<Page, String> {
         if let Some(term) = filter::refusal(&q.text, allowed) {
             return Ok(Page {
                 refused: Some(term.to_string()),
@@ -283,7 +309,7 @@ impl Client {
             });
         }
         match source {
-            Source::Wallhaven => self.wallhaven(q, allowed),
+            Source::Wallhaven => self.wallhaven(q, allowed, each),
             Source::Bing => {
                 let day = Duration::from_secs(6 * 3600);
                 let mut items = Vec::new();
@@ -315,7 +341,12 @@ impl Client {
         }
     }
 
-    fn wallhaven(&self, q: &Query, allowed: &Allowed) -> Result<Page, String> {
+    fn wallhaven(
+        &self,
+        q: &Query,
+        allowed: &Allowed,
+        each: &mut dyn FnMut(&Found),
+    ) -> Result<Page, String> {
         let text = filter::clean_query(&q.text);
         let query = format!("{text} {}", filter::wallhaven_exclusions(allowed))
             .trim()
@@ -352,6 +383,7 @@ impl Client {
                     return None;
                 }
                 name_from_tags(&mut f, &tags);
+                each(&f);
                 Some(f)
             })
             .collect();
