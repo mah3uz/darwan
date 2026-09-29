@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/darwan", "crates/darwan-core", "crates/darwan-gui", "crates/darwan-helper"]
 
 [workspace.package]
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 license = "GPL-3.0-only"
 rust-version = "1.98"
