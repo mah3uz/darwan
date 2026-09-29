@@ -89,6 +89,9 @@ war and weapons, gore and violence, and horror are hidden too until you allow th
   drawn more cheaply, so the page opens and scrolls with less work however many themes you have.
 - Building the `darwan` package from source now also needs `qt6-shadertools`.
 - The GUI's hints are shorter.
+- The *Themes* page opens as the wallpaper pages do: your lockscreen theme fills the window behind its name, with
+  *Customise* and *Lock now*, and a strip under it to feature your login screen instead. Scrolling down blurs it into
+  the background of the theme cards.
 - The *Darwan* / *System* look moved from the window's left edge into **⚙** (Settings → Appearance); Darwan's own
   look is still the default.
 - Using your desktop wallpaper as a theme's background no longer mistakes an editor open on Omarchy's or Caelestia's

@@ -276,8 +276,9 @@ greyed out and say why.
 
 Run `darwan-gui`, or open *Darwan* from your launcher.
 
-- **The start screen** shows your two gates, the lockscreen and the login screen, with *Lock now*, *Test* and
-  *Customise*; hover one to watch it unlock. Under them, *When you step away* sums up the screensaver and opens into its settings. Then every theme
+- **The start screen** opens on your lockscreen theme, filling the window behind its name, with *Customise* and
+  *Lock now*; the strip under it features your login screen instead (with *Test*), and hovering a gate there plays its
+  unlock. Under them, *When you step away* sums up the screensaver and opens into its settings. Then every theme
   as a card: hover one (or move to it with the arrow keys) to watch it unlock; the chips above filter by family, video
   backgrounds, themes that bring their own font, or the ones in use. `Ctrl+F` searches.
 - **Open a theme** and it fills the window, live: click it and type `test` to unlock. `←` `→` step through the themes

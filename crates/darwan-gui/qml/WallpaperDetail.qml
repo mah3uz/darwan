@@ -168,20 +168,53 @@ FocusScope {
             ToolTip.text: stepper.modelData < 0 ? "Previous (←)" : "Next (→)"
             ToolTip.delay: 500
             contentItem: Item { Icon { anchors.centerIn: parent; name: stepper.modelData < 0 ? "left" : "right"; size: 22; color: "white" } }
-            background: Rectangle {
-                radius: 26
-                color: stepper.hovered ? Qt.rgba(0, 0, 0, 0.6) : Qt.rgba(0, 0, 0, 0.38)
-                border.color: Qt.rgba(1, 1, 1, 0.15)
+            background: Item {
+                RectangularShadow {
+                    anchors.fill: parent
+                    radius: 26
+                    blur: 16
+                    offset.y: 2
+                    color: Qt.rgba(0, 0, 0, 0.45)
+                }
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 26
+                    color: stepper.hovered ? Qt.rgba(0, 0, 0, 0.7) : Qt.rgba(0, 0, 0, 0.55)
+                    border.color: Qt.rgba(1, 1, 1, 0.28)
+                }
             }
         }
     }
 
-    ActionButton {
-        x: 20
-        y: 20
-        glyph: "left"
-        tip: "Back (Esc)"
-        onActivated: detail.close()
+    // Dark, rimmed and shadowed, so it stands out on a white sky as well as a busy picture.
+    AbstractButton {
+        id: back
+        objectName: "back"
+        x: 24
+        y: 24
+        width: 48
+        height: 48
+        hoverEnabled: true
+        onClicked: detail.close()
+        ToolTip.visible: hovered
+        ToolTip.text: "Back (Esc)"
+        ToolTip.delay: 500
+        contentItem: Item { Icon { anchors.centerIn: parent; name: "left"; size: 22; color: "white" } }
+        background: Item {
+            RectangularShadow {
+                anchors.fill: parent
+                radius: 24
+                blur: 16
+                offset.y: 2
+                color: Qt.rgba(0, 0, 0, 0.45)
+            }
+            Rectangle {
+                anchors.fill: parent
+                radius: 24
+                color: back.hovered ? Qt.rgba(0, 0, 0, 0.7) : Qt.rgba(0, 0, 0, 0.55)
+                border.color: Qt.rgba(1, 1, 1, 0.28)
+            }
+        }
     }
 
     // The bar, as the Stage's: title and facts, credit, and Set.

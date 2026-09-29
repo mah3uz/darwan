@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Controls.Basic
 
-// One of the two gates on the Wall: the theme on it, its unlock animation while hovered, and what you can do there.
+// One of the two gates in the hero's strip: its theme's still, its unlock animation while hovered, a ring while it's
+// the one featured. Picking it features it.
 Item {
     id: gate
 
@@ -9,31 +10,38 @@ Item {
     property var theme: null
     property string label: ""
     property string glyph: ""
-    property string actionText: ""
-    property string actionReason: ""
+    property bool chosen: false
+    property alias frame: frame
 
-    signal act()
-    signal open(string id, Item from)
+    signal picked()
 
-    HoverHandler { id: hover }
+    implicitWidth: 260
+    implicitHeight: frame.height + 30
 
-    // Rounded by a shader and the Rectangles' own radius; offscreen layers only while the animation plays.
+    HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
+    TapHandler { onTapped: gate.picked() }
+
     Item {
         id: frame
-        anchors.fill: parent
-        Rectangle { anchors.fill: parent; radius: 16; color: Style.bgDeep }
+        width: parent.width
+        height: width * 9 / 16
+        y: hover.hovered && !gate.chosen ? -2 : 0
+        Behavior on y { NumberAnimation { duration: Style.medium; easing.type: Style.ease } }
+
+        Rectangle { anchors.fill: parent; radius: 14; color: Style.bgDeep }
         RoundedImage {
             anchors.fill: parent
-            radius: 16
+            radius: 14
             visible: gate.theme !== null
             source: gate.theme ? "file://" + gate.theme.still : ""
-            sourceSize.width: 1280
+            sourceSize.width: 640
         }
+        // Offscreen layers only while the animation plays.
         Loader {
             anchors.fill: parent
             active: hover.hovered && gate.theme !== null && gate.theme.loop !== ""
             sourceComponent: Rounded {
-                radius: 16
+                radius: 14
                 AnimatedImage {
                     anchors.fill: parent
                     source: "file://" + gate.theme.loop
@@ -46,63 +54,26 @@ Item {
         }
         Rectangle {
             anchors.fill: parent
-            radius: 16
-            gradient: Gradient {
-                GradientStop { position: 0.35; color: "transparent" }
-                GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.78) }
-            }
+            anchors.margins: -3
+            radius: 17
+            color: "transparent"
+            border.width: 2
+            border.color: "white"
+            opacity: gate.chosen ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Style.fast } }
         }
     }
-
     Row {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.margins: 20
-        spacing: 12
-        Column {
-            width: parent.width - actions.width - 12
-            spacing: 4
-            Row {
-                spacing: 6
-                Icon { anchors.verticalCenter: parent.verticalCenter; name: gate.glyph; size: 13; color: Qt.rgba(1, 1, 1, 0.75) }
-                Label {
-                    text: gate.label.toUpperCase()
-                    font.family: Style.family
-                    font.pixelSize: 11
-                    font.weight: Font.DemiBold
-                    font.letterSpacing: 0.9
-                    color: Qt.rgba(1, 1, 1, 0.75)
-                }
-            }
-            Label {
-                width: parent.width
-                text: gate.theme ? gate.theme.title : "Not set"
-                font.family: Style.family
-                font.pixelSize: 24
-                font.weight: Font.Bold
-                color: "white"
-                elide: Text.ElideRight
-            }
-        }
-        Row {
-            id: actions
-            anchors.bottom: parent.bottom
-            spacing: 8
-            ActionButton {
-                visible: gate.theme !== null
-                text: gate.actionText
-                reason: gate.actionReason
-                pill: true
-                onActivated: gate.act()
-            }
-            ActionButton {
-                visible: gate.theme !== null
-                text: "Customise"
-                primary: true
-                pill: true
-                onActivated: gate.open(gate.theme.id, frame)
-            }
+        anchors.top: frame.bottom
+        anchors.topMargin: 10
+        spacing: 6
+        Icon { anchors.verticalCenter: parent.verticalCenter; name: gate.glyph; size: 13; color: Qt.rgba(1, 1, 1, 0.8) }
+        Label {
+            text: gate.label + (gate.theme ? "  ·  " + gate.theme.name : "  ·  Not set")
+            font.family: Style.family
+            font.pixelSize: Style.caption
+            font.weight: Font.Medium
+            color: Qt.rgba(1, 1, 1, gate.chosen ? 0.95 : 0.7)
         }
     }
 }

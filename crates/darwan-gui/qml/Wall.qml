@@ -3,7 +3,8 @@ import QtQuick.Controls.Basic
 import QtQuick.Effects
 import org.darwan
 
-// The first screen: the two gates, what happens when you step away, and every theme as a card.
+// The first screen, as the wallpaper pages' Home: the featured gate's theme fills the window behind a hero, with a
+// strip to feature the other gate; then what happens when you step away, and every theme as a card.
 FocusScope {
     id: wall
 
@@ -13,13 +14,11 @@ FocusScope {
     property alias search: search
     // Set by the arrow keys, cleared by a real pointer move: whether focus should show on the cards.
     property bool keyboard: false
-    // Darwan's own look sits on a theme picked at random each time the app opens, blurred once behind the glass.
-    property string wallpaper: ""
-    Component.onCompleted: {
-        const themes = model.order
-        if (themes.length > 0)
-            wallpaper = "file://" + themes[Math.floor(Math.random() * themes.length)].still
-    }
+    // Which gate the hero features: "lock" or "sddm".
+    property string gate: "lock"
+    readonly property var featured: model.gates[gate] || null
+    // 0 with the hero in view, 1 once scrolled past it: the backdrop blurs and darkens, the toolbar turns solid.
+    readonly property real depth: Math.min(1, Math.max(0, scroll.contentY / Math.max(1, hero.height - toolbar.height)))
     // Each card's frame by theme id, for the Stage to grow from and shrink back into.
     property var frames: ({})
 
@@ -43,9 +42,10 @@ FocusScope {
     // Measured from where the scroll is heading, so keys pressed during a scroll still land the card in view.
     function reveal(item) {
         const y = item.mapToItem(body, 0, 0).y + body.y
-        const top = glideStep.running ? glide.targetValue : scroll.contentY
+        // The toolbar floats over the top of the scroll.
+        const top = (glideStep.running ? glide.targetValue : scroll.contentY) + toolbar.height
         if (y < top + 8)
-            scroll.contentY = Math.max(0, y - 16)
+            scroll.contentY = Math.max(0, y - toolbar.height - 16)
         else if (y + item.height > top + scroll.height - 8)
             scroll.contentY = y + item.height - scroll.height + 16
     }
@@ -71,30 +71,52 @@ FocusScope {
     Keys.onDownPressed: move(columns)
 
     Rectangle { anchors.fill: parent; color: Style.bg }
-    Item {
+    // The featured theme's still, blurred enough that its clock and password field read as colour, not as a lock to
+    // type into; fully blurred once the cards scroll up. MultiEffect mixes blur levels it made once, so following the
+    // scroll costs nothing.
+    FadeImage {
+        id: backdrop
         anchors.fill: parent
-        visible: Style.own && wall.wallpaper !== ""
-        Image {
-            id: wallpaperImage
-            anchors.fill: parent
-            anchors.margins: -80
-            visible: false
-            source: wall.wallpaper
-            sourceSize.width: 640
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
+        anchors.margins: -60
+        duration: 500
+        source: wall.featured ? "file://" + wall.featured.still : ""
+        visible: false
+    }
+    MultiEffect {
+        anchors.fill: backdrop
+        source: backdrop
+        visible: wall.featured !== null
+        blurEnabled: true
+        blurMax: 64
+        blur: 0.8 + 0.2 * wall.depth
+        saturation: Style.own ? -0.1 - 0.3 * wall.depth : 0
+    }
+    // Dark under the toolbar and the hero's text, as the wallpaper pages have it.
+    Rectangle {
+        anchors.fill: parent
+        gradient: Gradient {
+            GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0.45) }
+            GradientStop { position: 0.14; color: Qt.rgba(0, 0, 0, 0.05) }
+            GradientStop { position: 0.4; color: Qt.rgba(0, 0, 0, 0.12) }
+            GradientStop { position: 0.75; color: Qt.rgba(0.05, 0.05, 0.06, 0.8) }
+            GradientStop { position: 1; color: Style.own ? Qt.rgba(0.05, 0.05, 0.06, 0.94) : Style.bg }
         }
-        MultiEffect {
-            anchors.fill: wallpaperImage
-            source: wallpaperImage
-            blurEnabled: true
-            blur: 1
-            blurMax: 64
-            saturation: 0.4
-            opacity: wallpaperImage.status === Image.Ready ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 600 } }
+    }
+    // Behind the hero's text, whatever colour the theme is.
+    Rectangle {
+        width: parent.width * 0.65
+        height: parent.height
+        opacity: 1 - wall.depth
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0.55) }
+            GradientStop { position: 1; color: "transparent" }
         }
-        Rectangle { anchors.fill: parent; color: "black"; opacity: 0.7 }
+    }
+    Rectangle {
+        anchors.fill: parent
+        color: Style.own ? "black" : Style.bg
+        opacity: wall.depth * (Style.own ? 0.7 : 1)
     }
 
     HoverHandler {
@@ -109,7 +131,6 @@ FocusScope {
     Flickable {
         id: scroll
         anchors.fill: parent
-        anchors.topMargin: toolbar.height
         contentHeight: body.height + 120
         boundsBehavior: Flickable.StopAtBounds
         clip: true
@@ -121,49 +142,101 @@ FocusScope {
             NumberAnimation { id: glideStep; duration: Style.medium; easing.type: Style.ease }
         }
 
-        // Starts past the look switch on the window's left edge.
         Column {
             id: body
             x: 56
-            y: 26
             width: scroll.width - 84
             spacing: 14
 
-            Label {
-                text: "YOUR GATES"
-                font.family: Style.family
-                font.pixelSize: 11
-                font.weight: Font.DemiBold
-                font.letterSpacing: 0.9
-                color: Style.sub
-            }
-            Row {
-                id: gates
-                width: parent.width
-                height: Math.max(240, Math.min(400, width * 0.3))
-                spacing: 16
-                GateCard {
-                    width: (gates.width - 16) * 0.6
-                    height: gates.height
-                    theme: wall.model.gates.lock
-                    label: "Lockscreen"
-                    glyph: "lock"
-                    actionText: "Lock now"
-                    onAct: wall.lockNow(theme.id)
-                    onOpen: (id, from) => wall.openTheme(id, from)
+            // The hero: the featured gate's name and actions low on its picture, the strip of both gates under them.
+            Item {
+                id: hero
+                width: body.width
+                height: Math.max(460, wall.height * 0.66)
+                Column {
+                    anchors.left: parent.left
+                    anchors.bottom: strip.top
+                    anchors.bottomMargin: 30
+                    width: parent.width
+                    spacing: 12
+                    Row {
+                        spacing: 8
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: wall.gate === "lock" ? "lock" : "login"
+                            size: 14
+                            color: Qt.rgba(1, 1, 1, 0.75)
+                        }
+                        Label {
+                            text: wall.gate === "lock" ? "YOUR LOCKSCREEN" : "YOUR LOGIN SCREEN"
+                            font.family: Style.family
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: 3
+                            color: Qt.rgba(1, 1, 1, 0.75)
+                        }
+                    }
+                    Label {
+                        width: Math.min(implicitWidth, body.width * 0.6)
+                        text: wall.featured ? wall.featured.name : "Not set"
+                        font.family: Style.family
+                        font.pixelSize: 44
+                        font.weight: Font.Bold
+                        color: "white"
+                        elide: Text.ElideRight
+                    }
+                    Label {
+                        visible: wall.featured !== null
+                        text: !wall.featured ? "" : [
+                            ({ video: "Video background", image: "Image background" })[wall.featured.background] || "Colour background",
+                            wall.featured.missingFonts > 0 ? "A font it needs is missing" : ""
+                        ].filter(s => s).join("    ")
+                        font.family: Style.family
+                        font.pixelSize: 15
+                        color: Qt.rgba(1, 1, 1, 0.8)
+                    }
+                    Item { width: 1; height: 6 }
+                    Row {
+                        visible: wall.featured !== null
+                        spacing: 10
+                        ActionButton {
+                            text: "Customise"
+                            primary: true
+                            pill: true
+                            onActivated: wall.openTheme(wall.featured.id, wall.gate === "lock" ? lockGate.frame : sddmGate.frame)
+                        }
+                        ActionButton {
+                            text: wall.gate === "lock" ? "Lock now" : "Test"
+                            pill: true
+                            onActivated: wall.gate === "lock" ? wall.lockNow(wall.featured.id) : wall.testSddm(wall.featured.id)
+                        }
+                    }
                 }
-                GateCard {
-                    width: (gates.width - 16) * 0.4
-                    height: gates.height
-                    theme: wall.model.gates.sddm
-                    label: "Login screen"
-                    glyph: "login"
-                    actionText: "Test"
-                    onAct: wall.testSddm(theme.id)
-                    onOpen: (id, from) => wall.openTheme(id, from)
+                Row {
+                    id: strip
+                    anchors.bottom: parent.bottom
+                    spacing: 18
+                    GateCard {
+                        id: lockGate
+                        width: 260
+                        theme: wall.model.gates.lock
+                        label: "Lockscreen"
+                        glyph: "lock"
+                        chosen: wall.gate === "lock"
+                        onPicked: wall.gate = "lock"
+                    }
+                    GateCard {
+                        id: sddmGate
+                        width: 260
+                        theme: wall.model.gates.sddm
+                        label: "Login screen"
+                        glyph: "login"
+                        chosen: wall.gate === "sddm"
+                        onPicked: wall.gate = "sddm"
+                    }
                 }
             }
-
+            Item { width: 1; height: 12 }
             StepAway {
                 width: parent.width
                 backend: wall.backend
@@ -278,12 +351,13 @@ FocusScope {
         }
     }
 
+    // Clear over the hero, solid once the cards scroll under it.
     Rectangle {
         id: toolbar
         width: parent.width
         height: 56
-        color: Style.chrome
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Style.sep }
+        color: Qt.alpha(Style.chrome, wall.depth)
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Style.sep; opacity: wall.depth }
 
         Row {
             x: 56
@@ -303,13 +377,14 @@ FocusScope {
                 font.family: Style.family
                 font.pixelSize: Style.title
                 font.weight: Font.DemiBold
-                color: Style.text
+                color: wall.depth > 0.5 ? Style.text : "white"
             }
         }
 
         PageSwitch {
             anchors.centerIn: parent
             current: "themes"
+            glass: wall.depth < 0.5
             onPicked: v => wall.switchPage(v)
         }
 
