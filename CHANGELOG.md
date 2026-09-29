@@ -4,16 +4,27 @@ What changed in each release of Darwan, newest first. Each release's section is 
 
 ## Unreleased
 
-- New setting `saver.return_after`: how long a lock left untouched keeps its password field and widgets before the
-  screensaver comes back, whether you locked by hand or the screensaver locked. It stays 30 seconds unless you change
-  it (5 or more), and it's in the GUI under *When you step away* → *When you lock*.
-- With several monitors, the lock showed its theme on every screen but the primary one, which stayed black. Every
-  screen now shows it, whatever your compositor calls the monitors.
-- Previews (`darwan preview`, including `--saver`, `--sddm` and `--at`, and the GUI's *Full-screen preview* and
-  *Screensaver preview*) open on every monitor, as the lock does, and what you type shows on each. `--shot` still takes
-  one picture.
-- With several monitors, what you type into the password field shows on the other screens only in fields that hide it
-  too, so a screen left on a username field never shows your password.
+### Multi-monitor
+
+**The lock shows on every screen.** With several monitors, the lock drew its theme on every screen but the primary one,
+which stayed black. Every screen now shows it, whatever your compositor calls the monitors.
+
+**Previews open on every monitor too**, as the lock does: `darwan preview`, with `--saver`, `--sddm` or `--at`, and the
+GUI's *Full-screen preview* and *Screensaver preview*. What you type shows on each; Ctrl+Q or unlocking closes them
+all. `--shot` still takes one picture.
+
+**Your password stays hidden on the other screens.** What you type is copied only into fields that hide it too, so a
+screen left on a username field never shows your password.
+
+### When an untouched lock goes back to the screensaver
+
+A lock left alone brings the screensaver back after 30 seconds, whether you locked by hand or the screensaver locked.
+The new setting `saver.return_after` changes that: 5 seconds or more, nothing hides while something is typed. The
+GUI has it under *When you step away* → *When you lock*, with 10 and 15 seconds, half a minute, a minute and five
+minutes.
+
+### Also
+
 - The GUI's floating *Unsaved changes* bar no longer lets its Save button touch the bar's right edge.
 - The lock and screensaver keep a `QSG_RENDER_LOOP` you set yourself instead of always choosing `threaded` on NVIDIA.
 
