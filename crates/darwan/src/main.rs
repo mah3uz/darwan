@@ -14,6 +14,7 @@ mod settings_cmd;
 mod style;
 mod supervise;
 mod tui;
+mod wallpaper_cmd;
 
 use std::io::IsTerminal;
 use std::path::PathBuf;
@@ -49,7 +50,7 @@ enum Cmd {
         #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
         key: Option<String>,
     },
-    /// Change a setting: lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look, or <theme-id>.<option> for a theme's options and customisations (background, accent, variant, motion_speed, …)
+    /// Change a setting: lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look, wallpaper.folder, or <theme-id>.<option> for a theme's options and customisations (background, accent, variant, motion_speed, …)
     Set {
         #[arg(add = ArgValueCandidates::new(completion::setting_keys))]
         key: String,
@@ -115,6 +116,11 @@ enum Cmd {
         #[command(subcommand)]
         command: FontCmd,
     },
+    /// Set the desktop wallpaper through whatever draws it (your shell, desktop or wallpaper tool)
+    Wallpaper {
+        #[command(subcommand)]
+        command: WallpaperCmd,
+    },
     /// Check the system for problems that stop themes from working
     Doctor,
     /// Load themes offscreen; fail on any QML warning or error, or if typing the password does not unlock
@@ -162,6 +168,26 @@ enum SddmCmd {
     Status,
     /// Remove everything darwan set up for SDDM
     Reset,
+}
+
+#[derive(Subcommand)]
+enum WallpaperCmd {
+    /// Show what draws the wallpaper, what it can do and what each screen shows
+    Status,
+    /// List the wallpapers in the folder (wallpaper.folder), newest first
+    List,
+    /// Make the thumbnails and colours the Wallpapers page shows, for the whole folder
+    Prepare,
+    /// Show FILE as the wallpaper, on every screen or on the ones named
+    Set {
+        file: PathBuf,
+        /// A screen by its connector name (e.g. DP-1); repeat for more
+        #[arg(long = "output", short = 'o', value_name = "NAME")]
+        outputs: Vec<String>,
+        /// Allow restarting a wallpaper tool Darwan didn't start (swaybg, mpvpaper without a socket)
+        #[arg(long)]
+        allow_restart: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -243,6 +269,16 @@ fn main() -> ExitCode {
         Cmd::Font {
             command: FontCmd::Import { id, file, target },
         } => font::import(&paths, &id, &file, target.as_deref()),
+        Cmd::Wallpaper { command } => match command {
+            WallpaperCmd::Status => wallpaper_cmd::status(),
+            WallpaperCmd::List => wallpaper_cmd::list(&paths),
+            WallpaperCmd::Prepare => wallpaper_cmd::prepare(&paths),
+            WallpaperCmd::Set {
+                file,
+                outputs,
+                allow_restart,
+            } => wallpaper_cmd::set_file(&file, &outputs, allow_restart),
+        },
         Cmd::Doctor => doctor::run(&paths),
         Cmd::Completion { shell } => completion::print_registration(shell),
         Cmd::Check {

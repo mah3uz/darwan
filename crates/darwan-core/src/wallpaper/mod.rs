@@ -3,6 +3,9 @@ use std::process::{Command, Stdio};
 
 use crate::custom::Wallpaper;
 
+pub mod library;
+pub mod set;
+
 // Where to look; `run` executes a query command. Injected so every provider can be tested on fixtures.
 pub struct Env {
     pub proc_dir: PathBuf,
@@ -11,7 +14,10 @@ pub struct Env {
     pub config_home: PathBuf,
     pub uid: u32,
     pub wayland_display: Option<String>,
+    // XDG_CURRENT_DESKTOP, lower-cased: which desktop environment's own background applies.
+    pub current_desktop: Option<String>,
     pub run: fn(&str, &[&str]) -> Option<String>,
+    pub which: fn(&str) -> bool,
 }
 
 fn xdg(var: &str, home: &Path, fallback: &str) -> PathBuf {
@@ -45,19 +51,37 @@ impl Env {
             wayland_display: std::env::var("WAYLAND_DISPLAY")
                 .ok()
                 .filter(|d| !d.is_empty()),
+            current_desktop: std::env::var("XDG_CURRENT_DESKTOP")
+                .ok()
+                .filter(|d| !d.is_empty())
+                .map(|d| d.to_lowercase()),
             run: run_command,
+            which: on_path,
         }
     }
+}
+
+pub(crate) fn on_path(program: &str) -> bool {
+    std::env::var_os("PATH").is_some_and(|path| {
+        std::env::split_paths(&path).any(|dir| {
+            std::fs::metadata(dir.join(program)).is_ok_and(|m| {
+                m.is_file()
+                    && std::os::unix::fs::PermissionsExt::mode(&m.permissions()) & 0o111 != 0
+            })
+        })
+    })
 }
 
 fn own_uid() -> u32 {
     std::fs::metadata("/proc/self").map_or(0, |m| std::os::unix::fs::MetadataExt::uid(&m))
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Proc {
+    pid: u32,
     comm: String,
     argv: Vec<String>,
+    dir: PathBuf,
 }
 
 impl Proc {
@@ -72,6 +96,78 @@ impl Proc {
     fn mentions(&self, needle: &str) -> bool {
         self.argv.iter().any(|a| a.contains(needle))
     }
+
+    // `-c name` or `--config name`, as Quickshell and its launchers take a named config.
+    fn config_named(&self, name: &str) -> bool {
+        self.argv
+            .windows(2)
+            .any(|w| (w[0] == "-c" || w[0] == "--config") && w[1] == name)
+            || self.argv.iter().any(|a| a == &format!("--config={name}"))
+    }
+
+    fn is_quickshell(&self) -> bool {
+        matches!(self.exe_name(), "qs" | "quickshell")
+    }
+
+    // The fields after the command name in /proc/<pid>/stat: [0] is the state, [1] the parent, [19] the start time.
+    fn stat(&self) -> Vec<String> {
+        let text = std::fs::read_to_string(self.dir.join("stat")).unwrap_or_default();
+        text.rsplit_once(')')
+            .map(|(_, rest)| rest.split_whitespace().map(str::to_string).collect())
+            .unwrap_or_default()
+    }
+
+    fn parent(&self) -> Option<u32> {
+        self.stat().get(1)?.parse().ok()
+    }
+
+    fn start_time(&self) -> Option<u64> {
+        self.stat().get(19)?.parse().ok()
+    }
+
+    // The systemd unit a process runs in, e.g. `swaybg.service`; scopes (apps started by a launcher) don't count.
+    fn service(&self) -> Option<String> {
+        let text = std::fs::read_to_string(self.dir.join("cgroup")).ok()?;
+        let last = text
+            .lines()
+            .find_map(|l| l.strip_prefix("0::"))?
+            .rsplit('/')
+            .next()?;
+        last.ends_with(".service").then(|| last.to_string())
+    }
+}
+
+// Each shell by the shape of its own process, never by a name anywhere in argv: an editor open on
+// `~/Projects/omarchy` mentions Omarchy too.
+fn is_dms(p: &Proc) -> bool {
+    p.exe_name() == "dms" && p.argv.iter().skip(1).any(|a| a == "run")
+}
+
+fn is_omarchy_shell(p: &Proc) -> bool {
+    p.is_quickshell() && p.mentions("omarchy/shell")
+}
+
+fn is_omarchy_swaybg(p: &Proc) -> bool {
+    p.exe_name() == "swaybg" && p.mentions("omarchy/current/background")
+}
+
+fn is_caelestia(p: &Proc) -> bool {
+    p.is_quickshell() && p.config_named("caelestia")
+}
+
+fn is_noctalia(p: &Proc) -> bool {
+    p.exe_name() == "noctalia"
+}
+
+fn is_noctalia_legacy(p: &Proc) -> bool {
+    p.is_quickshell() && p.config_named("noctalia-shell")
+}
+
+// awww and swww daemons started with a namespace (`-n backdrop`) draw somewhere else, e.g. niri's overview.
+fn is_default_namespace(p: &Proc) -> bool {
+    !p.argv
+        .iter()
+        .any(|a| a == "-n" || a == "--namespace" || a.starts_with("--namespace="))
 }
 
 // This user's processes in this Wayland session: a daemon from another session draws somewhere else.
@@ -115,7 +211,13 @@ fn processes(env: &Env) -> Vec<Proc> {
                 .unwrap_or_default()
                 .trim()
                 .to_string();
-            Some(Proc { comm, argv })
+            let pid = e.file_name().to_str()?.parse().ok()?;
+            Some(Proc {
+                pid,
+                comm,
+                argv,
+                dir,
+            })
         })
         .collect()
 }
@@ -239,24 +341,20 @@ pub fn detect(env: &Env, dark: Option<bool>) -> Option<Wallpaper> {
         Box<dyn Fn(&Proc) -> Option<PathBuf> + 'a>,
     );
     let providers: Vec<Provider> = vec![
-        (
-            "DMS",
-            Box::new(|p| p.exe_name() == "dms" && p.mentions("run")),
-            Box::new(|_| dms(env, dark)),
-        ),
+        ("DMS", Box::new(is_dms), Box::new(|_| dms(env, dark))),
         (
             "Omarchy",
-            Box::new(|p| p.mentions("omarchy")),
+            Box::new(|p| is_omarchy_shell(p) || is_omarchy_swaybg(p)),
             Box::new(|_| omarchy(env)),
         ),
         (
             "Caelestia",
-            Box::new(|p| p.mentions("caelestia")),
+            Box::new(is_caelestia),
             Box::new(|_| caelestia(env)),
         ),
         (
             "Noctalia",
-            Box::new(|p| p.mentions("noctalia")),
+            Box::new(|p| is_noctalia(p) || is_noctalia_legacy(p)),
             Box::new(|_| noctalia(env)),
         ),
         (
@@ -266,12 +364,12 @@ pub fn detect(env: &Env, dark: Option<bool>) -> Option<Wallpaper> {
         ),
         (
             "awww",
-            Box::new(|p| p.exe_name() == "awww-daemon"),
+            Box::new(|p| p.exe_name() == "awww-daemon" && is_default_namespace(p)),
             Box::new(|_| swww_like(env, "awww")),
         ),
         (
             "swww",
-            Box::new(|p| p.exe_name() == "swww-daemon"),
+            Box::new(|p| p.exe_name() == "swww-daemon" && is_default_namespace(p)),
             Box::new(|_| swww_like(env, "swww")),
         ),
         (
@@ -336,15 +434,15 @@ pub fn unsupported_engine(env: &Env) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod fixture {
     use super::*;
 
-    struct Fixture {
+    pub(crate) struct Fixture {
         root: tempfile::TempDir,
     }
 
     impl Fixture {
-        fn new() -> Self {
+        pub(crate) fn new() -> Self {
             let f = Self {
                 root: tempfile::tempdir().unwrap(),
             };
@@ -353,15 +451,15 @@ mod tests {
             }
             f
         }
-        fn path(&self, p: &str) -> PathBuf {
+        pub(crate) fn path(&self, p: &str) -> PathBuf {
             self.root.path().join(p)
         }
-        fn wall(&self, name: &str) -> PathBuf {
+        pub(crate) fn wall(&self, name: &str) -> PathBuf {
             let p = self.path("walls").join(name);
             std::fs::write(&p, b"x").unwrap();
             p
         }
-        fn process(&self, pid: u32, argv: &[&str], display: Option<&str>) {
+        pub(crate) fn process(&self, pid: u32, argv: &[&str], display: Option<&str>) {
             let dir = self.path("proc").join(pid.to_string());
             std::fs::create_dir_all(&dir).unwrap();
             std::fs::write(dir.join("cmdline"), argv.join("\0") + "\0").unwrap();
@@ -378,12 +476,33 @@ mod tests {
                 .unwrap();
             }
         }
-        fn write(&self, rel: &str, text: &str) {
+        // `stat` as the kernel writes it: the command name in parentheses, then the fields the code reads.
+        pub(crate) fn stat(&self, pid: u32, parent: u32, start: u64) {
+            let mut fields = vec!["0".to_string(); 20];
+            fields[0] = "S".into();
+            fields[1] = parent.to_string();
+            fields[19] = start.to_string();
+            let dir = self.path("proc").join(pid.to_string());
+            std::fs::write(
+                dir.join("stat"),
+                format!("{pid} (x y) {}\n", fields.join(" ")),
+            )
+            .unwrap();
+        }
+        pub(crate) fn cgroup(&self, pid: u32, unit: &str) {
+            let dir = self.path("proc").join(pid.to_string());
+            std::fs::write(
+                dir.join("cgroup"),
+                format!("0::/user.slice/user-1000.slice/user@1000.service/app.slice/{unit}\n"),
+            )
+            .unwrap();
+        }
+        pub(crate) fn write(&self, rel: &str, text: &str) {
             let p = self.path(rel);
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
             std::fs::write(p, text).unwrap();
         }
-        fn env(&self, run: fn(&str, &[&str]) -> Option<String>) -> Env {
+        pub(crate) fn env(&self, run: fn(&str, &[&str]) -> Option<String>) -> Env {
             Env {
                 proc_dir: self.path("proc"),
                 home: self.path("home"),
@@ -393,10 +512,18 @@ mod tests {
                     .map(|m| std::os::unix::fs::MetadataExt::uid(&m))
                     .unwrap(),
                 wayland_display: Some("wayland-1".into()),
+                current_desktop: None,
                 run,
+                which: |_| false,
             }
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fixture::Fixture;
+    use super::*;
 
     fn no_commands(_: &str, _: &[&str]) -> Option<String> {
         None
@@ -428,10 +555,49 @@ mod tests {
         let clip = f.wall("loop.mp4");
         std::fs::create_dir_all(f.path("state/omarchy/current")).unwrap();
         std::os::unix::fs::symlink(&clip, f.path("state/omarchy/current/background")).unwrap();
-        f.process(11, &["quickshell", "-c", "omarchy-shell"], None);
+        // As omarchy-launch-shell starts it.
+        f.process(
+            11,
+            &[
+                "quickshell",
+                "-n",
+                "-p",
+                "/home/u/.local/share/omarchy/shell",
+            ],
+            None,
+        );
         assert_eq!(
             detect(&f.env(no_commands), None),
             Some(found(clip, "Omarchy"))
+        );
+    }
+
+    #[test]
+    fn a_shell_is_known_by_its_process_not_by_its_name_in_someones_arguments() {
+        let f = Fixture::new();
+        let omarchy = f.wall("omarchy.png");
+        std::fs::create_dir_all(f.path("state/omarchy/current")).unwrap();
+        std::os::unix::fs::symlink(&omarchy, f.path("state/omarchy/current/background")).unwrap();
+        let shown = f.wall("shown.png");
+        // Editors open on checkouts of Omarchy and Caelestia aren't those shells drawing the desktop; swaybg is.
+        f.process(
+            21,
+            &["nvim", "/home/u/Projects/omarchy/bin/omarchy-shell"],
+            Some("wayland-1"),
+        );
+        f.process(
+            22,
+            &["zed", "/home/u/src/caelestia/shell.qml"],
+            Some("wayland-1"),
+        );
+        f.process(
+            23,
+            &["swaybg", "-i", shown.to_str().unwrap()],
+            Some("wayland-1"),
+        );
+        assert_eq!(
+            detect(&f.env(no_commands), None),
+            Some(found(shown, "swaybg"))
         );
     }
 
@@ -454,7 +620,7 @@ mod tests {
             "config/noctalia/settings.toml",
             "[wallpaper.default]\npath = \"color:#ff00ff\"\n",
         );
-        g.process(13, &["noctalia-shell"], None);
+        g.process(13, &["/usr/bin/noctalia"], None);
         assert_eq!(
             detect(&g.env(no_commands), None).unwrap().path,
             PathBuf::from("#ff00ff")

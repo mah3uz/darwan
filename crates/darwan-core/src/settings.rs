@@ -60,6 +60,7 @@ pub enum Key {
     SaverReturnAfter,
     SaverQuality,
     GuiLook,
+    WallpaperFolder,
     Option { theme: String, key: String },
 }
 
@@ -75,10 +76,11 @@ impl Key {
             "saver.return_after" => Key::SaverReturnAfter,
             "saver.quality" => Key::SaverQuality,
             "gui.look" => Key::GuiLook,
+            "wallpaper.folder" => Key::WallpaperFolder,
             _ => {
                 let (theme, key) = s.rsplit_once('.').filter(|(t, k)| valid_id(t) && !k.is_empty()).ok_or_else(|| {
                     format!(
-                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look or <theme-id>.<option>"
+                        "unknown setting {s:?}; use lock.theme, sddm.theme, clock.format, clock.show_ampm, date.format, saver.lock_after, saver.return_after, saver.quality, gui.look, wallpaper.folder or <theme-id>.<option>"
                     )
                 })?;
                 Key::Option {
@@ -101,6 +103,7 @@ impl fmt::Display for Key {
             Key::SaverReturnAfter => f.write_str("saver.return_after"),
             Key::SaverQuality => f.write_str("saver.quality"),
             Key::GuiLook => f.write_str("gui.look"),
+            Key::WallpaperFolder => f.write_str("wallpaper.folder"),
             Key::Option { theme, key } => write!(f, "{theme}.{key}"),
         }
     }
@@ -119,6 +122,7 @@ pub fn get(config: &UserConfig, key: &Key) -> Result<Option<String>, String> {
             .map(|v| v.map(|s| s.to_string())),
         Key::SaverQuality => config.saver_quality().map(|v| v.map(|q| q.to_string())),
         Key::GuiLook => config.gui_look().map(owned),
+        Key::WallpaperFolder => config.wallpaper_folder().map(owned),
         Key::Option { theme, key } => config
             .theme_values(theme)
             .into_iter()
@@ -188,6 +192,16 @@ pub fn set(
             "darwan" | "system" => config.set_global("gui", "look", toml_edit::value(value)),
             _ => Err(format!("gui.look is darwan or system, not {value:?}")),
         },
+        // Absolute or under the home folder: Darwan runs from different working folders.
+        Key::WallpaperFolder => {
+            if value.starts_with('/') || value.starts_with("~/") {
+                config.set_global("wallpaper", "folder", toml_edit::value(value))
+            } else {
+                Err(format!(
+                    "wallpaper.folder is an absolute path or starts with ~/, not {value:?}"
+                ))
+            }
+        }
         Key::Option { theme, key } => {
             let t = catalog
                 .get(theme)
@@ -244,6 +258,7 @@ pub fn unset(config: &mut UserConfig, key: &Key) -> bool {
         Key::SaverReturnAfter => config.remove_global("saver", "return_after"),
         Key::SaverQuality => config.remove_global("saver", "quality"),
         Key::GuiLook => config.remove_global("gui", "look"),
+        Key::WallpaperFolder => config.remove_global("wallpaper", "folder"),
         Key::Option { theme, key } => config.remove_theme_value(theme, key),
     }
 }
@@ -271,6 +286,7 @@ mod tests {
             "saver.return_after",
             "saver.quality",
             "gui.look",
+            "wallpaper.folder",
             "clockwork/orbital.themeMode",
         ] {
             assert_eq!(Key::parse(s).unwrap().to_string(), s);
@@ -303,6 +319,8 @@ mod tests {
             ("saver.return_after", "never"),
             ("saver.quality", "ultra"),
             ("gui.look", "windows"),
+            ("wallpaper.folder", "relative/folder"),
+            ("wallpaper.folder", ""),
         ] {
             assert!(
                 set(&mut cfg, &cat, &Key::parse(k).unwrap(), v).is_err(),
@@ -332,6 +350,14 @@ mod tests {
         assert!(
             cfg.to_string().contains("[gui]\nlook = \"system\""),
             "the GUI's look lives in the one config file"
+        );
+
+        let folder = Key::parse("wallpaper.folder").unwrap();
+        set(&mut cfg, &cat, &folder, "~/Pictures/Walls").unwrap();
+        assert_eq!(
+            get(&cfg, &folder),
+            Ok(Some("~/Pictures/Walls".into())),
+            "kept as written, expanded where used"
         );
 
         let back = Key::parse("saver.return_after").unwrap();

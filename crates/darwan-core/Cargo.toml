@@ -15,3 +15,6 @@ thiserror = "2.0.21"
 toml = "1.1.6"
 toml_edit = "0.25.15"
 zbus = "5.19.0"
+rustix = { version = "1.1.5", features = ["process"] }
+md-5 = "0.10"
+png = "0.18.1"

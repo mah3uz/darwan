@@ -23,8 +23,24 @@ The new setting `saver.return_after` changes that: 5 seconds or more, nothing hi
 GUI has it under *When you step away* → *When you lock*, with 10 and 15 seconds, half a minute, a minute and five
 minutes.
 
+### Wallpapers
+
+`darwan wallpaper set <file>` sets the desktop wallpaper through whatever draws it on your desktop: DMS, Noctalia,
+Caelestia, Omarchy, KDE Plasma, GNOME, Cinnamon, MATE, Xfce, sway, waypaper, hyprpaper, awww/swww, wpaperd,
+mpvpaper, gSlapper, swaybg or wbg. Name screens with `-o DP-1`. Darwan checks the result by asking the tool what it
+shows. A tool that can only change by being restarted (swaybg, mpvpaper without its socket) is restarted only with
+`--allow-restart`, and never when systemd runs it. `darwan wallpaper status` shows what draws the wallpaper, what it
+can do and what each screen shows.
+
+Your wallpapers live in `wallpaper.folder`: by default `Wallpapers` (or `wallpapers`) in your Pictures folder, found
+through `user-dirs.dirs` so a localised Pictures folder works. `darwan wallpaper list` lists them and
+`darwan wallpaper prepare` makes their thumbnails and colours ahead of time. Thumbnails go to the shared freedesktop
+cache (`~/.cache/thumbnails`), so your file manager and Darwan make each one once.
+
 ### Also
 
+- Using your desktop wallpaper as a theme's background no longer mistakes an editor open on Omarchy's or Caelestia's
+  files for those shells, and ignores a second awww or swww daemon drawing niri's overview backdrop.
 - The GUI's floating *Unsaved changes* bar no longer lets its Save button touch the bar's right edge.
 - The lock and screensaver keep a `QSG_RENDER_LOOP` you set yourself instead of always choosing `threaded` on NVIDIA.
 

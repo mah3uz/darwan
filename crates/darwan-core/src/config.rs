@@ -133,6 +133,11 @@ impl UserConfig {
         self.string("saver", "quality")?.map(str::parse).transpose()
     }
 
+    // Where the Wallpapers page reads and downloads, as the user wrote it (`~/…` allowed).
+    pub fn wallpaper_folder(&self) -> Result<Option<&str>, String> {
+        self.string("wallpaper", "folder")
+    }
+
     // The GUI's look: "darwan", its own, or "system" to follow the Qt theme's palette and font.
     pub fn gui_look(&self) -> Result<Option<&str>, String> {
         self.string("gui", "look")

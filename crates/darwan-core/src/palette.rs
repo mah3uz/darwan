@@ -1,4 +1,3 @@
-use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -123,6 +122,38 @@ pub fn from_rgba(rgba: image::RgbaImage, request: &PaletteRequest) -> Palette {
     palette(source, request.dark.unwrap_or(luminance < 0.5), request)
 }
 
+// What the Library shows and filters by: the source colour matugen would pick, where it sits in HCT, and a dark
+// tonal-spot scheme's accents as swatches.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Summary {
+    pub source: String,
+    pub hue: f64,
+    pub chroma: f64,
+    pub tone: f64,
+    pub luminance: f64,
+    pub swatches: Vec<String>,
+}
+
+pub fn summary(rgba: image::RgbaImage) -> Summary {
+    let (source, luminance) = source_color(rgba);
+    let hct = Hct::new(source);
+    let s = scheme("scheme-tonal-spot", source, true, 0.0);
+    let hex = |c: Argb| c.to_hex_with_pound().to_lowercase();
+    Summary {
+        source: hex(source),
+        hue: hct.get_hue(),
+        chroma: hct.get_chroma(),
+        tone: hct.get_tone(),
+        luminance,
+        swatches: vec![
+            hex(source),
+            hex(s.primary()),
+            hex(s.secondary()),
+            hex(s.tertiary()),
+        ],
+    }
+}
+
 // A single picked colour as the seed, as Android does.
 pub fn from_seed(hex: &str, request: &PaletteRequest) -> Option<Palette> {
     Some(palette(argb(hex)?, request.dark.unwrap_or(false), request))
@@ -167,16 +198,27 @@ pub fn generate(path: &Path, request: &PaletteRequest) -> Result<Palette, String
 
 fn cache_key(path: &Path, request: &PaletteRequest) -> Option<String> {
     let meta = std::fs::metadata(path).ok()?;
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    CACHE_VERSION.hash(&mut h);
-    path.canonicalize().ok()?.hash(&mut h);
-    meta.len().hash(&mut h);
-    meta.modified().ok()?.hash(&mut h);
-    request.scheme.hash(&mut h);
-    request.dark.hash(&mut h);
-    request.contrast.to_bits().hash(&mut h);
-    request.seed.hash(&mut h);
-    Some(format!("{:016x}", h.finish()))
+    let mtime = meta
+        .modified()
+        .ok()?
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?;
+    let mut key = format!("{CACHE_VERSION}\0").into_bytes();
+    key.extend(path.canonicalize().ok()?.as_os_str().as_encoded_bytes());
+    key.extend(
+        format!(
+            "\0{}\0{}.{}\0{}\0{:?}\0{}\0{:?}",
+            meta.len(),
+            mtime.as_secs(),
+            mtime.subsec_nanos(),
+            request.scheme,
+            request.dark,
+            request.contrast.to_bits(),
+            request.seed
+        )
+        .into_bytes(),
+    );
+    Some(format!("{:016x}", crate::media::fnv1a(&key)))
 }
 
 // Keyed by the file's path, size and mtime and the request, so an edited image is regenerated.

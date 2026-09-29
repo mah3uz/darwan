@@ -57,7 +57,8 @@ pub fn eco_path(source: &Path) -> Option<PathBuf> {
     )
 }
 
-fn fnv1a(bytes: &[u8]) -> u64 {
+// FNV-1a 64: stable across Rust releases, unlike the standard library's hasher, so cache names survive upgrades.
+pub(crate) fn fnv1a(bytes: &[u8]) -> u64 {
     bytes.iter().fold(0xcbf29ce484222325, |h, b| {
         (h ^ u64::from(*b)).wrapping_mul(0x100000001b3)
     })

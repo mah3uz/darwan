@@ -49,6 +49,15 @@ pub fn config_file() -> PathBuf {
     xdg("XDG_CONFIG_HOME", ".config").join("darwan/config.toml")
 }
 
+// $XDG_CACHE_HOME itself, where the shared freedesktop thumbnails live.
+pub fn cache_home() -> PathBuf {
+    xdg("XDG_CACHE_HOME", ".cache")
+}
+
+pub fn config_home() -> PathBuf {
+    xdg("XDG_CONFIG_HOME", ".config")
+}
+
 pub fn cache_dir() -> PathBuf {
     xdg("XDG_CACHE_HOME", ".cache").join("darwan")
 }

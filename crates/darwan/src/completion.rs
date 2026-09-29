@@ -128,6 +128,10 @@ fn keys_in(catalog: &Catalog) -> Vec<CompletionCandidate> {
             "Screensaver video quality: auto, full, eco or still",
         ),
         candidate(
+            "wallpaper.folder",
+            "Where the Wallpapers page reads and downloads (~/Pictures/Wallpapers)",
+        ),
+        candidate(
             "gui.look",
             "The GUI's look: darwan, or system to follow your Qt theme",
         ),
@@ -254,6 +258,7 @@ fn values_for(catalog: &Catalog, config: &UserConfig, key: &str) -> Vec<Completi
             .iter()
             .map(|q| candidate(q.as_str(), q.describe()))
             .collect(),
+        Key::WallpaperFolder => Vec::new(),
         Key::GuiLook => vec![
             candidate("darwan", "Darwan's own greys and blue, see-through panels"),
             candidate("system", "your Qt theme's colours and font"),
