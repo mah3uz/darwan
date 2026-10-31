@@ -4,6 +4,8 @@ What changed in each release of Darwan, newest first. Each release's section is 
 
 ## Unreleased
 
+## 0.6.1 - 2026-10-31 12:53 +06:00
+
 ### The screensaver no longer breaks when mpvqt updates
 
 mpvqt 1.2.1 renamed its library, and Darwan 0.6.0, built against the old name, could no longer load its QML plugin:
