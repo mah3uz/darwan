@@ -1,6 +1,6 @@
 #pragma once
 
-#include <MpvQt/MpvAbstractItem>
+#include "mpvabstractitem.h"
 #include <QtQml/qqmlregistration.h>
 #include <QElapsedTimer>
 #include <QUrl>

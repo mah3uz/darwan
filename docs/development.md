@@ -11,8 +11,8 @@ Everything the package needs at runtime (see the [README](../README.md#installat
 sudo pacman -S --needed rust lld librsvg cmake just
 ```
 
-`just build` also builds darwan's QML plugin (`plugin/`, C++ against `mpvqt`) into `target/plugin/`, where a checkout's
-binaries find it.
+`just build` also builds darwan's QML plugins (`plugin/`, C++) into `target/plugin/`, where a checkout's binaries find
+them: `Darwan` (Qt only) and `Darwan.Video` (libmpv, through KDE's MpvQt compiled in from `plugin/mpvqt/`).
 
 For the offscreen theme checks and `preview --at`, also:
 

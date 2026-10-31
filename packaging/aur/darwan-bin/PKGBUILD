@@ -7,11 +7,11 @@ pkgrel=1
 pkgdesc='Themes for the SDDM login screen and the Quickshell lockscreen, with a CLI, TUI and GUI (prebuilt)'
 arch=('x86_64')
 url='https://github.com/mah3uz/darwan'
-license=('GPL-3.0-only')
+license=('GPL-3.0-only' 'LGPL-2.1-only OR LGPL-3.0-only')
 depends=(
   'gcc-libs'
   'glibc'
-  'mpvqt'
+  'mpv'
   'polkit'
   'qt6-5compat'
   'qt6-base'

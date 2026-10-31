@@ -6,11 +6,11 @@ pkgrel=1
 pkgdesc='Themes for the SDDM login screen and the Quickshell lockscreen, with a CLI, TUI and GUI'
 arch=('x86_64')
 url='https://github.com/mah3uz/darwan'
-license=('GPL-3.0-only')
+license=('GPL-3.0-only' 'LGPL-2.1-only OR LGPL-3.0-only')
 depends=(
   'gcc-libs'
   'glibc'
-  'mpvqt'
+  'mpv'
   'polkit'
   'qt6-5compat'
   'qt6-base'
@@ -64,6 +64,8 @@ package() {
   install -Dm755 target/release/darwan-helper -t "$pkgdir/usr/lib/darwan"
   install -Dm755 target/plugin/qml/Darwan/libdarwanplugin.so -t "$pkgdir/usr/lib/darwan/qml/Darwan"
   install -Dm644 target/plugin/qml/Darwan/{qmldir,darwanplugin.qmltypes} -t "$pkgdir/usr/lib/darwan/qml/Darwan"
+  install -Dm755 target/plugin/qml/Darwan/Video/libdarwanvideoplugin.so -t "$pkgdir/usr/lib/darwan/qml/Darwan/Video"
+  install -Dm644 target/plugin/qml/Darwan/Video/{qmldir,darwanvideoplugin.qmltypes} -t "$pkgdir/usr/lib/darwan/qml/Darwan/Video"
   install -d "$pkgdir/usr/share/darwan"
   cp -r --no-preserve=ownership runtime themes "$pkgdir/usr/share/darwan/"
   install -Dm644 packaging/arch/org.darwan.policy -t "$pkgdir/usr/share/polkit-1/actions"

@@ -1,6 +1,6 @@
 #include "mpvvideo.h"
 
-#include <MpvQt/MpvController>
+#include "mpvcontroller.h"
 
 #include <QDir>
 #include <QTimer>

@@ -77,7 +77,7 @@ Your AUR helper or `makepkg -s` installs these for you.
 
 |                           | Packages                                                                                                                            |
 |--------------------------:|:------------------------------------------------------------------------------------------------------------------------------------|
-|              **Required** | `quickshell` `qt6-base` `qt6-declarative` `qt6-imageformats` `qt6-svg` `qt6-5compat` `qt6-multimedia` `qt6-multimedia-ffmpeg` `mpvqt` `polkit` `ttf-jetbrains-mono-nerd` |
+|              **Required** | `quickshell` `qt6-base` `qt6-declarative` `qt6-imageformats` `qt6-svg` `qt6-5compat` `qt6-multimedia` `qt6-multimedia-ffmpeg` `mpv` `polkit` `ttf-jetbrains-mono-nerd` |
 |              **Optional** | `sddm` (the login screen) · `hypridle` (the screensaver) · `libfaketime` (`darwan preview --at`) · `noto-fonts-cjk` (Chinese text in Genshin Impact) |
 | **Build** (`darwan` only) | `rust` `lld` `librsvg` `cmake` `qt6-shadertools` |
 
@@ -119,7 +119,7 @@ The package installs:
 | `/usr/bin/darwan`                               | CLI + TUI                                                 |
 | `/usr/bin/darwan-gui`                           | GUI, also in your app launcher as *Darwan*                |
 | `/usr/lib/darwan/darwan-helper`                 | privileged SDDM helper, run through `pkexec`              |
-| `/usr/lib/darwan/qml/Darwan/`                   | the QML plugin that plays videos (libmpv) and wakes the screensaver |
+| `/usr/lib/darwan/qml/Darwan/`                   | the QML plugins that wake the screensaver and play videos (libmpv, in `Video/`) |
 | `/usr/share/darwan/runtime/`                    | the QML runtime shared by the lockscreen and the previews |
 | `/usr/share/darwan/themes/`                     | all 40 themes                                             |
 | `/usr/share/polkit-1/actions/org.darwan.policy` | lets the helper ask for your password once per session    |

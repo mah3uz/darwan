@@ -237,18 +237,51 @@ fn hypridle_advice(h: &Hypridle) -> Option<Result<String, String>> {
     })
 }
 
-fn screensaver(r: &mut Report, paths: &Paths, catalog: &Catalog, hypridle: Option<&Hypridle>) {
-    let plugin = paths.qml_modules.join("Darwan/libdarwanplugin.so");
-    if plugin.is_file() {
-        r.ok(format!(
-            "darwan's QML plugin is installed ({})",
-            plugin.display()
-        ));
+// The libraries named in `ldd`'s output that the dynamic loader can't find.
+fn unresolved(ldd: &str) -> Vec<&str> {
+    ldd.lines()
+        .filter(|l| l.trim_end().ends_with("=> not found"))
+        .filter_map(|l| l.split_whitespace().next())
+        .collect()
+}
+
+// Ok, or why the plugin at `plugin` can't load.
+fn plugin_loads(plugin: &Path) -> Result<(), String> {
+    if !plugin.is_file() {
+        return Err(format!("{} is missing", plugin.display()));
+    }
+    // Without ldd only the file's presence can be checked.
+    let Ok(out) = Command::new("ldd").arg(plugin).output() else {
+        return Ok(());
+    };
+    let missing = unresolved(std::str::from_utf8(&out.stdout).unwrap_or_default());
+    if missing.is_empty() {
+        Ok(())
     } else {
-        r.fail(format!(
-            "{} is missing: the lock plays no video and the screensaver can't start; reinstall darwan (or `just build` in a checkout)",
-            plugin.display()
-        ));
+        Err(format!(
+            "{} can't load: {} not found",
+            plugin.display(),
+            missing.join(", ")
+        ))
+    }
+}
+
+fn screensaver(r: &mut Report, paths: &Paths, catalog: &Catalog, hypridle: Option<&Hypridle>) {
+    let rebuild = "reinstall or rebuild darwan (or `just build` in a checkout)";
+    let gate = paths.qml_modules.join("Darwan/libdarwanplugin.so");
+    match plugin_loads(&gate) {
+        Ok(()) => r.ok(format!(
+            "darwan's QML plugin is installed ({})",
+            gate.display()
+        )),
+        Err(e) => r.fail(format!("{e}: the screensaver can't start; {rebuild}")),
+    }
+    let video = paths
+        .qml_modules
+        .join("Darwan/Video/libdarwanvideoplugin.so");
+    match plugin_loads(&video) {
+        Ok(()) => r.ok(format!("darwan's video plugin is installed ({})", video.display())),
+        Err(e) => r.warn(format!("{e}: videos play through Qt's player instead of libmpv, at several times the CPU; {rebuild}")),
     }
 
     let setup = hypridle::setup();
@@ -329,6 +362,14 @@ fn screensaver(r: &mut Report, paths: &Paths, catalog: &Catalog, hypridle: Optio
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_plugin_whose_library_was_renamed_is_reported() {
+        // An mpvqt update renamed libMpvQt.so.3 to .so.4: the plugin file was there but could no longer load.
+        let ldd = "\tlinux-vdso.so.1 (0x00007ffd)\n\tlibMpvQt.so.3 => not found\n\tlibQt6Quick.so.6 => /usr/lib/libQt6Quick.so.6 (0x00007f)\n";
+        assert_eq!(unresolved(ldd), ["libMpvQt.so.3"]);
+        assert!(unresolved("\tlibmpv.so.2 => /usr/lib/libmpv.so.2 (0x00007f)\n").is_empty());
+    }
 
     #[test]
     fn hypridle_must_wait_for_darwans_lock_before_sleep() {

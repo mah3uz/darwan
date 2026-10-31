@@ -4,6 +4,21 @@ What changed in each release of Darwan, newest first. Each release's section is 
 
 ## Unreleased
 
+### The screensaver no longer breaks when mpvqt updates
+
+mpvqt 1.2.1 renamed its library, and Darwan 0.6.0, built against the old name, could no longer load its QML plugin:
+the screensaver didn't start and the preview failed with `libMpvQt.so.3: cannot open shared object file`. Darwan now
+carries its own copy of mpvqt and needs only mpv and Qt, whose libraries keep their names across updates.
+
+- Videos have a plugin of their own. If it ever can't load, the screensaver still starts and its videos play through
+  Qt's player instead of mpv.
+- `darwan doctor` now checks that both plugins can load, not only that they are installed.
+
+### Upgrading from 0.6.0
+
+The `mpvqt` dependency is replaced by `mpv`, which your AUR helper installs. Once Darwan is upgraded, you can remove
+`mpvqt` if nothing else needs it: `sudo pacman -Rs mpvqt`.
+
 ## 0.6.0 - 2026-10-17 00:35 +06:00
 
 ### Explore loads much faster

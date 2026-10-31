@@ -35,7 +35,7 @@ Item {
     }
 
     // Items loaded from a file don't see this file's ids, so each backend finds this item as its Loader's parent.
-    // Without darwan's plugin the mpv backend can't load; Qt's player still plays the video.
+    // Without darwan's video plugin the mpv backend can't load; Qt's player still plays the video.
     Loader {
         anchors.fill: parent
         source: output.backend

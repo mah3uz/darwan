@@ -1,5 +1,5 @@
 import QtQuick
-import Darwan
+import Darwan.Video
 
 MpvVideo {
     readonly property Item output: parent ? parent.parent : null
