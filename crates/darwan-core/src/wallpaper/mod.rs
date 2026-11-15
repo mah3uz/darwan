@@ -146,6 +146,16 @@ pub(crate) fn is_dms(p: &Proc) -> bool {
     p.exe_name() == "dms" && p.argv.iter().skip(1).any(|a| a == "run")
 }
 
+// DMS renamed its folders from `DankMaterialShell` to `dms`; installs from before keep the old name.
+pub(crate) fn dms_file(base: &Path, name: &str) -> PathBuf {
+    let new = base.join("dms").join(name);
+    if new.is_file() {
+        new
+    } else {
+        base.join("DankMaterialShell").join(name)
+    }
+}
+
 pub(crate) fn is_omarchy_shell(p: &Proc) -> bool {
     p.is_quickshell() && p.mentions("omarchy/shell")
 }
@@ -231,8 +241,7 @@ fn existing(path: &str) -> Option<PathBuf> {
 }
 
 fn dms(env: &Env, dark: Option<bool>) -> Option<PathBuf> {
-    let text =
-        std::fs::read_to_string(env.state_home.join("DankMaterialShell/session.json")).ok()?;
+    let text = std::fs::read_to_string(dms_file(&env.state_home, "session.json")).ok()?;
     let v: serde_json::Value = serde_json::from_str(&text).ok()?;
     let get = |k: &str| {
         v.get(k)
@@ -402,7 +411,7 @@ pub fn detect(env: &Env, dark: Option<bool>) -> Option<Wallpaper> {
 
     let mut last_used: Vec<(std::time::SystemTime, Wallpaper)> = [
         (
-            env.state_home.join("DankMaterialShell/session.json"),
+            dms_file(&env.state_home, "session.json"),
             dms(env, dark),
             "DMS",
         ),

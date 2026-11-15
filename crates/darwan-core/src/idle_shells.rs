@@ -1,7 +1,8 @@
 use serde_json::Value;
 
 use crate::wallpaper::{
-    Env, is_caelestia, is_dms, is_noctalia, is_noctalia_legacy, is_omarchy_shell, processes,
+    Env, dms_file, is_caelestia, is_dms, is_noctalia, is_noctalia_legacy, is_omarchy_shell,
+    processes,
 };
 
 // Idle timers a running shell or idle daemon keeps beside hypridle's. Each acts on the same idle as Darwan's
@@ -87,7 +88,7 @@ pub fn find(env: &Env) -> Vec<Shell> {
         }
     };
     if running(is_dms) {
-        let text = read(env.config_home.join("DankMaterialShell/settings.json"));
+        let text = read(dms_file(&env.config_home, "settings.json"));
         add("DMS", "Settings → Power & Sleep", dms(&text));
     }
     if running(is_noctalia_legacy) {

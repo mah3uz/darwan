@@ -4,6 +4,10 @@ What changed in each release of Darwan, newest first. Each release's section is 
 
 ## Unreleased
 
+- Setting a wallpaper on DMS with a wallpaper per monitor works again. DMS now keeps its settings in `dms` folders
+  instead of `DankMaterialShell`, and Darwan didn't see that per-monitor mode was on, so DMS refused with "Per-monitor
+  mode enabled". Darwan now reads the current wallpaper and the idle timers from the new folders too.
+
 ## 0.6.1 - 2026-10-31 12:53 +06:00
 
 ### The screensaver no longer breaks when mpvqt updates

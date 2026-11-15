@@ -715,8 +715,7 @@ fn swaybg_argv(argv: &[String], target: &Target, path: &str) -> Option<Vec<Strin
 }
 
 fn dms_session(env: &Env) -> Option<serde_json::Value> {
-    let text =
-        std::fs::read_to_string(env.state_home.join("DankMaterialShell/session.json")).ok()?;
+    let text = std::fs::read_to_string(super::dms_file(&env.state_home, "session.json")).ok()?;
     serde_json::from_str(&text).ok()
 }
 
@@ -1263,6 +1262,18 @@ mod tests {
             "DMS refuses `set` in per-monitor mode"
         );
         assert!(p.notes.iter().any(|n| n.contains("current mode")));
+
+        f.write(
+            "state/DankMaterialShell/session.json",
+            r#"{"perMonitorWallpaper":false}"#,
+        );
+        f.write("state/dms/session.json", r#"{"perMonitorWallpaper":true}"#);
+        let p = plan(&env, &o, &all(&w, &["DP-1"])).unwrap();
+        assert_eq!(
+            argvs(&p)[0][4],
+            "setFor",
+            "DMS keeps its state in `dms/` now; a stale `DankMaterialShell/` left behind is not read"
+        );
 
         let clip = f.wall("clip.mp4");
         assert!(
