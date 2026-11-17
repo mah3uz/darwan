@@ -4,6 +4,10 @@ What changed in each release of Darwan, newest first. Each release's section is 
 
 ## Unreleased
 
+- A theme folder whose name Darwan can't use as an id (capital letters, spaces, `_` and the like) is now reported by
+  `darwan check` and left out of the list, instead of showing up and failing only when you apply it. The rules are in
+  the theme contract (`docs/theme-contract.md`).
+
 ## 0.6.2 - 2026-11-15 15:55 +06:00
 
 - Setting a wallpaper on DMS with a wallpaper per monitor works again. DMS now keeps its settings in `dms` folders

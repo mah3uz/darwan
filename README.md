@@ -121,7 +121,7 @@ The package installs:
 | `/usr/lib/darwan/darwan-helper`                 | privileged SDDM helper, run through `pkexec`              |
 | `/usr/lib/darwan/qml/Darwan/`                   | the QML plugins that wake the screensaver and play videos (libmpv, in `Video/`) |
 | `/usr/share/darwan/runtime/`                    | the QML runtime shared by the lockscreen and the previews |
-| `/usr/share/darwan/themes/`                     | all 40 themes                                             |
+| `/usr/share/darwan/themes/`                     | the themes                                                |
 | `/usr/share/polkit-1/actions/org.darwan.policy` | lets the helper ask for your password once per session    |
 | `/usr/share/applications/darwan.desktop`        | the *Darwan* launcher entry                               |
 | `/usr/share/icons/hicolor/*/apps/darwan.*`      | its icon, as SVG and as PNGs from 16 to 512 px            |
@@ -587,8 +587,8 @@ background_index = "3"
 
 `darwan show <theme>` always lists the current set.
 
-The clock settings reach the 39 themes that show a clock and the date setting the 38 that show a date: Nine Sols and
-Terraria show neither, and osu! has no date. Date presets:
+The clock settings reach every theme that shows a clock and the date setting every theme that shows a date: Nine Sols
+and Terraria show neither, and osu! has no date. Date presets:
 
 | `date.format`  | Looks like             |
 |:---------------|:-----------------------|

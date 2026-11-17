@@ -14,6 +14,22 @@ A Darwan theme is a folder under `themes/` with a `Main.qml`. The same file runs
 | `preview.webp` (optional) | the GUI's hover loop, 640×360, made from the theme's demo by darwan-assets' `just loops` |
 | `font/` | bundled, openly licensed fonts, or the user-supplied fonts listed in `darwan.toml` |
 
+`Main.qml`, `theme.conf` and `darwan.toml` are required. A folder with a `darwan.toml` but no `Main.qml` is not found.
+
+## Theme id
+
+A theme's id is its folder's path under `themes/`, with `/` between folders: `themes/osu` is `osu`, and
+`themes/clockwork/orbital` is `clockwork/orbital`. Users type it (`darwan set osu.gameMode game`), it keys the theme's
+settings in the config, and the SDDM helper installs the theme under it.
+
+- Each folder name uses only lowercase ASCII letters, digits and `-`, and does not start with `-`: `reverse-1999-1`,
+  not `Reverse_1999`.
+- The whole id is at most 128 characters.
+- A folder holding a `Main.qml` is a theme; folders inside it are never searched for more themes, so a family is a
+  plain folder of themes (`clockwork/`), not a theme itself. Folders whose names start with `.` are skipped.
+
+A folder that breaks these rules is not loaded, and `darwan check` names it.
+
 ## Root names
 
 These names resolve from anywhere in `Main.qml`, as they do under SDDM.

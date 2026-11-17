@@ -14,14 +14,36 @@ fn catalog() -> Catalog {
     catalog
 }
 
+fn manifest_dirs(root: &Path, dir: &Path, out: &mut Vec<String>) {
+    if dir.join("darwan.toml").is_file() {
+        let rel = dir.strip_prefix(root).unwrap();
+        out.push(rel.to_str().unwrap().to_owned());
+    }
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let entry = entry.unwrap();
+        if !entry.file_name().to_string_lossy().starts_with('.')
+            && entry.file_type().unwrap().is_dir()
+        {
+            manifest_dirs(root, &entry.path(), out);
+        }
+    }
+}
+
 #[test]
 fn every_shipped_theme_loads_and_passes_lint() {
     let catalog = catalog();
-    // A discovery bug that finds no themes would make the lint pass vacuously.
+    // A discovery bug that finds no themes would make the lint pass vacuously, so the catalog is checked against
+    // the manifests on disk, found without the catalog's own rules.
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../themes");
+    let mut on_disk = Vec::new();
+    manifest_dirs(&root, &root, &mut on_disk);
+    on_disk.sort();
+    let mut loaded: Vec<&str> = catalog.themes().iter().map(|t| t.id.as_str()).collect();
+    loaded.sort();
+    assert!(!on_disk.is_empty());
     assert_eq!(
-        catalog.themes().len(),
-        40,
-        "update this count when adding or removing a theme"
+        loaded, on_disk,
+        "every folder with a darwan.toml must be a theme the catalog finds (it needs a Main.qml)"
     );
     let failures: Vec<String> = catalog
         .themes()

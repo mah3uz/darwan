@@ -62,7 +62,7 @@ TestCase {
 
     function test_lock_mode_hides_hostname_and_authenticates_only_the_owner() {
         var host = makeHost({ themePath: fixtures + "/good", hostMode: "lock" })
-        compare(host.sddm.hostName, undefined, "38 themes read an undefined hostName as 'on the lockscreen'")
+        compare(host.sddm.hostName, undefined, "most themes read an undefined hostName as 'on the lockscreen'")
         host.sddm.login("root", "right", 0)
         compare(host.authBackend.lastUser, "owner")
     }

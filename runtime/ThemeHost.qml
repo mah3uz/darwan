@@ -76,7 +76,7 @@ Item {
         signal loginFailed()
         signal informationMessage(string message)
 
-        // 38 themes treat an undefined hostName as "running on the lockscreen".
+        // Most themes treat an undefined hostName as "running on the lockscreen".
         readonly property var hostName: host.hostMode === "sddm" ? host.machineName : undefined
         readonly property bool canPowerOff: true
         readonly property bool canReboot: true

@@ -51,6 +51,13 @@ impl Catalog {
                 });
                 continue;
             };
+            if !valid_id(&id) {
+                problems.push(LoadProblem {
+                    id,
+                    message: "invalid id: folder names may use only lowercase letters, digits and `-`, and must not start with `-`".into(),
+                });
+                continue;
+            }
             match load_theme(id.clone(), dir) {
                 Ok(theme) => themes.push(theme),
                 Err(message) => problems.push(LoadProblem { id, message }),
@@ -184,12 +191,18 @@ mod tests {
     }
 
     #[test]
-    fn every_shipped_id_is_valid() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../themes");
-        let (cat, _) = Catalog::load(&root).unwrap();
-        for t in cat.themes() {
-            assert!(valid_id(&t.id), "{}", t.id);
-        }
+    fn a_theme_with_an_invalid_id_is_reported_not_loaded() {
+        let root = tempfile::tempdir().unwrap();
+        write_theme(root.path(), "Genshin", OK);
+        write_theme(root.path(), "osu", OK);
+        let (cat, problems) = Catalog::load(root.path()).unwrap();
+        assert!(
+            cat.get("Genshin").is_none(),
+            "the helper refuses this id, so it must not reach the list"
+        );
+        assert!(cat.get("osu").is_some());
+        assert_eq!(problems.len(), 1);
+        assert_eq!(problems[0].id, "Genshin");
     }
 
     #[test]
